@@ -1,0 +1,777 @@
+/**
+ * @fileoverview TowerPanel - Bottom UI panel for tower selection (2-row 5-column layout),
+ * info display with A/B branch upgrades, sell actions, and speed toggle.
+ */
+
+import {
+  GAME_WIDTH, PANEL_Y, PANEL_HEIGHT, COLORS, VISUALS,
+  TOWER_STATS, TOWER_SHAPE_SIZE, GOLD_TEXT_CSS, CELL_SIZE,
+  SPEED_NORMAL, SPEED_FAST, SPEED_TURBO, LONG_PRESS_MS,
+} from '../config.js';
+import { t } from '../i18n.js';
+
+export class TowerPanel {
+  /**
+   * @param {Phaser.Scene} scene - The game scene
+   * @param {object} callbacks - Event callbacks
+   * @param {Function} callbacks.onTowerSelect - Called when a tower type is selected
+   * @param {Function} callbacks.onUpgrade - Called when upgrade button is pressed (tower, branch)
+   * @param {Function} callbacks.onSell - Called when sell button is pressed
+   * @param {Function} callbacks.onSpeedToggle - Called when speed button is pressed
+   * @param {Function} callbacks.onDeselect - Called when selection is cleared
+   * @param {boolean} [callbacks.dragonUnlocked] - Whether dragon tower is unlocked
+   */
+  constructor(scene, callbacks) {
+    /** @type {Phaser.Scene} */
+    this.scene = scene;
+
+    /** @type {object} */
+    this.callbacks = callbacks;
+
+    /** @type {boolean} Whether dragon tower is unlocked via Diamond */
+    this.dragonUnlocked = callbacks.dragonUnlocked || false;
+
+    /** @type {string|null} Currently selected tower type for placement */
+    this.selectedTowerType = null;
+
+    /** @type {object|null} Currently selected placed tower */
+    this.selectedTower = null;
+
+    /** @type {number} Current game speed */
+    this.gameSpeed = SPEED_NORMAL;
+
+    /** @type {Phaser.GameObjects.Container} Main container */
+    this.container = scene.add.container(0, 0).setDepth(30);
+
+    /** @type {object[]} Tower selection button data */
+    this.towerButtons = [];
+
+    /** @type {Phaser.GameObjects.Container|null} Tower info container */
+    this.infoContainer = null;
+
+    this._create();
+  }
+
+  /**
+   * Create the panel UI elements.
+   * @private
+   */
+  _create() {
+    // Panel background
+    const panelBg = this.scene.add.rectangle(
+      GAME_WIDTH / 2, PANEL_Y + PANEL_HEIGHT / 2,
+      GAME_WIDTH, PANEL_HEIGHT,
+      COLORS.UI_PANEL
+    ).setAlpha(0.9);
+    this.container.add(panelBg);
+
+    // Top divider line
+    const divider = this.scene.add.rectangle(
+      GAME_WIDTH / 2, PANEL_Y + 1,
+      GAME_WIDTH, 2,
+      COLORS.BUTTON_ACTIVE
+    ).setAlpha(0.5);
+    this.container.add(divider);
+
+    // Tower selection buttons (2 rows x 5 columns)
+    this._createTowerButtons();
+
+    // Sell button
+    this._createSellButton();
+
+    // Speed toggle button
+    this._createSpeedButton();
+  }
+
+  /**
+   * Create tower selection buttons in 2-row, 5-column layout.
+   * Row 1: archer, mage, ice, lightning, flame
+   * Row 2: rock, poison, wind, light, dragon (locked)
+   * @private
+   */
+  _createTowerButtons() {
+    const topRowTypes = ['archer', 'mage', 'ice', 'lightning', 'flame'];
+    const bottomRowTypes = ['rock', 'poison', 'wind', 'light', 'dragon'];
+    const btnSize = VISUALS.TOWER_BUTTON_SIZE;
+    const spacing = VISUALS.BUTTON_SPACING;
+    const startX = 8;
+    const topRowY = PANEL_Y + 8;
+    const bottomRowY = PANEL_Y + 56;
+
+    // Create top row
+    this._createButtonRow(topRowTypes, startX, topRowY, btnSize, spacing);
+
+    // Create bottom row
+    this._createButtonRow(bottomRowTypes, startX, bottomRowY, btnSize, spacing);
+  }
+
+  /**
+   * Create a row of tower buttons.
+   * @param {string[]} types - Tower types for this row
+   * @param {number} startX - Starting X position
+   * @param {number} rowY - Y position for the row
+   * @param {number} btnSize - Button size in pixels
+   * @param {number} spacing - Spacing between buttons
+   * @private
+   */
+  _createButtonRow(types, startX, rowY, btnSize, spacing) {
+    for (let i = 0; i < types.length; i++) {
+      const type = types[i];
+      const x = startX + i * (btnSize + spacing) + btnSize / 2;
+      const y = rowY + btnSize / 2;
+      const stats = TOWER_STATS[type];
+      const cost = stats.levels[1].cost;
+      const isLocked = type === 'dragon' && !this.dragonUnlocked;
+
+      // Button background
+      const bg = this.scene.add.rectangle(x, y, btnSize, btnSize, 0x1a1a2e)
+        .setStrokeStyle(2, isLocked ? COLORS.LOCK_ICON : 0x636e72);
+      // All buttons interactive (locked too, for long-press description)
+      bg.setInteractive({ useHandCursor: !isLocked });
+      if (isLocked) {
+        bg.setAlpha(0.4);
+      }
+      this.container.add(bg);
+
+      // Tower icon
+      const iconGraphics = this.scene.add.graphics();
+      if (isLocked) {
+        this._drawLockIcon(iconGraphics, x, y - 4);
+      } else {
+        this._drawTowerIcon(iconGraphics, type, x, y - 4);
+      }
+      this.container.add(iconGraphics);
+
+      // Cost text
+      const costStr = isLocked ? '????G' : `${cost}G`;
+      const costColor = isLocked ? '#636e72' : GOLD_TEXT_CSS;
+      const costText = this.scene.add.text(x, y + 14, costStr, {
+        fontSize: '9px',
+        fontFamily: 'Arial, sans-serif',
+        color: costColor,
+        align: 'center',
+      }).setOrigin(0.5);
+      this.container.add(costText);
+
+      // Store button data
+      const btnData = {
+        type,
+        bg,
+        costText,
+        iconGraphics,
+        cost,
+        isLocked,
+      };
+      this.towerButtons.push(btnData);
+
+      // Long-press / short-tap handlers
+      bg.on('pointerdown', () => {
+        this._startLongPress(type, x, y);
+      });
+      bg.on('pointerup', () => {
+        this._endLongPress(type);
+      });
+      bg.on('pointerout', () => {
+        this._cancelLongPress();
+      });
+    }
+  }
+
+  /**
+   * Draw a tower icon on a graphics object.
+   * @param {Phaser.GameObjects.Graphics} g - Graphics object
+   * @param {string} type - Tower type
+   * @param {number} x - Center X
+   * @param {number} y - Center Y
+   * @private
+   */
+  _drawTowerIcon(g, type, x, y) {
+    const color = TOWER_STATS[type].color;
+    g.clear();
+
+    switch (type) {
+      case 'archer': {
+        const s = 14;
+        g.fillStyle(color, 1);
+        g.fillTriangle(x, y - s / 2, x - s / 2, y + s / 2, x + s / 2, y + s / 2);
+        break;
+      }
+      case 'mage':
+        g.fillStyle(color, 1);
+        g.fillCircle(x, y, 8);
+        break;
+      case 'ice': {
+        const sz = 6;
+        g.fillStyle(color, 1);
+        g.fillPoints([
+          { x: x, y: y - sz },
+          { x: x + sz, y: y },
+          { x: x, y: y + sz },
+          { x: x - sz, y: y },
+        ], true);
+        break;
+      }
+      case 'lightning': {
+        g.lineStyle(2, color, 1);
+        const w = 5;
+        const h = 10;
+        g.lineBetween(x - w, y - h, x + w, y - h * 0.2);
+        g.lineBetween(x + w, y - h * 0.2, x - w, y + h * 0.2);
+        g.lineBetween(x - w, y + h * 0.2, x + w, y + h);
+        break;
+      }
+      case 'flame': {
+        g.fillStyle(color, 1);
+        g.fillCircle(x, y + 2, 7);
+        // Small flames
+        g.fillStyle(0xfdcb6e, 0.9);
+        const offsets = [-4, 0, 4];
+        for (const ox of offsets) {
+          g.fillTriangle(x + ox, y - 8, x + ox - 2, y - 3, x + ox + 2, y - 3);
+        }
+        break;
+      }
+      case 'rock': {
+        const r = 8;
+        const points = [];
+        for (let i = 0; i < 6; i++) {
+          const angle = (Math.PI / 3) * i - Math.PI / 2;
+          points.push({ x: x + r * Math.cos(angle), y: y + r * Math.sin(angle) });
+        }
+        g.fillStyle(color, 1);
+        g.fillPoints(points, true);
+        break;
+      }
+      case 'poison': {
+        const r = 7;
+        const points = [];
+        for (let i = 0; i < 5; i++) {
+          const angle = (Math.PI * 2 / 5) * i - Math.PI / 2;
+          points.push({ x: x + r * Math.cos(angle), y: y + r * Math.sin(angle) });
+        }
+        g.fillStyle(color, 1);
+        g.fillPoints(points, true);
+        break;
+      }
+      case 'wind': {
+        g.fillStyle(color, 1);
+        g.slice(x, y, 8, Phaser.Math.DegToRad(180), Phaser.Math.DegToRad(360), false);
+        g.fillPath();
+        g.lineStyle(1.5, color, 0.7);
+        for (let i = 0; i < 3; i++) {
+          g.lineBetween(x - 4 + i * 4, y + 2, x - 2 + i * 4, y + 7);
+        }
+        break;
+      }
+      case 'light': {
+        const r = 7;
+        const points = [];
+        for (let i = 0; i < 8; i++) {
+          const angle = (Math.PI * 2 / 8) * i - Math.PI / 8;
+          points.push({ x: x + r * Math.cos(angle), y: y + r * Math.sin(angle) });
+        }
+        g.fillStyle(color, 1);
+        g.fillPoints(points, true);
+        break;
+      }
+    }
+  }
+
+  /**
+   * Draw a lock icon for the dragon tower button.
+   * @param {Phaser.GameObjects.Graphics} g - Graphics object
+   * @param {number} x - Center X
+   * @param {number} y - Center Y
+   * @private
+   */
+  _drawLockIcon(g, x, y) {
+    g.clear();
+    // Lock body (rectangle)
+    g.fillStyle(COLORS.LOCK_ICON, 0.8);
+    g.fillRect(x - 7, y - 2, 14, 10);
+    // Lock arc (semicircle)
+    g.lineStyle(2, COLORS.LOCK_ICON, 0.8);
+    g.beginPath();
+    g.arc(x, y - 2, 5, Phaser.Math.DegToRad(180), Phaser.Math.DegToRad(0), false);
+    g.strokePath();
+    // Keyhole
+    g.fillStyle(0x1a1a2e, 1);
+    g.fillCircle(x, y + 2, 2);
+  }
+
+  /**
+   * Create the sell button.
+   * @private
+   */
+  _createSellButton() {
+    const btnSize = VISUALS.ACTION_BUTTON_SIZE;
+    const x = GAME_WIDTH - 75;
+    const y = PANEL_Y + 28;
+
+    this.sellBg = this.scene.add.rectangle(x, y, btnSize, btnSize, 0xd63031)
+      .setStrokeStyle(1, 0x636e72)
+      .setInteractive({ useHandCursor: true })
+      .setAlpha(0.5);
+    this.container.add(this.sellBg);
+
+    this.sellText = this.scene.add.text(x, y, 'S', {
+      fontSize: '14px',
+      fontFamily: 'Arial, sans-serif',
+      color: '#ffffff',
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+    this.container.add(this.sellText);
+
+    this.sellBg.on('pointerdown', () => {
+      if (this.selectedTower && this.callbacks.onSell) {
+        this.callbacks.onSell(this.selectedTower);
+      }
+    });
+  }
+
+  /**
+   * Create the speed toggle button.
+   * @private
+   */
+  _createSpeedButton() {
+    const btnSize = VISUALS.ACTION_BUTTON_SIZE;
+    const x = GAME_WIDTH - 38;
+    const y = PANEL_Y + 28;
+
+    this.speedBg = this.scene.add.rectangle(x, y, btnSize, btnSize, 0x2d3436)
+      .setStrokeStyle(1, 0x636e72)
+      .setInteractive({ useHandCursor: true });
+    this.container.add(this.speedBg);
+
+    this.speedText = this.scene.add.text(x, y, 'x1', {
+      fontSize: '12px',
+      fontFamily: 'Arial, sans-serif',
+      color: '#ffffff',
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+    this.container.add(this.speedText);
+
+    this.speedBg.on('pointerdown', () => {
+      // Phase 6: 3-speed cycle: 1x → 2x → 3x → 1x
+      if (this.gameSpeed === SPEED_NORMAL) {
+        this.gameSpeed = SPEED_FAST;
+      } else if (this.gameSpeed === SPEED_FAST) {
+        this.gameSpeed = SPEED_TURBO;
+      } else {
+        this.gameSpeed = SPEED_NORMAL;
+      }
+      const label = this.gameSpeed === SPEED_NORMAL ? 'x1'
+        : this.gameSpeed === SPEED_FAST ? 'x2' : 'x3';
+      const color = this.gameSpeed === SPEED_NORMAL ? '#ffffff'
+        : this.gameSpeed === SPEED_FAST ? '#fdcb6e' : '#e94560';
+      this.speedText.setText(label);
+      this.speedText.setColor(color);
+      this.speedBg.setFillStyle(
+        this.gameSpeed === SPEED_NORMAL ? 0x2d3436 : COLORS.BUTTON_ACTIVE
+      );
+      if (this.callbacks.onSpeedToggle) {
+        this.callbacks.onSpeedToggle(this.gameSpeed);
+      }
+    });
+  }
+
+  // ── Long-press & Description Popup ─────────────────────────────
+
+  /**
+   * Start long-press timer for a tower button.
+   * @param {string} type - Tower type
+   * @param {number} x - Button center X
+   * @param {number} y - Button center Y
+   * @private
+   */
+  _startLongPress(type, x, y) {
+    this._cancelLongPress(); // cancel any existing timer
+    this._lpType = type;
+    this._lpFired = false;
+    this._lpTimer = this.scene.time.delayedCall(LONG_PRESS_MS, () => {
+      this._lpFired = true;
+      this._showDescription(type);
+    });
+  }
+
+  /**
+   * End long-press on pointer up. If long-press didn't fire, treat as short tap.
+   * @param {string} type - Tower type
+   * @private
+   */
+  _endLongPress(type) {
+    if (this._lpTimer) { this._lpTimer.remove(); this._lpTimer = null; }
+    if (!this._lpFired) {
+      // Short tap → existing tower select behaviour (skip for locked)
+      const isLocked = type === 'dragon' && !this.dragonUnlocked;
+      if (!isLocked) {
+        this._onTowerButtonClick(type);
+      }
+    }
+    // If long-press fired, popup stays open until user taps elsewhere
+  }
+
+  /**
+   * Cancel long-press when pointer leaves button.
+   * @private
+   */
+  _cancelLongPress() {
+    if (this._lpTimer) { this._lpTimer.remove(); this._lpTimer = null; }
+  }
+
+  /**
+   * Show tower description popup above the panel.
+   * @param {string} type - Tower type
+   * @private
+   */
+  _showDescription(type) {
+    this._hideDescription(); // remove existing popup
+
+    const towerDef = TOWER_STATS[type];
+    const stats = towerDef.levels[1];
+    const color = towerDef.color;
+
+    const popupW = 320;
+    const popupH = 110;
+    const popupX = GAME_WIDTH / 2;
+    const popupY = PANEL_Y - popupH / 2 - 8;
+    const colorCSS = '#' + color.toString(16).padStart(6, '0');
+
+    // Container for easy cleanup
+    this._descContainer = this.scene.add.container(0, 0).setDepth(50);
+
+    // Background + border
+    const bg = this.scene.add.rectangle(popupX, popupY, popupW, popupH, 0x0a0e1a, 0.92)
+      .setStrokeStyle(2, color);
+    this._descContainer.add(bg);
+
+    // Tower name
+    const nameText = this.scene.add.text(popupX, popupY - 36, t(`tower.${type}.name`), {
+      fontSize: '18px',
+      fontFamily: 'Outfit, Arial, sans-serif',
+      color: colorCSS,
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+    this._descContainer.add(nameText);
+
+    // Flavor text
+    const flavorText = this.scene.add.text(popupX, popupY - 14, t(`tower.${type}.flavor`), {
+      fontSize: '11px',
+      fontFamily: 'Outfit, Arial, sans-serif',
+      color: '#a0a0a0',
+    }).setOrigin(0.5);
+    this._descContainer.add(flavorText);
+
+    // Stat line
+    const special = stats.slowAmount ? `Slow ${stats.slowAmount * 100}%`
+      : stats.splashRadius ? `Splash ${stats.splashRadius}px`
+      : stats.chainCount ? `Chain ${stats.chainCount}`
+      : stats.burnDamage ? `Burn ${stats.burnDamage}/s`
+      : stats.pushbackDistance ? `Push ${stats.pushbackDistance}px`
+      : stats.attackType === 'piercing_beam' ? 'Piercing'
+      : '-';
+    const statLine = `${t('ui.damage')} ${stats.damage}  |  ${t('ui.range')} ${stats.range}  |  ${t('ui.speed')} ${stats.fireRate}s  |  ${t('ui.special')} ${special}`;
+    const statText = this.scene.add.text(popupX, popupY + 10, statLine, {
+      fontSize: '11px',
+      fontFamily: 'Outfit, Arial, sans-serif',
+      color: '#e0e0e0',
+    }).setOrigin(0.5);
+    this._descContainer.add(statText);
+
+    // Cost
+    const isLocked = type === 'dragon' && !this.dragonUnlocked;
+    const costStr = isLocked ? '\uD83D\uDD12 50\uD83D\uDC8E' : `${stats.cost}G`;
+    const costText = this.scene.add.text(popupX, popupY + 32, costStr, {
+      fontSize: '13px',
+      fontFamily: 'Outfit, Arial, sans-serif',
+      color: '#ffd700',
+    }).setOrigin(0.5);
+    this._descContainer.add(costText);
+
+    // Close on any tap (next frame to avoid immediate close)
+    this.scene.time.delayedCall(50, () => {
+      this._descCloseHandler = this.scene.input.once('pointerdown', () => {
+        this._hideDescription();
+      });
+    });
+  }
+
+  /**
+   * Hide (destroy) the description popup.
+   * @private
+   */
+  _hideDescription() {
+    if (this._descContainer) {
+      this._descContainer.destroy();
+      this._descContainer = null;
+    }
+  }
+
+  /**
+   * Handle tower button click.
+   * @param {string} type - Tower type
+   * @private
+   */
+  _onTowerButtonClick(type) {
+    if (this.selectedTowerType === type) {
+      // Deselect
+      this.clearSelection();
+      return;
+    }
+
+    // Select this tower type
+    this.selectedTower = null;
+    this.selectedTowerType = type;
+    this._updateButtonHighlights();
+    this._hideInfo();
+
+    if (this.callbacks.onTowerSelect) {
+      this.callbacks.onTowerSelect(type);
+    }
+  }
+
+  /**
+   * Update button visual highlights based on selection state.
+   * @private
+   */
+  _updateButtonHighlights() {
+    for (const btn of this.towerButtons) {
+      if (btn.isLocked) continue;
+      if (btn.type === this.selectedTowerType) {
+        btn.bg.setStrokeStyle(3, COLORS.BOSS_BORDER);
+      } else {
+        btn.bg.setStrokeStyle(2, 0x636e72);
+      }
+    }
+  }
+
+  /**
+   * Update tower button affordability based on current gold.
+   * @param {number} gold - Current gold amount
+   */
+  updateAffordability(gold) {
+    for (const btn of this.towerButtons) {
+      if (btn.isLocked) continue;
+      if (gold >= btn.cost) {
+        btn.bg.setAlpha(1);
+        btn.costText.setColor(GOLD_TEXT_CSS);
+      } else {
+        btn.bg.setAlpha(0.5);
+        btn.costText.setColor('#ff4757');
+      }
+    }
+  }
+
+  /**
+   * Show tower info panel for a placed tower with A/B branch upgrade UI.
+   * @param {object} tower - Tower instance
+   */
+  showTowerInfo(tower) {
+    this.selectedTower = tower;
+    this.selectedTowerType = null;
+    this._updateButtonHighlights();
+    this._hideInfo();
+
+    const info = tower.getInfo();
+    const infoY = PANEL_Y + 80;
+
+    this.infoContainer = this.scene.add.container(0, 0).setDepth(31);
+
+    // Info background
+    const infoBg = this.scene.add.rectangle(
+      GAME_WIDTH / 2, infoY + 16, GAME_WIDTH - 10, 48, 0x16213e
+    ).setAlpha(0.9);
+    this.infoContainer.add(infoBg);
+
+    // Tower info text
+    const rangeInTiles = (info.range / CELL_SIZE).toFixed(1);
+    let nameStr = `${info.name} Lv.${info.level}`;
+    if (info.level === 2 && info.branchName) {
+      nameStr = `${info.name} Lv.2-${tower.branch.toUpperCase()}: ${info.branchName}`;
+    } else if (info.level === 3 && info.branchName) {
+      const path = `${tower.branch.toUpperCase()}${tower.branch3.toUpperCase()}`;
+      nameStr = `${info.name} Lv.3-${path}: ${info.branchName}`;
+    }
+    const infoText = this.scene.add.text(
+      10, infoY,
+      `${nameStr}  ATK:${info.damage}  SPD:${info.fireRate}s  RNG:${rangeInTiles}`,
+      {
+        fontSize: '10px',
+        fontFamily: 'Arial, sans-serif',
+        color: '#ffffff',
+      }
+    );
+    this.infoContainer.add(infoText);
+
+    // Upgrade buttons (A/B) or MAX LEVEL
+    if (info.level === 1 && info.canUpgrade) {
+      // Lv.1 → Lv.2 buttons (existing)
+      const upgAX = GAME_WIDTH / 2 - 75;
+      const upgABtn = this.scene.add.rectangle(
+        upgAX, infoY + 18, 140, 20, COLORS.BUTTON_ACTIVE
+      ).setInteractive({ useHandCursor: true });
+      this.infoContainer.add(upgABtn);
+
+      const upgAText = this.scene.add.text(upgAX, infoY + 18,
+        `A: ${info.upgradeAName} ${info.upgradeACost}G`, {
+        fontSize: '9px',
+        fontFamily: 'Arial, sans-serif',
+        color: '#ffffff',
+      }).setOrigin(0.5);
+      this.infoContainer.add(upgAText);
+
+      upgABtn.on('pointerdown', () => {
+        if (this.callbacks.onUpgrade) {
+          this.callbacks.onUpgrade(tower, 'a');
+        }
+      });
+
+      const upgBX = GAME_WIDTH / 2 + 75;
+      const upgBBtn = this.scene.add.rectangle(
+        upgBX, infoY + 18, 140, 20, 0x2d8a4e
+      ).setInteractive({ useHandCursor: true });
+      this.infoContainer.add(upgBBtn);
+
+      const upgBText = this.scene.add.text(upgBX, infoY + 18,
+        `B: ${info.upgradeBName} ${info.upgradeBCost}G`, {
+        fontSize: '9px',
+        fontFamily: 'Arial, sans-serif',
+        color: '#ffffff',
+      }).setOrigin(0.5);
+      this.infoContainer.add(upgBText);
+
+      upgBBtn.on('pointerdown', () => {
+        if (this.callbacks.onUpgrade) {
+          this.callbacks.onUpgrade(tower, 'b');
+        }
+      });
+    } else if (info.level === 2 && info.canUpgrade) {
+      // Lv.2 → Lv.3 buttons
+      const upgAX = GAME_WIDTH / 2 - 75;
+      const upgABtn = this.scene.add.rectangle(
+        upgAX, infoY + 18, 140, 20, COLORS.BUTTON_ACTIVE
+      ).setInteractive({ useHandCursor: true });
+      this.infoContainer.add(upgABtn);
+
+      const upgAText = this.scene.add.text(upgAX, infoY + 18,
+        `A: ${info.upgrade3AName} ${info.upgrade3ACost}G`, {
+        fontSize: '9px',
+        fontFamily: 'Arial, sans-serif',
+        color: '#ffffff',
+      }).setOrigin(0.5);
+      this.infoContainer.add(upgAText);
+
+      upgABtn.on('pointerdown', () => {
+        if (this.callbacks.onUpgrade) {
+          this.callbacks.onUpgrade(tower, 'a');
+        }
+      });
+
+      const upgBX = GAME_WIDTH / 2 + 75;
+      const upgBBtn = this.scene.add.rectangle(
+        upgBX, infoY + 18, 140, 20, 0x2d8a4e
+      ).setInteractive({ useHandCursor: true });
+      this.infoContainer.add(upgBBtn);
+
+      const upgBText = this.scene.add.text(upgBX, infoY + 18,
+        `B: ${info.upgrade3BName} ${info.upgrade3BCost}G`, {
+        fontSize: '9px',
+        fontFamily: 'Arial, sans-serif',
+        color: '#ffffff',
+      }).setOrigin(0.5);
+      this.infoContainer.add(upgBText);
+
+      upgBBtn.on('pointerdown', () => {
+        if (this.callbacks.onUpgrade) {
+          this.callbacks.onUpgrade(tower, 'b');
+        }
+      });
+    } else {
+      // Lv.3 or cannot upgrade → MAX LEVEL
+      const maxText = this.scene.add.text(GAME_WIDTH / 2, infoY + 18, 'MAX LEVEL', {
+        fontSize: '10px',
+        fontFamily: 'Arial, sans-serif',
+        color: '#636e72',
+      }).setOrigin(0.5);
+      this.infoContainer.add(maxText);
+    }
+
+    // Sell button
+    const sellBtn = this.scene.add.rectangle(
+      GAME_WIDTH / 2, infoY + 36, 120, 18, 0xd63031
+    ).setInteractive({ useHandCursor: true });
+    this.infoContainer.add(sellBtn);
+
+    const sellText = this.scene.add.text(GAME_WIDTH / 2, infoY + 36, `Sell ${info.sellPrice}G`, {
+      fontSize: '10px',
+      fontFamily: 'Arial, sans-serif',
+      color: '#ffffff',
+    }).setOrigin(0.5);
+    this.infoContainer.add(sellText);
+
+    sellBtn.on('pointerdown', () => {
+      if (this.callbacks.onSell) {
+        this.callbacks.onSell(tower);
+      }
+    });
+
+    // Update sell button state
+    this.sellBg.setAlpha(1);
+  }
+
+  /**
+   * Hide the tower info panel.
+   * @private
+   */
+  _hideInfo() {
+    if (this.infoContainer) {
+      this.infoContainer.destroy();
+      this.infoContainer = null;
+    }
+    if (this.sellBg) {
+      this.sellBg.setAlpha(0.5);
+    }
+  }
+
+  /**
+   * Clear all selections and hide info.
+   */
+  clearSelection() {
+    this.selectedTowerType = null;
+    this.selectedTower = null;
+    this._updateButtonHighlights();
+    this._hideInfo();
+
+    if (this.callbacks.onDeselect) {
+      this.callbacks.onDeselect();
+    }
+  }
+
+  /**
+   * Get the currently selected tower type for placement.
+   * @returns {string|null}
+   */
+  getSelectedTowerType() {
+    return this.selectedTowerType;
+  }
+
+  /**
+   * Get the current game speed setting.
+   * @returns {number}
+   */
+  getGameSpeed() {
+    return this.gameSpeed;
+  }
+
+  /**
+   * Clean up all panel elements.
+   */
+  destroy() {
+    this._hideDescription();
+    this._cancelLongPress();
+    this._hideInfo();
+    if (this.container) {
+      this.container.destroy();
+    }
+  }
+}

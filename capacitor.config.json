@@ -1,0 +1,8 @@
+{
+  "appId": "com.antigravity.fantasytd",
+  "appName": "Fantasy Tower Defense",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https"
+  }
+}
