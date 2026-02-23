@@ -4,6 +4,72 @@
 
 ---
 
+## 2026-02-23 -- 골드 싱크 시스템
+
+### 배경
+
+후반 라운드(R30+)에서 골드가 과도하게 축적되는 인플레이션 문제를 해소하기 위해 3가지 골드 소비처를 추가.
+
+### 변경
+
+- **`js/config.js`** -- 골드 싱크 상수 추가
+  - 타워 강화: `MAX_ENHANCE_LEVEL=10`, `ENHANCE_BASE_COST=200`, `ENHANCE_COST_INCREMENT=100`, `ENHANCE_STAT_BONUS=0.05`
+  - HP 회복: `HP_RECOVER_BASE_COST=100`, `HP_RECOVER_COST_INCREMENT=50`, `HP_RECOVER_AMOUNT=5`
+  - 소모품: `CONSUMABLE_ABILITIES` 객체 (slowAll, goldRain, lightning)
+  - `calcEnhanceCost(level)`, `calcHpRecoverCost(useCount)` 함수 추가
+
+- **`js/i18n.js`** -- 강화, HP 회복, 소모품 관련 한국어/영어 문자열 추가
+
+- **`js/entities/Tower.js`** -- 타워 강화 시스템 구현
+  - `enhanceLevel`, `enhanceInvested` 속성 추가
+  - `enhance()` 메서드: 레벨당 damage x1.05, range x1.025, fireRate x0.975 (최소 0.3초)
+  - `getEnhanceCost()`, `canEnhance()` 메서드 추가
+  - `getInfo()` 반환값에 강화 정보 추가
+  - `_drawEnhanceGlow()`: 금색 글로우 링 시각 효과
+
+- **`js/ui/TowerPanel.js`** -- 강화 UI 추가
+  - Lv.3 타워 선택 시 보라색 강화 버튼 표시
+  - 최대 강화 시 금색 "최대 강화" 텍스트 표시
+  - 타워 이름에 `+N` 강화 레벨 표시
+  - `onEnhance` 콜백 추가
+
+- **`js/scenes/GameScene.js`** -- HP 회복 + 소모품 능력 구현
+  - `_onTowerEnhance(tower)`: 타워 강화 처리
+  - `_createHpRecoverButton()`: 하단 패널 +HP 버튼 생성
+  - `_onHpRecover()`: HP 5 회복, 에스컬레이팅 비용
+  - `_createConsumableButtons()`: 소모품 3종 버튼 (S, $, Z)
+  - `_useConsumable(key)`: 쿨다운/비용 확인, 적 없을 때 즉시형 능력 사용 차단 (goldRain 제외)
+  - `_executeSlowAll()`: 전체 적 슬로우
+  - `_executeGoldRain()`: 지속시간 동안 킬 골드 2배
+  - `_executeLightningStrike()`: 전체 적 100 피해 + 카메라 흔들림
+  - `_playAbilityFlash(color)`: 화면 플래시 연출
+  - `_updateConsumables(delta)`: 쿨다운/지속시간 갱신
+
+### 구현된 기능
+
+- **타워 강화 (Lv.3+)**: Lv.3 타워에 추가 골드를 투자하여 최대 10단계 강화. 강화당 공격력 +5%, 사거리 +2.5%, 공속 -2.5%. 금색 글로우 링 시각 효과
+- **기지 HP 회복**: 골드로 HP 5 회복. 사용할 때마다 비용 증가 (100G → 150G → 200G → ...). 초록 플래시 연출
+- **소모품 능력 3종**:
+  - 슬로우 (S): 전체 적 슬로우. 쿨다운 15초, 초기 비용 300G
+  - 황금비 ($): 10초간 킬 골드 2배. 쿨다운 30초, 초기 비용 400G
+  - 번개 (Z): 전체 적 100 피해 + 카메라 쉐이크. 쿨다운 20초, 초기 비용 500G
+- **적 없을 때 낭비 방지**: 즉시형 소모품(슬로우, 번개)은 살아있는 적이 없으면 사용 불가. 지속형(황금비)은 사전 활성화 허용
+
+### QA 결과
+
+- **1차 판정**: FAIL (버그 3건)
+  - BUG-01: 소모품 버튼과 타워 매도 버튼 겹침 (Major)
+  - BUG-02: i18n 키 미사용, 하드코딩 텍스트 (Minor)
+  - BUG-03: 적 없을 때 소모품 골드 낭비 (Minor)
+- **2차 판정**: PASS (3건 모두 수정 완료, regression 없음)
+
+### 참고 문서
+
+- 구현 리포트: `.claude/specs/2026-02-23-gold-sink-report.md`
+- QA 리포트: `.claude/specs/2026-02-23-gold-sink-qa.md`
+
+---
+
 ## 2026-02-23 -- 데이터 기반 상태이상 면역 시스템
 
 ### 배경

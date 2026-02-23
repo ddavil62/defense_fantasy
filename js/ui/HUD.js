@@ -63,18 +63,18 @@ export class HUD {
     }).setOrigin(0, 0.5).setDepth(31);
 
     // Gold text (center)
-    this.goldText = this.scene.add.text(GAME_WIDTH / 2, HUD_HEIGHT / 2, 'Gold: 200', {
+    this.goldText = this.scene.add.text(150, HUD_HEIGHT / 2, 'Gold: 200', {
       fontSize: '16px',
       fontFamily: 'Arial, sans-serif',
       color: GOLD_TEXT_CSS,
     }).setOrigin(0.5, 0.5).setDepth(31);
 
     // HP text (right)
-    this.hpText = this.scene.add.text(GAME_WIDTH - 10, HUD_HEIGHT / 2, 'HP: 20', {
+    this.hpText = this.scene.add.text(235, HUD_HEIGHT / 2, 'HP: 20', {
       fontSize: '16px',
       fontFamily: 'Arial, sans-serif',
       color: '#ffffff',
-    }).setOrigin(1, 0.5).setDepth(31);
+    }).setOrigin(0, 0.5).setDepth(31);
 
     // Phase 6: Countdown text (below wave text, only shown during break)
     this.countdownText = this.scene.add.text(10, HUD_HEIGHT + 4, '', {

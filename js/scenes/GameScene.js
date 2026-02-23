@@ -20,6 +20,8 @@ import {
   META_UPGRADE_TREE,
   getMetaBaseHP, getMetaMaxBaseHP,
   getMetaInitialGold, getMetaWaveBonusMultiplier,
+  calcHpRecoverCost, HP_RECOVER_AMOUNT,
+  CONSUMABLE_ABILITIES,
 } from '../config.js';
 
 import { MapManager } from '../managers/MapManager.js';
@@ -30,6 +32,7 @@ import { HUD } from '../ui/HUD.js';
 import { TowerPanel } from '../ui/TowerPanel.js';
 import { Tower } from '../entities/Tower.js';
 import { Enemy } from '../entities/Enemy.js';
+import { t } from '../i18n.js';
 
 export class GameScene extends Phaser.Scene {
   constructor() {
@@ -100,6 +103,17 @@ export class GameScene extends Phaser.Scene {
 
     /** @type {Phaser.GameObjects.Graphics|null} Range preview for tower placement */
     this.rangePreviewGraphics = null;
+
+    // ── Gold Sink State ──
+    /** @type {number} HP recovery use count (affects cost scaling) */
+    this.hpRecoverUseCount = 0;
+
+    /** @type {object} Consumable ability state */
+    this.consumableState = {
+      slowAll: { useCount: 0, cooldownTimer: 0, active: false, remainingDuration: 0 },
+      goldRain: { useCount: 0, cooldownTimer: 0, active: false, remainingDuration: 0 },
+      lightning: { useCount: 0, cooldownTimer: 0, active: false, remainingDuration: 0 },
+    };
   }
 
   /**
@@ -154,12 +168,17 @@ export class GameScene extends Phaser.Scene {
     this.towerPanel = new TowerPanel(this, {
       onTowerSelect: (type) => this._onTowerTypeSelect(type),
       onUpgrade: (tower, branch) => this._onTowerUpgrade(tower, branch),
+      onEnhance: (tower) => this._onTowerEnhance(tower),
       onSell: (tower) => this._onTowerSell(tower),
       onSpeedToggle: (speed) => this._onSpeedToggle(speed),
       onDeselect: () => this._onDeselect(),
       dragonUnlocked: this.dragonUnlocked,
     });
     this.towerPanel.updateAffordability(this.goldManager.getGold());
+
+    // Create gold sink UI elements
+    this._createHpRecoverButton();
+    this._createConsumableButtons();
 
     // Damage flash overlay (initially invisible)
     this.damageFlash = this.add.rectangle(
@@ -229,6 +248,9 @@ export class GameScene extends Phaser.Scene {
     const breakTime = this.waveManager.getBreakTimeRemaining();
     const preview = breakTime > 0 ? this.waveManager.getNextWavePreview() : null;
     this.hud.updateCountdown(breakTime, preview);
+
+    // Update consumable abilities (cooldowns, gold rain duration)
+    this._updateConsumables(delta);
 
     // Update tower panel affordability
     this.towerPanel.updateAffordability(this.goldManager.getGold());
@@ -378,6 +400,26 @@ export class GameScene extends Phaser.Scene {
 
     // Re-apply meta upgrades after level-up (stats were reset)
     this._applyMetaUpgradesToTower(tower);
+
+    // Refresh tower info panel
+    this._selectPlacedTower(tower);
+  }
+
+  /**
+   * Handle tower enhancement (Lv.3+ gold sink).
+   * @param {Tower} tower - Tower to enhance
+   * @private
+   */
+  _onTowerEnhance(tower) {
+    const cost = tower.getEnhanceCost();
+    if (cost === null) return;
+    if (!this.goldManager.canAfford(cost)) return;
+
+    this.goldManager.spend(cost);
+    this.gameStats.goldSpent += cost;
+    tower.enhance();
+
+    // Re-apply meta upgrades are not needed since enhance() modifies stats directly
 
     // Refresh tower info panel
     this._selectPlacedTower(tower);
@@ -544,9 +586,11 @@ export class GameScene extends Phaser.Scene {
         enemy.destroy();
         this.enemies.splice(i, 1);
       } else if (!enemy.alive) {
-        // Enemy killed - award gold
-        this.goldManager.earn(enemy.gold);
-        this.gameStats.goldEarned += enemy.gold;
+        // Enemy killed - award gold (2x during Gold Rain)
+        const goldMultiplier = this.consumableState.goldRain.active ? 2 : 1;
+        const killGold = enemy.gold * goldMultiplier;
+        this.goldManager.earn(killGold);
+        this.gameStats.goldEarned += killGold;
         this.totalKills++;
         this.waveManager.totalKills++;
 
@@ -1329,13 +1373,13 @@ export class GameScene extends Phaser.Scene {
    */
   _createPauseButton() {
     // Pause button
-    this.pauseBtn = this.add.rectangle(340, 20, 28, 24, 0x2d3436)
-      .setStrokeStyle(1, 0x636e72)
+    this.pauseBtn = this.add.rectangle(310, 20, 28, 24, 0x636e72)
+      .setStrokeStyle(2, 0xffffff)
       .setInteractive({ useHandCursor: true })
       .setDepth(25);
 
-    this.pauseBtnText = this.add.text(340, 20, '||', {
-      fontSize: '12px',
+    this.pauseBtnText = this.add.text(310, 20, '||', {
+      fontSize: '14px',
       fontFamily: 'Arial, sans-serif',
       color: '#ffffff',
       fontStyle: 'bold',
@@ -1351,15 +1395,15 @@ export class GameScene extends Phaser.Scene {
     const sm = this.soundManager;
     const isMuted = sm ? sm.muted : false;
 
-    this.muteBtn = this.add.rectangle(308, 20, 24, 20, 0x2d3436)
-      .setStrokeStyle(1, isMuted ? 0x636e72 : 0x00b894)
+    this.muteBtn = this.add.rectangle(278, 20, 24, 22, 0x636e72)
+      .setStrokeStyle(2, isMuted ? 0xb2bec3 : 0x55efc4)
       .setInteractive({ useHandCursor: true })
       .setDepth(25);
 
-    this.muteBtnText = this.add.text(308, 20, isMuted ? 'M' : '\u266A', {
-      fontSize: '11px',
+    this.muteBtnText = this.add.text(278, 20, isMuted ? 'M' : '\u266A', {
+      fontSize: '13px',
       fontFamily: 'Arial, sans-serif',
-      color: isMuted ? '#636e72' : '#00b894',
+      color: isMuted ? '#b2bec3' : '#55efc4',
       fontStyle: 'bold',
     }).setOrigin(0.5).setDepth(25);
 
@@ -1378,10 +1422,10 @@ export class GameScene extends Phaser.Scene {
     const sm = this.soundManager;
     if (!sm || !this.muteBtn) return;
     const isMuted = sm.muted;
-    this.muteBtn.setStrokeStyle(1, isMuted ? 0x636e72 : 0x00b894);
+    this.muteBtn.setStrokeStyle(2, isMuted ? 0xb2bec3 : 0x55efc4);
     if (this.muteBtnText) {
       this.muteBtnText.setText(isMuted ? 'M' : '\u266A');
-      this.muteBtnText.setColor(isMuted ? '#636e72' : '#00b894');
+      this.muteBtnText.setColor(isMuted ? '#b2bec3' : '#55efc4');
     }
   }
 
@@ -1607,6 +1651,319 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  // ── Gold Sink: HP Recovery ─────────────────────────────────────
+
+  /**
+   * Create the HP recovery button in the bottom panel.
+   * Positioned at the right side of row 2 (next to Speed button area).
+   * @private
+   */
+  _createHpRecoverButton() {
+    const x = GAME_WIDTH - 38;
+    const y = PANEL_Y + 68;
+    const btnSize = VISUALS.ACTION_BUTTON_SIZE;
+
+    this.hpRecoverBg = this.add.rectangle(x, y, btnSize, btnSize, 0x00b894)
+      .setStrokeStyle(1, 0x636e72)
+      .setInteractive({ useHandCursor: true })
+      .setDepth(31);
+
+    this.hpRecoverText = this.add.text(x, y, '+HP', {
+      fontSize: '10px',
+      fontFamily: 'Arial, sans-serif',
+      color: '#ffffff',
+      fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(31);
+
+    this.hpRecoverCostText = this.add.text(x, y + 14, '', {
+      fontSize: '7px',
+      fontFamily: 'Arial, sans-serif',
+      color: '#ffd700',
+    }).setOrigin(0.5).setDepth(31);
+
+    this._updateHpRecoverButton();
+
+    this.hpRecoverBg.on('pointerdown', () => {
+      this._onHpRecover();
+    });
+  }
+
+  /**
+   * Update HP recover button display (cost, availability).
+   * @private
+   */
+  _updateHpRecoverButton() {
+    if (!this.hpRecoverBg) return;
+    const cost = calcHpRecoverCost(this.hpRecoverUseCount);
+    const isFull = this.baseHP >= this.maxBaseHP;
+
+    if (isFull) {
+      this.hpRecoverBg.setAlpha(0.4);
+      this.hpRecoverCostText.setText(t('ui.hpRecoverFull'));
+      this.hpRecoverCostText.setColor('#636e72');
+    } else {
+      const canAfford = this.goldManager.canAfford(cost);
+      this.hpRecoverBg.setAlpha(canAfford ? 1 : 0.5);
+      this.hpRecoverCostText.setText(`${cost}G`);
+      this.hpRecoverCostText.setColor(canAfford ? '#ffd700' : '#ff4757');
+    }
+  }
+
+  /**
+   * Handle HP recovery button click.
+   * @private
+   */
+  _onHpRecover() {
+    if (this.isGameOver || this.isPaused) return;
+    if (this.baseHP >= this.maxBaseHP) return;
+
+    const cost = calcHpRecoverCost(this.hpRecoverUseCount);
+    if (!this.goldManager.canAfford(cost)) return;
+
+    this.goldManager.spend(cost);
+    this.gameStats.goldSpent += cost;
+    this.hpRecoverUseCount++;
+
+    this.baseHP = Math.min(this.baseHP + HP_RECOVER_AMOUNT, this.maxBaseHP);
+
+    // Visual feedback: green flash
+    this._playAbilityFlash(0x00b894);
+    this._updateHpRecoverButton();
+  }
+
+  // ── Gold Sink: Consumable Abilities ──────────────────────────
+
+  /**
+   * Create the 3 consumable ability buttons.
+   * @private
+   */
+  _createConsumableButtons() {
+    const keys = ['slowAll', 'goldRain', 'lightning'];
+    const y = PANEL_Y + 68;  // Same row as HP recover button
+    const btnSize = 24;
+    const spacing = 26;
+    // Position consumables left of HP recover button (x=322)
+    const baseX = GAME_WIDTH - 38 - spacing * 3;
+
+    /** @type {object} Button references for each ability */
+    this.consumableButtons = {};
+
+    for (let i = 0; i < keys.length; i++) {
+      const key = keys[i];
+      const def = CONSUMABLE_ABILITIES[key];
+      const x = baseX + i * spacing;
+
+      const bg = this.add.rectangle(x, y, btnSize, btnSize, def.color)
+        .setStrokeStyle(1, 0x636e72)
+        .setInteractive({ useHandCursor: true })
+        .setDepth(31);
+
+      const iconText = this.add.text(x, y - 2, def.icon, {
+        fontSize: '12px',
+        fontFamily: 'Arial, sans-serif',
+        color: '#ffffff',
+        fontStyle: 'bold',
+      }).setOrigin(0.5).setDepth(31);
+
+      const costText = this.add.text(x, y + 10, '', {
+        fontSize: '6px',
+        fontFamily: 'Arial, sans-serif',
+        color: '#ffd700',
+      }).setOrigin(0.5).setDepth(31);
+
+      // Cooldown overlay text
+      const cdText = this.add.text(x, y, '', {
+        fontSize: '9px',
+        fontFamily: 'Arial, sans-serif',
+        color: '#ffffff',
+        fontStyle: 'bold',
+      }).setOrigin(0.5).setDepth(32).setAlpha(0);
+
+      this.consumableButtons[key] = { bg, iconText, costText, cdText, x, y };
+
+      bg.on('pointerdown', () => {
+        this._useConsumable(key);
+      });
+    }
+
+    this._updateConsumableButtons();
+  }
+
+  /**
+   * Update consumable button displays (cost, cooldown).
+   * @private
+   */
+  _updateConsumableButtons() {
+    if (!this.consumableButtons) return;
+
+    for (const key of Object.keys(this.consumableButtons)) {
+      const btn = this.consumableButtons[key];
+      const state = this.consumableState[key];
+      const def = CONSUMABLE_ABILITIES[key];
+      const cost = def.baseCost + state.useCount * def.costIncrement;
+      const onCooldown = state.cooldownTimer > 0;
+
+      if (onCooldown) {
+        btn.bg.setAlpha(0.3);
+        btn.iconText.setAlpha(0.3);
+        btn.costText.setText('');
+        btn.cdText.setText(`${Math.ceil(state.cooldownTimer)}`);
+        btn.cdText.setAlpha(1);
+      } else {
+        const canAfford = this.goldManager.canAfford(cost);
+        btn.bg.setAlpha(canAfford ? 1 : 0.5);
+        btn.iconText.setAlpha(1);
+        btn.costText.setText(`${cost}G`);
+        btn.costText.setColor(canAfford ? '#ffd700' : '#ff4757');
+        btn.cdText.setAlpha(0);
+      }
+
+      // Gold rain active indicator
+      if (key === 'goldRain' && state.active) {
+        btn.bg.setStrokeStyle(2, 0xffd700);
+      } else if (key === 'slowAll' && state.active) {
+        btn.bg.setStrokeStyle(2, 0x74b9ff);
+      } else {
+        btn.bg.setStrokeStyle(1, 0x636e72);
+      }
+    }
+  }
+
+  /**
+   * Use a consumable ability.
+   * @param {string} key - Ability key ('slowAll', 'goldRain', 'lightning')
+   * @private
+   */
+  _useConsumable(key) {
+    if (this.isGameOver || this.isPaused) return;
+
+    const state = this.consumableState[key];
+    const def = CONSUMABLE_ABILITIES[key];
+    if (state.cooldownTimer > 0) return;
+
+    const cost = def.baseCost + state.useCount * def.costIncrement;
+    if (!this.goldManager.canAfford(cost)) return;
+
+    // Prevent instant abilities from being wasted when no enemies exist
+    // (goldRain is duration-based so it's still useful to pre-activate)
+    if (key !== 'goldRain') {
+      const hasAliveEnemies = this.enemies.some(e => e.alive && !e.reachedBase);
+      if (!hasAliveEnemies) return;
+    }
+
+    this.goldManager.spend(cost);
+    this.gameStats.goldSpent += cost;
+    state.useCount++;
+    state.cooldownTimer = def.cooldown;
+
+    // Execute ability
+    switch (key) {
+      case 'slowAll':
+        this._executeSlowAll();
+        state.active = true;
+        state.remainingDuration = def.duration;
+        break;
+      case 'goldRain':
+        this._executeGoldRain();
+        state.active = true;
+        state.remainingDuration = def.duration;
+        break;
+      case 'lightning':
+        this._executeLightningStrike();
+        break;
+    }
+
+    this._updateConsumableButtons();
+  }
+
+  /**
+   * Execute Slow All ability: 50% slow on all enemies for 5 seconds.
+   * @private
+   */
+  _executeSlowAll() {
+    const def = CONSUMABLE_ABILITIES.slowAll;
+    for (const enemy of this.enemies) {
+      if (enemy.alive && !enemy.reachedBase) {
+        enemy.applySlow(def.slowAmount, def.duration);
+      }
+    }
+    this._playAbilityFlash(0x74b9ff);
+  }
+
+  /**
+   * Execute Gold Rain ability: 2x kill gold for 10 seconds.
+   * @private
+   */
+  _executeGoldRain() {
+    this._playAbilityFlash(0xffd700);
+  }
+
+  /**
+   * Execute Lightning Strike ability: 100 damage to all enemies.
+   * @private
+   */
+  _executeLightningStrike() {
+    const def = CONSUMABLE_ABILITIES.lightning;
+    for (const enemy of this.enemies) {
+      if (enemy.alive && !enemy.reachedBase) {
+        enemy.takeDamage(def.damage, false);
+        this.gameStats.damageDealt += def.damage;
+      }
+    }
+    // Camera shake
+    this.cameras.main.shake(400, 0.008, true);
+    this._playAbilityFlash(0xfdcb6e);
+  }
+
+  /**
+   * Play a full-screen flash effect for ability use.
+   * @param {number} color - Flash color (hex)
+   * @private
+   */
+  _playAbilityFlash(color) {
+    const flash = this.add.rectangle(
+      GAME_WIDTH / 2, GAME_HEIGHT / 2,
+      GAME_WIDTH, GAME_HEIGHT,
+      color
+    ).setAlpha(0.25).setDepth(40);
+
+    this.tweens.add({
+      targets: flash,
+      alpha: 0,
+      duration: 400,
+      ease: 'Power2',
+      onComplete: () => flash.destroy(),
+    });
+  }
+
+  /**
+   * Update consumable cooldowns and durations each frame.
+   * @param {number} delta - Frame delta in seconds (speed-adjusted)
+   * @private
+   */
+  _updateConsumables(delta) {
+    for (const key of Object.keys(this.consumableState)) {
+      const state = this.consumableState[key];
+
+      // Update cooldown
+      if (state.cooldownTimer > 0) {
+        state.cooldownTimer = Math.max(0, state.cooldownTimer - delta);
+      }
+
+      // Update active duration
+      if (state.active && state.remainingDuration > 0) {
+        state.remainingDuration -= delta;
+        if (state.remainingDuration <= 0) {
+          state.active = false;
+          state.remainingDuration = 0;
+        }
+      }
+    }
+
+    this._updateConsumableButtons();
+    this._updateHpRecoverButton();
+  }
+
   /**
    * Clean up custom resources on scene shutdown.
    * @private
@@ -1628,6 +1985,21 @@ export class GameScene extends Phaser.Scene {
     if (this.rangePreviewGraphics) {
       this.rangePreviewGraphics.destroy();
       this.rangePreviewGraphics = null;
+    }
+
+    // Destroy gold sink UI elements
+    if (this.hpRecoverBg) { this.hpRecoverBg.destroy(); this.hpRecoverBg = null; }
+    if (this.hpRecoverText) { this.hpRecoverText.destroy(); this.hpRecoverText = null; }
+    if (this.hpRecoverCostText) { this.hpRecoverCostText.destroy(); this.hpRecoverCostText = null; }
+    if (this.consumableButtons) {
+      for (const key of Object.keys(this.consumableButtons)) {
+        const btn = this.consumableButtons[key];
+        if (btn.bg) btn.bg.destroy();
+        if (btn.iconText) btn.iconText.destroy();
+        if (btn.costText) btn.costText.destroy();
+        if (btn.cdText) btn.cdText.destroy();
+      }
+      this.consumableButtons = null;
     }
 
     if (this.waveManager) this.waveManager.destroy();

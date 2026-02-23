@@ -2,7 +2,7 @@
 
 ## 개요
 
-Phaser.js 3 기반 판타지 타워 디펜스 게임. 도형 기반 프로토타입 그래픽과 판타지 다크 테마를 적용한다. Phase 1~6을 거쳐 핵심 게임 루프, 콘텐츠 확장, 메타 화폐/컬렉션, Lv.3 업그레이드, 사운드/보스 강화, 모바일 패키징/통계를 구현했다.
+Phaser.js 3 기반 판타지 타워 디펜스 게임. 도형 기반 프로토타입 그래픽과 판타지 다크 테마를 적용한다. Phase 1~6을 거쳐 핵심 게임 루프, 콘텐츠 확장, 메타 화폐/컬렉션, Lv.3 업그레이드, 사운드/보스 강화, 모바일 패키징/통계를 구현했다. 이후 데이터 기반 면역 시스템, 골드 싱크 시스템(타워 강화/HP 회복/소모품 능력)을 추가했다.
 
 ## 기술 스택
 
@@ -12,7 +12,7 @@ Phaser.js 3 기반 판타지 타워 디펜스 게임. 도형 기반 프로토타
 | 언어 | JavaScript ES6+ (바닐라, 프레임워크 없음) |
 | 빌드 도구 | Vite (dev 서버, 번들링) |
 | 모바일 패키징 | Capacitor (Android + iOS) |
-| 모듈 구조 | ES6 모듈 기반 멀티 파일 (22개) |
+| 모듈 구조 | ES6 모듈 기반 멀티 파일 (23개) |
 | 렌더링 | HTML5 Canvas (Phaser 기본) |
 | 데이터 저장 | localStorage (최고 기록, Diamond, 메타 업그레이드, 드래곤 해금, 통계, 게임 히스토리) |
 | 해상도 | 360x640 (모바일 세로, portrait) |
@@ -28,14 +28,14 @@ Phaser.js 3 기반 판타지 타워 디펜스 게임. 도형 기반 프로토타
 | `index.html` | 진입점 (Vite용 간소화, CDN 제거) |
 | `style.css` | 바디 배경, 터치 방지(`touch-action: none`), safe-area 패딩 |
 | `js/main.js` | Phaser.Game 인스턴스 생성 (npm import, 360x640, FIT + CENTER_BOTH) |
-| `js/config.js` | 모든 게임 상수/밸런스 수치 집중 관리 (타워 10종, 적 8종, 웨이브 R1~R20, 메타 업그레이드 트리, 유틸리티 업그레이드, 저항 캡 0.55) |
+| `js/config.js` | 모든 게임 상수/밸런스 수치 집중 관리 (타워 10종, 적 8종, 웨이브 R1~R20, 메타 업그레이드 트리, 유틸리티 업그레이드, 저항 캡 0.55, 골드 싱크 상수) |
 | `js/scenes/BootScene.js` | 초기 설정, localStorage 로드, 세이브 마이그레이션 (stats 필드 포함), 메뉴 전환 |
 | `js/scenes/MenuScene.js` | 메뉴 화면, Diamond 표시, GAME START/COLLECTION/STATISTICS 버튼 |
-| `js/scenes/GameScene.js` | 핵심 게임플레이 (맵/타워/적/투사체/웨이브/AoE/체인/빔/메타 업그레이드/ProjectilePool/delta 캡/통계 추적/사거리 프리뷰) |
+| `js/scenes/GameScene.js` | 핵심 게임플레이 (맵/타워/적/투사체/웨이브/AoE/체인/빔/메타 업그레이드/ProjectilePool/delta 캡/통계 추적/사거리 프리뷰/골드 싱크) |
 | `js/scenes/GameOverScene.js` | 결과 표시, Diamond 획득, 통계 저장, 게임 히스토리 관리, RETRY/MENU 버튼 |
 | `js/scenes/CollectionScene.js` | 컬렉션 모드 (타워 카드 그리드, 메타 업그레이드 트리, 유틸리티 업그레이드, 드래곤 해금) |
 | `js/scenes/StatsScene.js` | 통계 표시 (스크롤 가능 UI, killsByType/killsByTower/goldEarned/damageDealt, 게임 히스토리) |
-| `js/entities/Tower.js` | 타워 배치/공격/업그레이드(A/B 분기)/판매/사거리 표시 |
+| `js/entities/Tower.js` | 타워 배치/공격/업그레이드(A/B 분기)/판매/사거리 표시/강화(+1~+10) |
 | `js/entities/Enemy.js` | 적 이동/피격/슬로우/화상/독/방어력 감소/밀치기/분열/HP바 |
 | `js/entities/Projectile.js` | 투사체 이동/충돌/스플래시/슬로우/도트/방어관통/풀 reset/deactivate |
 | `js/managers/WaveManager.js` | 웨이브 스폰/진행/클리어/자동 스케일링 (R21+)/저항 캡/프리뷰 |
@@ -43,10 +43,11 @@ Phaser.js 3 기반 판타지 타워 디펜스 게임. 도형 기반 프로토타
 | `js/managers/GoldManager.js` | Gold 획득/소비/잔액 관리 |
 | `js/managers/ProjectilePool.js` | 오브젝트 풀 (투사체 30개 사전 할당, acquire/release) |
 | `js/managers/SoundManager.js` | Web Audio API 프로시저럴 SFX/BGM |
+| `js/i18n.js` | 다국어 지원 (한국어/영어), 모든 UI 텍스트 번역 키 관리 |
 | `js/ui/HUD.js` | 상단 HUD (Wave/Gold/HP, HP 위험 깜빡임, 웨이브 카운트다운, 적 프리뷰) |
-| `js/ui/TowerPanel.js` | 하단 타워 선택(2줄 5열)/정보/A-B 분기 업그레이드/판매/3단 속도(1x/2x/3x) 패널 |
+| `js/ui/TowerPanel.js` | 하단 타워 선택(2줄 5열)/정보/A-B 분기 업그레이드/판매/강화/3단 속도(1x/2x/3x) 패널 |
 
-**총 22개 파일**
+**총 23개 파일**
 
 ## Phaser 씬 구조
 
@@ -144,17 +145,19 @@ npx cap open android  # 또는 npx cap open ios
 - Phase 4: 정적 코드 분석 QA PASS
 - Phase 5: 정적 코드 분석 QA PASS
 - Phase 6: 정적 코드 분석 QA PASS (초기 CRITICAL 2건 수정 후 PASS)
+- 면역 시스템: 정적 코드 분석 + Playwright 17건 QA PASS
+- 골드 싱크 시스템: 정적 코드 분석 QA PASS (1차 FAIL 버그 3건 수정 후 2차 PASS)
 
 ## 시스템별 상세 문서
 
 | 문서 | 내용 |
 |---|---|
-| [systems/tower.md](systems/tower.md) | 타워 10종, 공격타입 7종, Lv.1/2/3 업그레이드 |
+| [systems/tower.md](systems/tower.md) | 타워 10종, 공격타입 7종, Lv.1/2/3 업그레이드, 강화 시스템 |
 | [systems/enemy.md](systems/enemy.md) | 적 8종, 스탯, 디버프 시스템, 면역 시스템 |
 | [systems/wave.md](systems/wave.md) | R1~R20 정의, R21+ 스케일링, 보스 라운드 |
-| [systems/economy.md](systems/economy.md) | Gold, Diamond, 메타 업그레이드, 컬렉션 |
+| [systems/economy.md](systems/economy.md) | Gold, Diamond, 메타 업그레이드, 컬렉션, 골드 싱크 |
 | [systems/sound.md](systems/sound.md) | SFX 8종, BGM 3종, Web Audio API |
-| [systems/ui.md](systems/ui.md) | HUD, TowerPanel, 일시정지, 게임속도, 모바일 |
+| [systems/ui.md](systems/ui.md) | HUD, TowerPanel, 일시정지, 게임속도, 골드 싱크 UI, 모바일 |
 
 ## 향후 계획
 

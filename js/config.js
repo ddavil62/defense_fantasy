@@ -1485,6 +1485,84 @@ export function pixelToGrid(x, y) {
   };
 }
 
+// ── Tower Enhancement (Lv.3+ Gold Sink) ──────────────────────
+/** @const {number} Maximum enhancement level for Lv.3 towers */
+export const MAX_ENHANCE_LEVEL = 10;
+
+/** @const {number} Base cost for first enhancement */
+export const ENHANCE_BASE_COST = 200;
+
+/** @const {number} Cost increment per enhancement level */
+export const ENHANCE_COST_INCREMENT = 100;
+
+/** @const {number} Stat bonus per enhancement level (5% compound) */
+export const ENHANCE_STAT_BONUS = 0.05;
+
+/**
+ * Calculate enhancement cost for a given level.
+ * @param {number} level - Enhancement level (1-based, the level being purchased)
+ * @returns {number} Gold cost
+ */
+export function calcEnhanceCost(level) {
+  return ENHANCE_BASE_COST + (level - 1) * ENHANCE_COST_INCREMENT;
+}
+
+// ── HP Recovery (Gold Sink) ──────────────────────────────────
+/** @const {number} Base cost for first HP recovery */
+export const HP_RECOVER_BASE_COST = 100;
+
+/** @const {number} Cost increment per use */
+export const HP_RECOVER_COST_INCREMENT = 50;
+
+/** @const {number} HP recovered per use */
+export const HP_RECOVER_AMOUNT = 5;
+
+/**
+ * Calculate HP recovery cost based on use count.
+ * @param {number} useCount - Number of times already used (0-based)
+ * @returns {number} Gold cost
+ */
+export function calcHpRecoverCost(useCount) {
+  return HP_RECOVER_BASE_COST + useCount * HP_RECOVER_COST_INCREMENT;
+}
+
+// ── Consumable Abilities (Gold Sink) ─────────────────────────
+/**
+ * Consumable ability definitions.
+ * baseCost: initial gold cost
+ * costIncrement: cost increase per use
+ * cooldown: cooldown in seconds
+ * duration: effect duration in seconds (0 = instant)
+ */
+export const CONSUMABLE_ABILITIES = {
+  slowAll: {
+    baseCost: 300,
+    costIncrement: 50,
+    cooldown: 30,
+    duration: 5,
+    slowAmount: 0.5,
+    color: 0x74b9ff,
+    icon: 'S',
+  },
+  goldRain: {
+    baseCost: 400,
+    costIncrement: 75,
+    cooldown: 45,
+    duration: 10,
+    color: 0xffd700,
+    icon: '$',
+  },
+  lightning: {
+    baseCost: 500,
+    costIncrement: 100,
+    cooldown: 60,
+    duration: 0,
+    damage: 100,
+    color: 0xfdcb6e,
+    icon: 'Z',
+  },
+};
+
 // ── Diamond Currency ───────────────────────────────────────────
 /** Diamond reward formula: floor(round/5)*2 + floor(round/10)*3 */
 export function calcDiamondReward(round) {

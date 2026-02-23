@@ -55,6 +55,17 @@ const STRINGS = {
     'ui.range': '사거리',
     'ui.speed': '공속',
     'ui.special': '특수',
+    // 강화 시스템
+    'ui.enhance': '강화 +{level} ({cost}G)',
+    'ui.maxEnhance': '최대 강화',
+    // HP 회복
+    'ui.hpRecover': '+HP ({cost}G)',
+    'ui.hpRecoverFull': 'HP 최대',
+    // 소모품 능력
+    'ui.slowAll': '전체 슬로우',
+    'ui.goldRain': '황금비',
+    'ui.lightning': '번개 일격',
+    'ui.cooldown': '쿨다운 {sec}초',
   },
   en: {
     'tower.archer.name': 'Archer',
@@ -81,5 +92,16 @@ const STRINGS = {
     'ui.range': 'RNG',
     'ui.speed': 'SPD',
     'ui.special': 'Special',
+    // Enhancement system
+    'ui.enhance': 'Enhance +{level} ({cost}G)',
+    'ui.maxEnhance': 'MAX Enhanced',
+    // HP recovery
+    'ui.hpRecover': '+HP ({cost}G)',
+    'ui.hpRecoverFull': 'HP Full',
+    // Consumable abilities
+    'ui.slowAll': 'Slow All',
+    'ui.goldRain': 'Gold Rain',
+    'ui.lightning': 'Lightning Strike',
+    'ui.cooldown': 'CD {sec}s',
   },
 };

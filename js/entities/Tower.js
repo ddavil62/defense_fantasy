@@ -7,6 +7,7 @@
 import {
   TOWER_STATS, MAX_TOWER_LEVEL, SELL_RATIO, COLORS, VISUALS,
   TOWER_SHAPE_SIZE, LV3_SHAPE_SCALE, gridToPixel,
+  MAX_ENHANCE_LEVEL, ENHANCE_STAT_BONUS, calcEnhanceCost,
 } from '../config.js';
 
 export class Tower {
@@ -50,6 +51,12 @@ export class Tower {
 
     /** @type {number} Cooldown timer in seconds */
     this.cooldownTimer = 0;
+
+    /** @type {number} Enhancement level (0 = none, max 10) */
+    this.enhanceLevel = 0;
+
+    /** @type {number} Total gold invested in enhancements */
+    this.enhanceInvested = 0;
 
     /** @type {number} Total gold invested (for sell calculation) */
     this.totalInvested = this.stats.cost;
@@ -116,6 +123,11 @@ export class Tower {
     // Lv.3 indicator: gold outer border
     if (this.level >= 3) {
       this._drawLv3Border();
+    }
+
+    // Enhancement glow indicator
+    if (this.enhanceLevel > 0) {
+      this._drawEnhanceGlow();
     }
   }
 
@@ -514,6 +526,59 @@ export class Tower {
     this.graphics.lineBetween(this.x + wx, this.y - wy, this.x - wx, this.y + wy);
   }
 
+  // ── Enhancement (Lv.3+ Gold Sink) ────────────────────────────
+
+  /**
+   * Draw a golden glow ring to indicate enhancement level.
+   * Glow intensity scales with enhancement level.
+   * @private
+   */
+  _drawEnhanceGlow() {
+    const alpha = 0.2 + (this.enhanceLevel / MAX_ENHANCE_LEVEL) * 0.5;
+    const glowRadius = 22 + this.enhanceLevel * 0.5;
+    this.graphics.lineStyle(1.5, 0xffd700, alpha);
+    this.graphics.strokeCircle(this.x, this.y, glowRadius);
+  }
+
+  /**
+   * Enhance this tower (Lv.3 only). Applies compound stat bonuses.
+   * damage × 1.05, range × 1.025, fireRate × 0.975 (min 0.3s)
+   * @returns {boolean} True if enhancement succeeded
+   */
+  enhance() {
+    if (!this.canEnhance()) return false;
+
+    this.enhanceLevel++;
+    const cost = calcEnhanceCost(this.enhanceLevel);
+    this.enhanceInvested += cost;
+    this.totalInvested += cost;
+
+    // Apply compound bonuses
+    this.stats.damage = Math.round(this.stats.damage * (1 + ENHANCE_STAT_BONUS));
+    this.stats.range = Math.round(this.stats.range * (1 + ENHANCE_STAT_BONUS * 0.5));
+    this.stats.fireRate = Math.max(0.3, this.stats.fireRate * (1 - ENHANCE_STAT_BONUS * 0.5));
+
+    this.draw();
+    return true;
+  }
+
+  /**
+   * Get the cost for the next enhancement level.
+   * @returns {number|null} Cost or null if max
+   */
+  getEnhanceCost() {
+    if (!this.canEnhance()) return null;
+    return calcEnhanceCost(this.enhanceLevel + 1);
+  }
+
+  /**
+   * Check if tower can be enhanced.
+   * @returns {boolean}
+   */
+  canEnhance() {
+    return this.level >= 3 && this.enhanceLevel < MAX_ENHANCE_LEVEL;
+  }
+
   // ── Attack Logic ──────────────────────────────────────────────
 
   /**
@@ -709,6 +774,10 @@ export class Tower {
       range: this.stats.range,
       sellPrice: this.getSellPrice(),
       canUpgrade: this.canUpgrade(),
+      // Enhancement
+      enhanceLevel: this.enhanceLevel,
+      canEnhance: this.canEnhance(),
+      enhanceCost: this.getEnhanceCost(),
       // Lv.1 → 2 buttons
       upgradeACost: this.level === 1 ? TOWER_STATS[this.type].levels['2a'].cost : null,
       upgradeBCost: this.level === 1 ? TOWER_STATS[this.type].levels['2b'].cost : null,

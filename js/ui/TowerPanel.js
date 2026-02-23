@@ -7,6 +7,7 @@ import {
   GAME_WIDTH, PANEL_Y, PANEL_HEIGHT, COLORS, VISUALS,
   TOWER_STATS, TOWER_SHAPE_SIZE, GOLD_TEXT_CSS, CELL_SIZE,
   SPEED_NORMAL, SPEED_FAST, SPEED_TURBO, LONG_PRESS_MS,
+  MAX_ENHANCE_LEVEL,
 } from '../config.js';
 import { t } from '../i18n.js';
 
@@ -590,7 +591,8 @@ export class TowerPanel {
       nameStr = `${info.name} Lv.2-${tower.branch.toUpperCase()}: ${info.branchName}`;
     } else if (info.level === 3 && info.branchName) {
       const path = `${tower.branch.toUpperCase()}${tower.branch3.toUpperCase()}`;
-      nameStr = `${info.name} Lv.3-${path}: ${info.branchName}`;
+      const enhStr = info.enhanceLevel > 0 ? `+${info.enhanceLevel}` : '';
+      nameStr = `${info.name} Lv.3${enhStr}-${path}: ${info.branchName}`;
     }
     const infoText = this.scene.add.text(
       10, infoY,
@@ -686,6 +688,37 @@ export class TowerPanel {
           this.callbacks.onUpgrade(tower, 'b');
         }
       });
+    } else if (info.canEnhance) {
+      // Lv.3 with available enhancement → purple enhance button
+      const enhBtn = this.scene.add.rectangle(
+        GAME_WIDTH / 2, infoY + 18, 200, 20, 0x8854d0
+      ).setInteractive({ useHandCursor: true });
+      this.infoContainer.add(enhBtn);
+
+      const enhLabel = t('ui.enhance').replace('{level}', info.enhanceLevel + 1).replace('{cost}', info.enhanceCost);
+      const enhText = this.scene.add.text(GAME_WIDTH / 2, infoY + 18,
+        `\u2B06 ${enhLabel}`, {
+        fontSize: '10px',
+        fontFamily: 'Arial, sans-serif',
+        color: '#ffffff',
+        fontStyle: 'bold',
+      }).setOrigin(0.5);
+      this.infoContainer.add(enhText);
+
+      enhBtn.on('pointerdown', () => {
+        if (this.callbacks.onEnhance) {
+          this.callbacks.onEnhance(tower);
+        }
+      });
+    } else if (info.enhanceLevel >= MAX_ENHANCE_LEVEL) {
+      // Max enhancement reached → gold text
+      const maxText = this.scene.add.text(GAME_WIDTH / 2, infoY + 18, `\u2B50 ${t('ui.maxEnhance')}`, {
+        fontSize: '10px',
+        fontFamily: 'Arial, sans-serif',
+        color: '#ffd700',
+        fontStyle: 'bold',
+      }).setOrigin(0.5);
+      this.infoContainer.add(maxText);
     } else {
       // Lv.3 or cannot upgrade → MAX LEVEL
       const maxText = this.scene.add.text(GAME_WIDTH / 2, infoY + 18, 'MAX LEVEL', {
