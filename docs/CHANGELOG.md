@@ -4,6 +4,94 @@
 
 ---
 
+## 2026-02-23 -- 머지 조합 타워 시스템 Phase 2 (2티어 55종)
+
+### 배경
+
+Phase 1에서 구축한 머지 인프라(드래그&드롭, 데이터 구조, 세이브 마이그레이션) 위에 2티어 합성 타워 55종(동종 10 + 이종 45)의 레시피, 스탯, i18n 문자열을 등록하여 실제 합성 플레이를 활성화한다. QA에서 발견된 공격 핸들러 미지원 이슈(P0 2건, P1 4건, P2 2건)를 수정하여 55종 전체의 복합 효과가 전투에서 정상 적용되도록 했다.
+
+### 추가
+
+- **`js/config.js`** -- MERGE_RECIPES에 55종 T2 레시피 등록
+  - 동종 10종: rapid_archer, overload_mage, zero_field, thunder_lord, inferno, quake, plague, typhoon, solar_burst, ancient_dragon
+  - 이종 45종: archer 조합 8종, mage 조합 7종, ice 조합 6종, lightning 조합 5종, flame 조합 4종, rock 조합 3종, poison 조합 2종, wind 조합 1종, dragon 조합 9종
+  - 각 레시피: `{ id, tier:2, displayName, color }`
+
+- **`js/config.js`** -- MERGED_TOWER_STATS에 55종 T2 스탯 블록 등록
+  - 공격 타입별: single 4종, splash 18종, aoe_instant 13종, chain 9종, dot_single 4종, piercing_beam 7종
+  - 효과별 속성: damage, fireRate, range, attackType, splashRadius, slowAmount/Duration, burnDamage/Duration, poisonDamage/Duration, armorReduction/Duration, armorPiercing, pushbackDistance/Targets, chainCount/Decay/Radius, maxPoisonStacks, projectileSpeed
+
+- **`js/i18n.js`** -- 55종 T2 타워 이름/설명 ko+en 추가 (220개 문자열)
+  - 키 형식: `tower.[mergeId].name`, `tower.[mergeId].desc`
+
+### 변경
+
+- **`js/scenes/GameScene.js`** -- `_applyChain()` 핸들러 확장
+  - burn, poison, armorReduction, pushback 효과 적용 로직 추가 (각 `if` 가드로 보호)
+  - 영향 타워: thunder_fire(burn), toxic_shock(poison+armorReduction), storm_bolt(pushback), thunder_dragon(burn)
+
+- **`js/scenes/GameScene.js`** -- `_applyBeam()` 핸들러 확장
+  - slow, poison, armorReduction, pushback 효과 적용 로직 추가
+  - 영향 타워: holy_ice(slow), purge_venom(poison+armorReduction), radiant_gale(pushback)
+
+- **`js/entities/Projectile.js`** -- `_hitDotSingle()` 핸들러 확장
+  - poison, slow, armorReduction 효과 적용 로직 추가
+  - 영향 타워: venom_shot(poison+armorReduction), cryo_flame(slow), venom_fire(poison)
+
+- **`js/entities/Projectile.js`** -- `_hitSplash()` 핸들러 확장
+  - pushback 효과 적용 로직 추가
+  - 영향 타워: vacuum_mage, stone_gale, storm_dragon
+
+- **`js/entities/Tower.js`** -- `_getColor()` O(n) -> O(1) 정적 캐시 최적화
+  - `Tower._mergeColorMap` 정적 캐시: 최초 1회 빌드 후 O(1) 직접 조회
+  - 캐시 미적중(미래 T3+) 시 `TOWER_STATS[this.type].color` 폴백
+
+- **`js/entities/Tower.js`** -- `MERGE_RECIPES` import, `t()` import 추가
+
+- **`js/ui/TowerPanel.js`** -- `_drawDragGhost()` 시그니처 변경
+  - `(x, y, type)` -> `(x, y, tower)`: tower 객체 직접 전달로 합성 타워 색상 지원
+  - `tower._getColor()` 호출로 T2 타워의 레시피 색상 표시
+
+### 수정
+
+- **`js/config.js`** -- `ancient_dragon` 데이터 오류 수정
+  - `poisonDuration: 6` 추가 (poisonDamage:10 존재하나 duration 누락으로 poison 효과 무효화)
+  - `burnDuration: 4` 추가 (burnDamage:12 존재하나 duration 누락으로 burn 효과 무효화)
+
+- **`js/config.js`** -- `toxic_shock` 데이터 오류 수정
+  - `poisonDuration: 4`, `armorReductionDuration: 4` 추가
+
+- **`js/config.js`** -- chain 타입 7종에 `chainDecay: 0.7` 명시
+  - 대상: thunder_frost, thunder_fire, thunder_strike, toxic_shock, storm_bolt, holy_thunder, thunder_dragon
+  - thunder_lord(0.85), shock_arrow(0.8)는 개별 값 유지
+
+### 스펙 대비 변경
+
+| 항목 | 스펙 | 구현 | 사유 |
+|---|---|---|---|
+| ancient_dragon burnDuration | 스펙에 미명시 | burnDuration:4 추가 | burnDamage:12가 있으면서 duration 없으면 burn 무효. QA에서 동일 유형 오류로 식별 |
+| storm_mage chainCount/chainRadius | splash 타입에서 chain 속성 보유 | 미수정 (데이터 유지, 동작 무시) | splash 핸들러가 chain 속성을 사용하지 않으므로 실제 동작 영향 없음. 의도적 설계 가능성 |
+
+### 알려진 제약
+
+- `storm_mage`의 `chainCount:3, chainRadius:60`이 attackType `splash`에서 무시됨. 데이터는 존재하나 splash 핸들러가 chain 관련 속성을 참조하지 않음
+- Playwright 테스트 파일(`tests/merge-tower-phase2-fix.spec.js`) 작성 완료, 서버 기동 후 실행 가능
+
+### QA 결과
+
+- **Phase 2 초기 판정**: FAIL (P0 데이터 오류 2건, P1 핸들러 미지원 4건, P2 개선 2건)
+- **Phase 2 수정 후 판정 (R2)**: PASS (8건 전체 수정 확인, 55종 전체 효과 적용 가능 검증, T1 영향 없음 확인)
+- 정적 코드 분석 20건 검증 (정상 8개 + 예외 12개)
+
+### 참고 문서
+
+- 스펙: `.claude/specs/2026-02-23-merge-tower-system.md`
+- Phase 2 수정 리포트: `.claude/specs/2026-02-23-merge-tower-system-phase2-fix-report.md`
+- Phase 2 QA 리포트 (R2 최종): `.claude/specs/2026-02-23-merge-tower-system-phase2-qa-r2.md`
+- 테스트: `tests/merge-tower-phase2-fix.spec.js`
+
+---
+
 ## 2026-02-23 -- 머지 조합 타워 시스템 Phase 1 (기반 구축)
 
 ### 배경

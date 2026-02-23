@@ -858,9 +858,30 @@ export class GameScene extends Phaser.Scene {
           (this.gameStats.killsByTower[tower.type] || 0) + 1;
       }
 
-      // Apply slow for lightning 2b
+      // Apply slow
       if (tower.stats.slowAmount && currentTarget.alive) {
         currentTarget.applySlow(tower.stats.slowAmount, tower.stats.slowDuration);
+      }
+
+      // Apply burn DoT
+      if (tower.stats.burnDamage && currentTarget.alive) {
+        currentTarget.applyBurn(tower.stats.burnDamage, tower.stats.burnDuration);
+      }
+
+      // Apply poison DoT
+      if (tower.stats.poisonDamage && currentTarget.alive) {
+        const maxStacks = tower.stats.maxPoisonStacks || 1;
+        currentTarget.applyPoison(tower.stats.poisonDamage, tower.stats.poisonDuration, maxStacks);
+      }
+
+      // Apply armor reduction
+      if (tower.stats.armorReduction && currentTarget.alive) {
+        currentTarget.applyArmorReduction(tower.stats.armorReduction, tower.stats.armorReductionDuration);
+      }
+
+      // Apply pushback
+      if (tower.stats.pushbackDistance && currentTarget.alive) {
+        currentTarget.pushBack(tower.stats.pushbackDistance);
       }
 
       currentDamage *= chainDecay;
@@ -938,14 +959,30 @@ export class GameScene extends Phaser.Scene {
             (this.gameStats.killsByTower[tower.type] || 0) + 1;
         }
 
-        // Apply burn DoT for light 2a / 3aa / 3ab
+        // Apply burn DoT
         if (tower.stats.burnDamage && enemy.alive) {
           enemy.applyBurn(tower.stats.burnDamage, tower.stats.burnDuration);
         }
 
-        // Apply armor reduction for light 3ab
+        // Apply slow
+        if (tower.stats.slowAmount && enemy.alive) {
+          enemy.applySlow(tower.stats.slowAmount, tower.stats.slowDuration);
+        }
+
+        // Apply poison DoT
+        if (tower.stats.poisonDamage && enemy.alive) {
+          const maxStacks = tower.stats.maxPoisonStacks || 1;
+          enemy.applyPoison(tower.stats.poisonDamage, tower.stats.poisonDuration, maxStacks);
+        }
+
+        // Apply armor reduction
         if (tower.stats.armorReduction && enemy.alive) {
           enemy.applyArmorReduction(tower.stats.armorReduction, tower.stats.armorReductionDuration);
+        }
+
+        // Apply pushback
+        if (tower.stats.pushbackDistance && enemy.alive) {
+          enemy.pushBack(tower.stats.pushbackDistance);
         }
       }
     }

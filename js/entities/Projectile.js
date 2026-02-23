@@ -294,6 +294,10 @@ export class Projectile {
           if (this.armorReduction > 0) {
             enemy.applyArmorReduction(this.armorReduction, this.armorReductionDuration);
           }
+          // Apply pushback if defined
+          if (this.pushbackDistance > 0) {
+            enemy.pushBack(this.pushbackDistance);
+          }
         }
       }
     }
@@ -316,6 +320,14 @@ export class Projectile {
       // Apply burn DoT
       if (this.burnDamage > 0) {
         this.target.applyBurn(this.burnDamage, this.burnDuration);
+      }
+      // Apply poison DoT
+      if (this.poisonDamage > 0) {
+        this.target.applyPoison(this.poisonDamage, this.poisonDuration, this.maxPoisonStacks);
+      }
+      // Apply slow
+      if (this.slowAmount > 0) {
+        this.target.applySlow(this.slowAmount, this.slowDuration);
       }
       // Apply armor reduction if defined
       if (this.armorReduction > 0) {

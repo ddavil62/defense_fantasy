@@ -391,17 +391,480 @@ export const TOWER_STATS = {
 // ── Merge System ─────────────────────────────────────────────────
 /**
  * Merge recipes: key = typeA+typeB (alphabetically sorted), value = merge result.
- * Phase 1: empty object. Phase 2 will populate with 55 2-tier recipes.
+ * 55 T2 recipes (10 same-type + 45 cross-type).
  * @type {Object<string, { id: string, tier: number, displayName: string, color: number }>}
  */
-export const MERGE_RECIPES = {};
+export const MERGE_RECIPES = {
+  // ── Same-type merges (10) ──
+  'archer+archer':       { id: 'rapid_archer',   tier: 2, displayName: '연속 사격수',   color: 0x00d6a4 },
+  'mage+mage':           { id: 'overload_mage',  tier: 2, displayName: '과충전 술사',   color: 0x8b7cf7 },
+  'ice+ice':             { id: 'zero_field',     tier: 2, displayName: '절대 영역',     color: 0x5fa8ff },
+  'lightning+lightning':  { id: 'thunder_lord',   tier: 2, displayName: '뇌제',         color: 0xfdd835 },
+  'flame+flame':         { id: 'inferno',        tier: 2, displayName: '업화',         color: 0xff5733 },
+  'rock+rock':           { id: 'quake',          tier: 2, displayName: '지진파',       color: 0x808e93 },
+  'poison+poison':       { id: 'plague',         tier: 2, displayName: '역병의 근원',   color: 0x7bc842 },
+  'wind+wind':           { id: 'typhoon',        tier: 2, displayName: '대태풍',       color: 0x63d8d8 },
+  'light+light':         { id: 'solar_burst',    tier: 2, displayName: '태양 폭발',    color: 0xffe066 },
+  'dragon+dragon':       { id: 'ancient_dragon', tier: 2, displayName: '고대 용왕',    color: 0xb71c1c },
+
+  // ── Cross-type merges: archer combos (8) ──
+  'archer+mage':         { id: 'arcane_archer',  tier: 2, displayName: '마법 화살사',   color: 0x368bbd },
+  'archer+ice':          { id: 'cryo_sniper',    tier: 2, displayName: '냉동 저격수',   color: 0x3ab8ca },
+  'archer+lightning':    { id: 'shock_arrow',    tier: 2, displayName: '전격 화살',     color: 0x7ec281 },
+  'archer+flame':        { id: 'fire_arrow',     tier: 2, displayName: '화염 화살',     color: 0x70c475 },
+  'archer+rock':         { id: 'armor_pierce',   tier: 2, displayName: '철갑 화살',     color: 0x319483 },
+  'archer+poison':       { id: 'venom_shot',     tier: 2, displayName: '독화살',       color: 0x54cc7b },
+  'archer+wind':         { id: 'gale_arrow',     tier: 2, displayName: '폭풍 화살',     color: 0x40d2c0 },
+  'archer+light':        { id: 'holy_arrow',     tier: 2, displayName: '신성 화살',     color: 0x7fd19e },
+
+  // ── Cross-type merges: mage combos (7) ──
+  'ice+mage':            { id: 'frost_mage',     tier: 2, displayName: '서리 술사',     color: 0x7080f3 },
+  'lightning+mage':      { id: 'storm_mage',     tier: 2, displayName: '폭풍 마법사',   color: 0xb494aa },
+  'flame+mage':          { id: 'pyromancer',     tier: 2, displayName: '화염 술사',     color: 0xa7666e },
+  'mage+rock':           { id: 'gravity_mage',   tier: 2, displayName: '중력 마법사',   color: 0x6865ac },
+  'mage+poison':         { id: 'toxic_mage',     tier: 2, displayName: '독기 술사',     color: 0x8a9e75 },
+  'mage+wind':           { id: 'vacuum_mage',    tier: 2, displayName: '진공 마법사',   color: 0x76a4ea },
+  'light+mage':          { id: 'radiant_mage',   tier: 2, displayName: '성광 마법사',   color: 0xb5a3c7 },
+
+  // ── Cross-type merges: ice combos (6) ──
+  'ice+lightning':       { id: 'thunder_frost',  tier: 2, displayName: '전격 빙결',     color: 0xb8d2b7 },
+  'flame+ice':           { id: 'cryo_flame',     tier: 2, displayName: '냉열 교차',     color: 0xabc4aa },
+  'ice+rock':            { id: 'glacier',        tier: 2, displayName: '빙산',         color: 0x6b9eb9 },
+  'ice+poison':          { id: 'frost_venom',    tier: 2, displayName: '동상 독',       color: 0x8ecfb1 },
+  'ice+wind':            { id: 'blizzard',       tier: 2, displayName: '빙풍',         color: 0x7bd4f6 },
+  'ice+light':           { id: 'holy_ice',       tier: 2, displayName: '성빙',         color: 0xb9d2d3 },
+
+  // ── Cross-type merges: lightning combos (5) ──
+  'flame+lightning':     { id: 'thunder_fire',   tier: 2, displayName: '벼락불',       color: 0xf09e62 },
+  'lightning+rock':      { id: 'thunder_strike', tier: 2, displayName: '천둥 강타',     color: 0xb09d70 },
+  'lightning+poison':    { id: 'toxic_shock',    tier: 2, displayName: '독전기',       color: 0xd3d069 },
+  'lightning+wind':      { id: 'storm_bolt',     tier: 2, displayName: '폭풍 전격',     color: 0xbfdbad },
+  'light+lightning':     { id: 'holy_thunder',   tier: 2, displayName: '신성 번개',     color: 0xfde08b },
+
+  // ── Cross-type merges: flame combos (4) ──
+  'flame+rock':          { id: 'magma_shot',     tier: 2, displayName: '용암탄',       color: 0xa26f64 },
+  'flame+poison':        { id: 'venom_fire',     tier: 2, displayName: '맹독 화염',     color: 0xc4a85c },
+  'flame+wind':          { id: 'fire_storm',     tier: 2, displayName: '화염 폭풍',     color: 0xb12e71 },
+  'flame+light':         { id: 'solar_flame',    tier: 2, displayName: '태양광 화염',   color: 0xf0c57e },
+
+  // ── Cross-type merges: rock combos (3) ──
+  'poison+rock':         { id: 'toxic_boulder',  tier: 2, displayName: '독암',         color: 0x86a76b },
+  'rock+wind':           { id: 'stone_gale',     tier: 2, displayName: '바위 폭풍',     color: 0x72adaf },
+  'light+rock':          { id: 'holy_stone',     tier: 2, displayName: '성광 바위',     color: 0xb1ac8d },
+
+  // ── Cross-type merges: poison combos (2) ──
+  'poison+wind':         { id: 'toxic_gale',     tier: 2, displayName: '독풍',         color: 0x94e6a6 },
+  'light+poison':        { id: 'purge_venom',    tier: 2, displayName: '정화의 독',     color: 0xd3e285 },
+
+  // ── Cross-type merges: wind combos (1) ──
+  'light+wind':          { id: 'radiant_gale',   tier: 2, displayName: '성광 폭풍',     color: 0xc0e7ca },
+
+  // ── Cross-type merges: dragon combos (9) ──
+  'archer+dragon':       { id: 'dragon_rider',   tier: 2, displayName: '용기병',       color: 0x6b9463 },
+  'dragon+mage':         { id: 'dragon_mage',    tier: 2, displayName: '용마법사',     color: 0xa1468c },
+  'dragon+ice':          { id: 'frost_dragon',   tier: 2, displayName: '빙룡',         color: 0xa37498 },
+  'dragon+lightning':    { id: 'thunder_dragon', tier: 2, displayName: '뇌룡',         color: 0xe57e50 },
+  'dragon+flame':        { id: 'inferno_dragon', tier: 2, displayName: '업화룡',       color: 0xdc5043 },
+  'dragon+rock':         { id: 'stone_dragon',   tier: 2, displayName: '석룡',         color: 0x9c4f52 },
+  'dragon+poison':       { id: 'venom_dragon',   tier: 2, displayName: '독룡',         color: 0xbf894a },
+  'dragon+wind':         { id: 'storm_dragon',   tier: 2, displayName: '폭풍룡',       color: 0xab798e },
+  'dragon+light':        { id: 'holy_dragon',    tier: 2, displayName: '성룡',         color: 0xea956c },
+};
 
 /**
  * Stats for merged towers, keyed by merge result ID.
- * Phase 1: empty object. Phase 2 will populate with 55 stat blocks.
+ * 55 T2 stat blocks.
  * @type {Object<string, object>}
  */
-export const MERGED_TOWER_STATS = {};
+export const MERGED_TOWER_STATS = {
+  // ══════════════════════════════════════════════════════════════════
+  // Same-type merges (10)
+  // ══════════════════════════════════════════════════════════════════
+  rapid_archer: {
+    damage: 12, fireRate: 0.4, range: 130,
+    attackType: 'single',
+    projectileSpeed: 350,
+  },
+  overload_mage: {
+    damage: 60, fireRate: 3.5, range: 110,
+    attackType: 'splash',
+    splashRadius: 70,
+    projectileSpeed: 200,
+  },
+  zero_field: {
+    damage: 4, fireRate: 1.0, range: 130,
+    attackType: 'aoe_instant',
+    splashRadius: 90,
+    slowAmount: 0.5, slowDuration: 3.0,
+  },
+  thunder_lord: {
+    damage: 30, fireRate: 1.0, range: 130,
+    attackType: 'chain',
+    chainCount: 8, chainDecay: 0.85, chainRadius: 100,
+  },
+  inferno: {
+    damage: 6, fireRate: 1.2, range: 110,
+    attackType: 'aoe_instant',
+    splashRadius: 65,
+    burnDamage: 10, burnDuration: 4,
+  },
+  quake: {
+    damage: 80, fireRate: 3.5, range: 90,
+    attackType: 'splash',
+    splashRadius: 50,
+    slowAmount: 1.0, slowDuration: 0.5,
+    projectileSpeed: 150,
+  },
+  plague: {
+    damage: 4, fireRate: 1.8, range: 140,
+    attackType: 'aoe_instant',
+    splashRadius: 80,
+    poisonDamage: 8, poisonDuration: 6,
+    armorReduction: 0.5, armorReductionDuration: 6,
+  },
+  typhoon: {
+    damage: 8, fireRate: 2.0, range: 130,
+    attackType: 'aoe_instant',
+    splashRadius: 70,
+    pushbackDistance: 120, pushbackTargets: 6,
+  },
+  solar_burst: {
+    damage: 55, fireRate: 2.5, range: 120,
+    attackType: 'aoe_instant',
+    splashRadius: 110,
+  },
+  ancient_dragon: {
+    damage: 90, fireRate: 2.5, range: 180,
+    attackType: 'splash',
+    splashRadius: 100,
+    burnDamage: 12, burnDuration: 4, poisonDamage: 10, poisonDuration: 6,
+    projectileSpeed: 200,
+  },
+
+  // ══════════════════════════════════════════════════════════════════
+  // Cross-type merges: archer combos (8)
+  // ══════════════════════════════════════════════════════════════════
+  arcane_archer: {
+    damage: 18, fireRate: 1.0, range: 130,
+    attackType: 'splash',
+    splashRadius: 45,
+    projectileSpeed: 280,
+  },
+  cryo_sniper: {
+    damage: 15, fireRate: 1.2, range: 150,
+    attackType: 'single',
+    slowAmount: 1.0, slowDuration: 1.5,
+    projectileSpeed: 300,
+  },
+  shock_arrow: {
+    damage: 14, fireRate: 0.9, range: 130,
+    attackType: 'chain',
+    chainCount: 3, chainDecay: 0.8, chainRadius: 70,
+  },
+  fire_arrow: {
+    damage: 12, fireRate: 0.9, range: 120,
+    attackType: 'dot_single',
+    burnDamage: 6, burnDuration: 4,
+    projectileSpeed: 300,
+  },
+  armor_pierce: {
+    damage: 40, fireRate: 1.4, range: 130,
+    attackType: 'single',
+    armorPiercing: true,
+    projectileSpeed: 300,
+  },
+  venom_shot: {
+    damage: 8, fireRate: 1.0, range: 130,
+    attackType: 'dot_single',
+    poisonDamage: 5, poisonDuration: 5,
+    armorReduction: 0.2, armorReductionDuration: 5,
+    projectileSpeed: 300,
+  },
+  gale_arrow: {
+    damage: 10, fireRate: 1.0, range: 130,
+    attackType: 'single',
+    projectileSpeed: 400,
+    pushbackDistance: 100,
+  },
+  holy_arrow: {
+    damage: 22, fireRate: 1.4, range: 600,
+    attackType: 'piercing_beam',
+  },
+
+  // ══════════════════════════════════════════════════════════════════
+  // Cross-type merges: mage combos (7)
+  // ══════════════════════════════════════════════════════════════════
+  frost_mage: {
+    damage: 28, fireRate: 2.0, range: 110,
+    attackType: 'splash',
+    splashRadius: 55,
+    slowAmount: 0.35, slowDuration: 2.0,
+    projectileSpeed: 200,
+  },
+  storm_mage: {
+    damage: 35, fireRate: 1.8, range: 115,
+    attackType: 'splash',
+    splashRadius: 50,
+    chainCount: 3, chainRadius: 60,
+    projectileSpeed: 200,
+  },
+  pyromancer: {
+    damage: 30, fireRate: 1.8, range: 110,
+    attackType: 'splash',
+    splashRadius: 55,
+    burnDamage: 6, burnDuration: 3,
+    projectileSpeed: 200,
+  },
+  gravity_mage: {
+    damage: 40, fireRate: 2.5, range: 100,
+    attackType: 'splash',
+    splashRadius: 50,
+    slowAmount: 1.0, slowDuration: 0.4,
+    projectileSpeed: 200,
+  },
+  toxic_mage: {
+    damage: 20, fireRate: 2.0, range: 120,
+    attackType: 'aoe_instant',
+    splashRadius: 65,
+    poisonDamage: 5, poisonDuration: 5,
+    armorReduction: 0.2, armorReductionDuration: 5,
+  },
+  vacuum_mage: {
+    damage: 25, fireRate: 2.2, range: 110,
+    attackType: 'splash',
+    splashRadius: 55,
+    pushbackDistance: 60,
+    projectileSpeed: 200,
+  },
+  radiant_mage: {
+    damage: 32, fireRate: 2.0, range: 115,
+    attackType: 'splash',
+    splashRadius: 60,
+    burnDamage: 4, burnDuration: 2,
+    projectileSpeed: 200,
+  },
+
+  // ══════════════════════════════════════════════════════════════════
+  // Cross-type merges: ice combos (6)
+  // ══════════════════════════════════════════════════════════════════
+  thunder_frost: {
+    damage: 12, fireRate: 1.4, range: 115,
+    attackType: 'chain',
+    chainCount: 4, chainDecay: 0.7, chainRadius: 70,
+    slowAmount: 0.6, slowDuration: 1.5,
+  },
+  cryo_flame: {
+    damage: 10, fireRate: 1.4, range: 110,
+    attackType: 'dot_single',
+    burnDamage: 5, burnDuration: 3,
+    slowAmount: 0.3, slowDuration: 2.0,
+    projectileSpeed: 220,
+  },
+  glacier: {
+    damage: 35, fireRate: 2.8, range: 95,
+    attackType: 'splash',
+    splashRadius: 45,
+    slowAmount: 1.0, slowDuration: 0.6,
+    projectileSpeed: 180,
+  },
+  frost_venom: {
+    damage: 6, fireRate: 1.8, range: 125,
+    attackType: 'aoe_instant',
+    splashRadius: 65,
+    slowAmount: 0.4, slowDuration: 2.5,
+    poisonDamage: 4, poisonDuration: 4,
+  },
+  blizzard: {
+    damage: 5, fireRate: 2.0, range: 120,
+    attackType: 'aoe_instant',
+    splashRadius: 70,
+    slowAmount: 0.45, slowDuration: 2.5,
+    pushbackDistance: 50,
+  },
+  holy_ice: {
+    damage: 16, fireRate: 1.6, range: 600,
+    attackType: 'piercing_beam',
+    slowAmount: 0.35, slowDuration: 2.0,
+  },
+
+  // ══════════════════════════════════════════════════════════════════
+  // Cross-type merges: lightning combos (5)
+  // ══════════════════════════════════════════════════════════════════
+  thunder_fire: {
+    damage: 22, fireRate: 1.2, range: 125,
+    attackType: 'chain',
+    chainCount: 5, chainDecay: 0.7, chainRadius: 80,
+    burnDamage: 5, burnDuration: 3,
+  },
+  thunder_strike: {
+    damage: 28, fireRate: 1.3, range: 125,
+    attackType: 'chain',
+    chainCount: 4, chainDecay: 0.7, chainRadius: 75,
+    armorPiercing: true,
+  },
+  toxic_shock: {
+    damage: 18, fireRate: 1.2, range: 120,
+    attackType: 'chain',
+    chainCount: 4, chainDecay: 0.7, chainRadius: 75,
+    poisonDamage: 3, poisonDuration: 4, armorReduction: 0.15, armorReductionDuration: 4,
+  },
+  storm_bolt: {
+    damage: 16, fireRate: 1.3, range: 130,
+    attackType: 'chain',
+    chainCount: 4, chainDecay: 0.7, chainRadius: 80,
+    pushbackDistance: 70,
+  },
+  holy_thunder: {
+    damage: 25, fireRate: 1.5, range: 130,
+    attackType: 'chain',
+    chainCount: 5, chainDecay: 0.7, chainRadius: 85,
+  },
+
+  // ══════════════════════════════════════════════════════════════════
+  // Cross-type merges: flame combos (4)
+  // ══════════════════════════════════════════════════════════════════
+  magma_shot: {
+    damage: 38, fireRate: 2.8, range: 95,
+    attackType: 'splash',
+    splashRadius: 40,
+    burnDamage: 7, burnDuration: 3,
+    projectileSpeed: 150,
+  },
+  venom_fire: {
+    damage: 7, fireRate: 1.6, range: 110,
+    attackType: 'dot_single',
+    burnDamage: 7, burnDuration: 4,
+    poisonDamage: 4, poisonDuration: 4,
+    projectileSpeed: 200,
+  },
+  fire_storm: {
+    damage: 7, fireRate: 1.8, range: 115,
+    attackType: 'aoe_instant',
+    splashRadius: 55,
+    burnDamage: 6, burnDuration: 3,
+    pushbackDistance: 45,
+  },
+  solar_flame: {
+    damage: 20, fireRate: 1.6, range: 600,
+    attackType: 'piercing_beam',
+    burnDamage: 6, burnDuration: 3,
+  },
+
+  // ══════════════════════════════════════════════════════════════════
+  // Cross-type merges: rock combos (3)
+  // ══════════════════════════════════════════════════════════════════
+  toxic_boulder: {
+    damage: 25, fireRate: 2.5, range: 105,
+    attackType: 'aoe_instant',
+    splashRadius: 55,
+    poisonDamage: 5, poisonDuration: 5,
+    armorPiercing: true,
+  },
+  stone_gale: {
+    damage: 45, fireRate: 3.0, range: 90,
+    attackType: 'splash',
+    splashRadius: 45,
+    slowAmount: 1.0, slowDuration: 0.4,
+    pushbackDistance: 60,
+    projectileSpeed: 150,
+  },
+  holy_stone: {
+    damage: 30, fireRate: 2.0, range: 600,
+    attackType: 'piercing_beam',
+    armorPiercing: true,
+  },
+
+  // ══════════════════════════════════════════════════════════════════
+  // Cross-type merges: poison combos (2)
+  // ══════════════════════════════════════════════════════════════════
+  toxic_gale: {
+    damage: 4, fireRate: 2.0, range: 130,
+    attackType: 'aoe_instant',
+    splashRadius: 75,
+    poisonDamage: 4, poisonDuration: 5,
+    armorReduction: 0.2, armorReductionDuration: 5,
+    pushbackDistance: 40,
+  },
+  purge_venom: {
+    damage: 16, fireRate: 1.8, range: 600,
+    attackType: 'piercing_beam',
+    poisonDamage: 4, poisonDuration: 4,
+    armorReduction: 0.2, armorReductionDuration: 4,
+  },
+
+  // ══════════════════════════════════════════════════════════════════
+  // Cross-type merges: wind combos (1)
+  // ══════════════════════════════════════════════════════════════════
+  radiant_gale: {
+    damage: 18, fireRate: 1.8, range: 600,
+    attackType: 'piercing_beam',
+    pushbackDistance: 60,
+  },
+
+  // ══════════════════════════════════════════════════════════════════
+  // Cross-type merges: dragon combos (9)
+  // ══════════════════════════════════════════════════════════════════
+  dragon_rider: {
+    damage: 45, fireRate: 2.0, range: 165,
+    attackType: 'splash',
+    splashRadius: 75,
+    burnDamage: 6, burnDuration: 3,
+    projectileSpeed: 250,
+  },
+  dragon_mage: {
+    damage: 55, fireRate: 2.5, range: 155,
+    attackType: 'splash',
+    splashRadius: 85,
+    burnDamage: 8, burnDuration: 3,
+    projectileSpeed: 200,
+  },
+  frost_dragon: {
+    damage: 30, fireRate: 2.5, range: 160,
+    attackType: 'aoe_instant',
+    splashRadius: 85,
+    slowAmount: 0.5, slowDuration: 2.5,
+  },
+  thunder_dragon: {
+    damage: 40, fireRate: 2.0, range: 155,
+    attackType: 'chain',
+    chainCount: 5, chainDecay: 0.7, chainRadius: 90,
+    burnDamage: 6, burnDuration: 3,
+  },
+  inferno_dragon: {
+    damage: 52, fireRate: 2.5, range: 165,
+    attackType: 'splash',
+    splashRadius: 90,
+    burnDamage: 14, burnDuration: 5,
+    projectileSpeed: 200,
+  },
+  stone_dragon: {
+    damage: 70, fireRate: 2.8, range: 155,
+    attackType: 'splash',
+    splashRadius: 80,
+    armorPiercing: true,
+    projectileSpeed: 200,
+  },
+  venom_dragon: {
+    damage: 35, fireRate: 2.5, range: 165,
+    attackType: 'aoe_instant',
+    splashRadius: 90,
+    poisonDamage: 12, poisonDuration: 6,
+    maxPoisonStacks: 3,
+  },
+  storm_dragon: {
+    damage: 48, fireRate: 2.5, range: 165,
+    attackType: 'splash',
+    splashRadius: 85,
+    burnDamage: 8, burnDuration: 3,
+    pushbackDistance: 60,
+    projectileSpeed: 200,
+  },
+  holy_dragon: {
+    damage: 40, fireRate: 2.2, range: 600,
+    attackType: 'piercing_beam',
+    burnDamage: 8, burnDuration: 3,
+  },
+};
 
 /**
  * Get a canonical merge key from two tower type/merge IDs.

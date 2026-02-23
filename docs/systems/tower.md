@@ -37,21 +37,21 @@
 - 현재 드래곤만 `locked: true`, `unlockCost: 50`
 - 해금 정보는 `saveData.unlockedTowers[]` 배열에 저장
 
-## 머지 시스템 (인프라 구축 완료, Phase 2에서 활성화)
+## 머지 시스템
 
 기본 10종 타워를 재료로 드래그&드롭 합성하여 상위 티어 타워를 생성하는 시스템.
 
 ### 기본 구조
 
 - 1티어: 기본 재료 타워 10종
-- 2티어: 기본 타워 2개 조합 (동종 10 + 이종 45 = 55종, Phase 2에서 등록)
+- 2티어: 기본 타워 2개 조합 (동종 10 + 이종 45 = 55종) -- 구현 완료
 - 3~5티어: Phase 3~4에서 정의
 
 ### 데이터 구조 (config.js)
 
 - `MERGE_RECIPES`: 합성 레시피 테이블 (키 = typeA+typeB 알파벳 정렬, 값 = { id, tier, displayName, color })
 - `MERGED_TOWER_STATS`: 합성 타워 스탯 테이블 (키 = mergeId, 값 = 스탯 객체)
-- Phase 1에서 두 객체 모두 빈 상태
+- 현재 55종 T2 레시피/스탯 등록 완료
 
 ### 헬퍼 함수
 
@@ -90,11 +90,138 @@
 | 4 | 보라 (0xa29bfe) | 3px | 0.8 |
 | 5 | 금색 (0xffd700) 정적 | 3px | 0.9 |
 
-### Phase 1 상태
+### 2티어 합성 타워 55종
 
-- `MERGE_RECIPES = {}` 이므로 드래그/머지 힌트 비활성화
-- `hasRecipes` 가드(`Object.keys(MERGE_RECIPES).length > 0`)로 제어
-- Phase 2에서 55종 레시피 추가 시 자동 활성화
+55종 레시피가 MERGE_RECIPES에 등록되어 드래그&드롭 합성이 활성화된 상태.
+
+#### 동종 조합 (10종)
+
+| 조합 키 | ID | 이름 | 공격 타입 | 주요 스탯 |
+|---|---|---|---|---|
+| archer+archer | rapid_archer | 연속 사격수 | single | dmg:12, spd:0.4, rng:130 |
+| mage+mage | overload_mage | 과충전 술사 | splash | dmg:60, spd:3.5, rng:110, splash:70 |
+| ice+ice | zero_field | 절대 영역 | aoe_instant | dmg:4, spd:1.0, rng:130, splash:90, slow:0.5/3.0s |
+| lightning+lightning | thunder_lord | 뇌제 | chain | dmg:30, spd:1.0, rng:130, chain:8, decay:0.85 |
+| flame+flame | inferno | 업화 | aoe_instant | dmg:6, spd:1.2, rng:110, splash:65, burn:10/4s |
+| rock+rock | quake | 지진파 | splash | dmg:80, spd:3.5, rng:90, splash:50, slow:1.0/0.5s |
+| poison+poison | plague | 역병의 근원 | aoe_instant | dmg:4, spd:1.8, rng:140, splash:80, poison:8/6s, armor:-50% |
+| wind+wind | typhoon | 대태풍 | aoe_instant | dmg:8, spd:2.0, rng:130, splash:70, push:120, targets:6 |
+| light+light | solar_burst | 태양 폭발 | aoe_instant | dmg:55, spd:2.5, rng:120, splash:110 |
+| dragon+dragon | ancient_dragon | 고대 용왕 | splash | dmg:90, spd:2.5, rng:180, splash:100, burn:12/4s, poison:10/6s |
+
+#### 이종 조합 -- archer 관련 (8종)
+
+| 조합 키 | ID | 이름 | 공격 타입 | 주요 스탯 |
+|---|---|---|---|---|
+| archer+mage | arcane_archer | 마법 화살사 | splash | dmg:18, spd:1.0, rng:130, splash:45 |
+| archer+ice | cryo_sniper | 냉동 저격수 | single | dmg:15, spd:1.2, rng:150, slow:1.0/1.5s |
+| archer+lightning | shock_arrow | 전격 화살 | chain | dmg:14, spd:0.9, rng:130, chain:3, decay:0.8 |
+| archer+flame | fire_arrow | 화염 화살 | dot_single | dmg:12, spd:0.9, rng:120, burn:6/4s |
+| archer+rock | armor_pierce | 철갑 화살 | single | dmg:40, spd:1.4, rng:130, armorPiercing |
+| archer+poison | venom_shot | 독화살 | dot_single | dmg:8, spd:1.0, rng:130, poison:5/5s, armor:-20% |
+| archer+wind | gale_arrow | 폭풍 화살 | single | dmg:10, spd:1.0, rng:130, push:100 |
+| archer+light | holy_arrow | 신성 화살 | piercing_beam | dmg:22, spd:1.4, rng:600 |
+
+#### 이종 조합 -- mage 관련 (7종)
+
+| 조합 키 | ID | 이름 | 공격 타입 | 주요 스탯 |
+|---|---|---|---|---|
+| ice+mage | frost_mage | 서리 술사 | splash | dmg:28, spd:2.0, rng:110, splash:55, slow:0.35/2.0s |
+| lightning+mage | storm_mage | 폭풍 마법사 | splash | dmg:35, spd:1.8, rng:115, splash:50 |
+| flame+mage | pyromancer | 화염 술사 | splash | dmg:30, spd:1.8, rng:110, splash:55, burn:6/3s |
+| mage+rock | gravity_mage | 중력 마법사 | splash | dmg:40, spd:2.5, rng:100, splash:50, slow:1.0/0.4s |
+| mage+poison | toxic_mage | 독기 술사 | aoe_instant | dmg:20, spd:2.0, rng:120, splash:65, poison:5/5s, armor:-20% |
+| mage+wind | vacuum_mage | 진공 마법사 | splash | dmg:25, spd:2.2, rng:110, splash:55, push:60 |
+| light+mage | radiant_mage | 성광 마법사 | splash | dmg:32, spd:2.0, rng:115, splash:60, burn:4/2s |
+
+#### 이종 조합 -- ice 관련 (6종)
+
+| 조합 키 | ID | 이름 | 공격 타입 | 주요 스탯 |
+|---|---|---|---|---|
+| ice+lightning | thunder_frost | 전격 빙결 | chain | dmg:12, spd:1.4, rng:115, chain:4, decay:0.7, slow:0.6/1.5s |
+| flame+ice | cryo_flame | 냉열 교차 | dot_single | dmg:10, spd:1.4, rng:110, burn:5/3s, slow:0.3/2.0s |
+| ice+rock | glacier | 빙산 | splash | dmg:35, spd:2.8, rng:95, splash:45, slow:1.0/0.6s |
+| ice+poison | frost_venom | 동상 독 | aoe_instant | dmg:6, spd:1.8, rng:125, splash:65, slow:0.4/2.5s, poison:4/4s |
+| ice+wind | blizzard | 빙풍 | aoe_instant | dmg:5, spd:2.0, rng:120, splash:70, slow:0.45/2.5s, push:50 |
+| ice+light | holy_ice | 성빙 | piercing_beam | dmg:16, spd:1.6, rng:600, slow:0.35/2.0s |
+
+#### 이종 조합 -- lightning 관련 (5종)
+
+| 조합 키 | ID | 이름 | 공격 타입 | 주요 스탯 |
+|---|---|---|---|---|
+| flame+lightning | thunder_fire | 벼락불 | chain | dmg:22, spd:1.2, rng:125, chain:5, decay:0.7, burn:5/3s |
+| lightning+rock | thunder_strike | 천둥 강타 | chain | dmg:28, spd:1.3, rng:125, chain:4, decay:0.7, armorPiercing |
+| lightning+poison | toxic_shock | 독전기 | chain | dmg:18, spd:1.2, rng:120, chain:4, decay:0.7, poison:3/4s, armor:-15% |
+| lightning+wind | storm_bolt | 폭풍 전격 | chain | dmg:16, spd:1.3, rng:130, chain:4, decay:0.7, push:70 |
+| light+lightning | holy_thunder | 신성 번개 | chain | dmg:25, spd:1.5, rng:130, chain:5, decay:0.7 |
+
+#### 이종 조합 -- flame 관련 (4종)
+
+| 조합 키 | ID | 이름 | 공격 타입 | 주요 스탯 |
+|---|---|---|---|---|
+| flame+rock | magma_shot | 용암탄 | splash | dmg:38, spd:2.8, rng:95, splash:40, burn:7/3s |
+| flame+poison | venom_fire | 맹독 화염 | dot_single | dmg:7, spd:1.6, rng:110, burn:7/4s, poison:4/4s |
+| flame+wind | fire_storm | 화염 폭풍 | aoe_instant | dmg:7, spd:1.8, rng:115, splash:55, burn:6/3s, push:45 |
+| flame+light | solar_flame | 태양광 화염 | piercing_beam | dmg:20, spd:1.6, rng:600, burn:6/3s |
+
+#### 이종 조합 -- rock 관련 (3종)
+
+| 조합 키 | ID | 이름 | 공격 타입 | 주요 스탯 |
+|---|---|---|---|---|
+| poison+rock | toxic_boulder | 독암 | aoe_instant | dmg:25, spd:2.5, rng:105, splash:55, poison:5/5s, armorPiercing |
+| rock+wind | stone_gale | 바위 폭풍 | splash | dmg:45, spd:3.0, rng:90, splash:45, slow:1.0/0.4s, push:60 |
+| light+rock | holy_stone | 성광 바위 | piercing_beam | dmg:30, spd:2.0, rng:600, armorPiercing |
+
+#### 이종 조합 -- poison 관련 (2종)
+
+| 조합 키 | ID | 이름 | 공격 타입 | 주요 스탯 |
+|---|---|---|---|---|
+| poison+wind | toxic_gale | 독풍 | aoe_instant | dmg:4, spd:2.0, rng:130, splash:75, poison:4/5s, armor:-20%, push:40 |
+| light+poison | purge_venom | 정화의 독 | piercing_beam | dmg:16, spd:1.8, rng:600, poison:4/4s, armor:-20% |
+
+#### 이종 조합 -- wind 관련 (1종)
+
+| 조합 키 | ID | 이름 | 공격 타입 | 주요 스탯 |
+|---|---|---|---|---|
+| light+wind | radiant_gale | 성광 폭풍 | piercing_beam | dmg:18, spd:1.8, rng:600, push:60 |
+
+#### 이종 조합 -- dragon 관련 (9종)
+
+| 조합 키 | ID | 이름 | 공격 타입 | 주요 스탯 |
+|---|---|---|---|---|
+| archer+dragon | dragon_rider | 용기병 | splash | dmg:45, spd:2.0, rng:165, splash:75, burn:6/3s |
+| dragon+mage | dragon_mage | 용마법사 | splash | dmg:55, spd:2.5, rng:155, splash:85, burn:8/3s |
+| dragon+ice | frost_dragon | 빙룡 | aoe_instant | dmg:30, spd:2.5, rng:160, splash:85, slow:0.5/2.5s |
+| dragon+lightning | thunder_dragon | 뇌룡 | chain | dmg:40, spd:2.0, rng:155, chain:5, decay:0.7, burn:6/3s |
+| dragon+flame | inferno_dragon | 업화룡 | splash | dmg:52, spd:2.5, rng:165, splash:90, burn:14/5s |
+| dragon+rock | stone_dragon | 석룡 | splash | dmg:70, spd:2.8, rng:155, splash:80, armorPiercing |
+| dragon+poison | venom_dragon | 독룡 | aoe_instant | dmg:35, spd:2.5, rng:165, splash:90, poison:12/6s, maxStacks:3 |
+| dragon+wind | storm_dragon | 폭풍룡 | splash | dmg:48, spd:2.5, rng:165, splash:85, burn:8/3s, push:60 |
+| dragon+light | holy_dragon | 성룡 | piercing_beam | dmg:40, spd:2.2, rng:600, burn:8/3s |
+
+### 공격 핸들러별 지원 효과
+
+각 공격 타입의 핸들러가 지원하는 추가 효과 목록. 모든 효과는 해당 속성 존재 여부를 `if` 가드로 확인 후 적용하므로, 해당 속성이 없는 T1 타워에는 영향 없음.
+
+| 핸들러 (파일) | 지원 효과 |
+|---|---|
+| `_hitSingle` (Projectile.js) | slow, pushback, armorReduction |
+| `_hitSplash` (Projectile.js) | slow, burn, poison, armorReduction, pushback |
+| `_hitDotSingle` (Projectile.js) | burn, poison, slow, armorReduction |
+| `_applyAoeInstant` (GameScene.js) | slow, burn, poison, armorReduction, pushback |
+| `_applyChain` (GameScene.js) | slow, burn, poison, armorReduction, pushback |
+| `_applyBeam` (GameScene.js) | burn, slow, poison, armorReduction, pushback |
+
+### T2 타워 공격 타입별 분포
+
+| 공격 타입 | 수량 | 타워 ID |
+|---|---|---|
+| single | 4 | rapid_archer, cryo_sniper, armor_pierce, gale_arrow |
+| splash | 18 | overload_mage, quake, arcane_archer, frost_mage, storm_mage, pyromancer, gravity_mage, vacuum_mage, radiant_mage, glacier, magma_shot, stone_gale, dragon_rider, dragon_mage, inferno_dragon, stone_dragon, storm_dragon, ancient_dragon |
+| aoe_instant | 13 | zero_field, inferno, plague, typhoon, solar_burst, toxic_mage, frost_venom, blizzard, fire_storm, toxic_boulder, toxic_gale, frost_dragon, venom_dragon |
+| chain | 9 | thunder_lord, shock_arrow, thunder_frost, thunder_fire, thunder_strike, toxic_shock, storm_bolt, holy_thunder, thunder_dragon |
+| dot_single | 4 | fire_arrow, venom_shot, cryo_flame, venom_fire |
+| piercing_beam | 7 | holy_arrow, holy_ice, solar_flame, holy_stone, purge_venom, radiant_gale, holy_dragon |
 
 ## 타워 강화 시스템 (골드 싱크)
 

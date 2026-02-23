@@ -710,7 +710,7 @@ export class TowerPanel {
 
     // Create ghost graphic
     this._dragGhost = this.scene.add.graphics().setDepth(50);
-    this._drawDragGhost(pointer.x, pointer.y, tower.type);
+    this._drawDragGhost(pointer.x, pointer.y, tower);
   }
 
   /**
@@ -720,7 +720,7 @@ export class TowerPanel {
   updateDrag(pointer) {
     if (!this._isDragging || !this._dragGhost) return;
     this._dragGhost.clear();
-    this._drawDragGhost(pointer.x, pointer.y, this._dragTower.type);
+    this._drawDragGhost(pointer.x, pointer.y, this._dragTower);
   }
 
   /**
@@ -784,13 +784,14 @@ export class TowerPanel {
 
   /**
    * Draw a semi-transparent ghost at pointer position.
+   * Uses the tower's _getColor() for merged tower support.
    * @param {number} x - Pointer X
    * @param {number} y - Pointer Y
-   * @param {string} type - Tower type
+   * @param {object} tower - Tower instance (used to get correct color)
    * @private
    */
-  _drawDragGhost(x, y, type) {
-    const color = TOWER_STATS[type].color;
+  _drawDragGhost(x, y, tower) {
+    const color = tower._getColor ? tower._getColor() : TOWER_STATS[tower.type || tower].color;
     this._dragGhost.fillStyle(color, 0.5);
     this._dragGhost.fillCircle(x, y, 14);
     this._dragGhost.lineStyle(2, 0xffffff, 0.5);

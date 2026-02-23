@@ -9,7 +9,9 @@ import {
   TOWER_SHAPE_SIZE, gridToPixel,
   MAX_ENHANCE_LEVEL, ENHANCE_STAT_BONUS, calcEnhanceCost,
   isMergeable, isUsedAsMergeIngredient, MERGED_TOWER_STATS,
+  MERGE_RECIPES,
 } from '../config.js';
+import { t } from '../i18n.js';
 
 export class Tower {
   /**
@@ -73,9 +75,31 @@ export class Tower {
   /**
    * Draw the tower shape based on type and level.
    */
+
+  /**
+   * Get the display color for this tower.
+   * Merged towers use the color from their MERGE_RECIPES entry; base towers use TOWER_STATS.
+   * @returns {number} Hex color value
+   * @private
+   */
+  _getColor() {
+    if (this.mergeId) {
+      // Direct lookup via cached id-to-color map
+      if (!Tower._mergeColorMap) {
+        Tower._mergeColorMap = {};
+        for (const recipe of Object.values(MERGE_RECIPES)) {
+          Tower._mergeColorMap[recipe.id] = recipe.color;
+        }
+      }
+      const color = Tower._mergeColorMap[this.mergeId];
+      if (color !== undefined) return color;
+    }
+    return TOWER_STATS[this.type].color;
+  }
+
   draw() {
     this.graphics.clear();
-    const color = TOWER_STATS[this.type].color;
+    const color = this._getColor();
 
     const sizeScale = 1.0;
 
@@ -570,12 +594,20 @@ export class Tower {
    * @returns {object} Tower info object
    */
   getInfo() {
+    // Resolve display name: merged towers use i18n key, base towers use TOWER_STATS
+    let name;
+    if (this.mergeId) {
+      name = t(`tower.${this.mergeId}.name`) || this.mergeId;
+    } else {
+      name = t(`tower.${this.type}.name`) || TOWER_STATS[this.type].displayName;
+    }
+
     return {
-      name: TOWER_STATS[this.type].displayName,
+      name,
       type: this.type,
       tier: this.tier,
       mergeId: this.mergeId,
-      displayName: this.mergeId || TOWER_STATS[this.type].displayName,
+      displayName: name,
       isMergeable: isMergeable(this),
       damage: this.stats.damage,
       fireRate: this.stats.fireRate,
