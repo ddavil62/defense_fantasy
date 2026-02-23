@@ -12,7 +12,7 @@ Phaser.js 3 기반 판타지 타워 디펜스 게임. 도형 기반 프로토타
 | 언어 | JavaScript ES6+ (바닐라, 프레임워크 없음) |
 | 빌드 도구 | Vite (dev 서버, 번들링) |
 | 모바일 패키징 | Capacitor (Android + iOS) |
-| 모듈 구조 | ES6 모듈 기반 멀티 파일 (23개) |
+| 모듈 구조 | ES6 모듈 기반 멀티 파일 (24개) |
 | 렌더링 | HTML5 Canvas (Phaser 기본) |
 | 데이터 저장 | localStorage (최고 기록, Diamond, 메타 업그레이드, 드래곤 해금, 통계, 게임 히스토리) |
 | 해상도 | 360x640 (모바일 세로, portrait) |
@@ -47,7 +47,7 @@ Phaser.js 3 기반 판타지 타워 디펜스 게임. 도형 기반 프로토타
 | `js/ui/HUD.js` | 상단 HUD (Wave/Gold/HP, HP 위험 깜빡임, 웨이브 카운트다운, 적 프리뷰) |
 | `js/ui/TowerPanel.js` | 하단 타워 선택(2줄 5열)/정보/A-B 분기 업그레이드/판매/강화/3단 속도(1x/2x/3x) 패널 |
 
-**총 23개 파일**
+**총 24개 파일**
 
 ## Phaser 씬 구조
 
@@ -84,7 +84,8 @@ BootScene -> MenuScene -> GameScene -> GameOverScene
   "bestKills": 102,
   "totalGames": 5,
   "diamond": 42,
-  "towerMetaUpgrades": {
+  "totalDiamondEarned": 42,
+  "towerUpgrades": {
     "archer": { "tier1": "a", "tier2": "b" },
     "mage": { "tier1": "a" }
   },
@@ -98,8 +99,8 @@ BootScene -> MenuScene -> GameScene -> GameOverScene
     "totalKills": 512,
     "totalGoldEarned": 8420,
     "totalDamageDealt": 34200,
-    "killsByType": { "normal": 200, "fast": 150, "tank": 80, "boss": 5, "swarm": 60, "splitter": 12, "armored": 5 },
-    "killsByTower": { "archer": 120, "mage": 80, "ice": 50, "lightning": 60, "fire": 45, "rock": 30, "poison": 40, "wind": 35, "light": 32, "dragon": 20 }
+    "killsByEnemyType": { "normal": 200, "fast": 150, "tank": 80, "boss": 5, "swarm": 60, "splitter": 12, "armored": 5 },
+    "killsByTowerType": { "archer": 120, "mage": 80, "ice": 50, "lightning": 60, "fire": 45, "rock": 30, "poison": 40, "wind": 35, "light": 32, "dragon": 20 }
   },
   "gameHistory": [
     {
@@ -107,8 +108,8 @@ BootScene -> MenuScene -> GameScene -> GameOverScene
       "kills": 102,
       "goldEarned": 1680,
       "damageDealt": 6840,
-      "killsByType": { ... },
-      "killsByTower": { ... },
+      "killsByEnemyType": { ... },
+      "killsByTowerType": { ... },
       "timestamp": "2026-02-22T15:30:00.000Z"
     }
   ]
