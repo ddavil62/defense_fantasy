@@ -4,6 +4,58 @@
 
 ---
 
+## 2026-02-23 -- 업그레이드 분기 선택 UI 개선
+
+### 배경
+
+타워 Lv.1->Lv.2, Lv.2->Lv.3 업그레이드 시 A/B 분기 선택 버튼이 1줄(300x18px, 9px)로 표시되어 정보 파악이 어려웠다. 분기 이름, 스탯 변화, 특화 방향, 비용을 2줄 레이아웃으로 확장하여 가독성을 개선.
+
+### 변경
+
+- **`js/ui/TowerPanel.js`** -- 업그레이드 분기 버튼 UI 재구성
+  - `showTowerInfo()` 재구성: Lv.1->2, Lv.2->3 분기 코드를 `isLv1` 플래그로 통합
+  - `_createBranchButton()` 헬퍼 추가: 340x32px 2줄 버튼 생성
+  - `_calcStatDiff()` 헬퍼 추가: 현재/분기 스탯 변화율(ATK/SPD/RNG %) 계산
+  - `_getBranchTags()` 헬퍼 추가: 분기 스탯 기반 특화 태그 파생 (최대 2개)
+  - `infoBg`를 패널 전체 영역(GAME_WIDTH x PANEL_HEIGHT, alpha 0.92)으로 확장
+  - 타워 정보 텍스트 위치: PANEL_Y + 8 (패널 내부 상단)
+  - A 버튼 centerY: PANEL_Y + 42, B 버튼 centerY: PANEL_Y + 78
+  - 판매 버튼 Y: PANEL_Y + 106 (업그레이드 UI 표시 시)
+  - 골드 부족 시: 버튼 alpha 0.35, 비용 텍스트 #ff4757(빨간색)
+
+- **`js/i18n.js`** -- 분기 특화 태그 10종 ko/en 문자열 추가
+  - `branch.tag.aoe`(범위형/AOE), `branch.tag.stun`(강감속/Stun), `branch.tag.slow`(감속형/Slow), `branch.tag.burn`(화상형/Burn), `branch.tag.poison`(독형/Poison), `branch.tag.pierce`(관통형/Pierce), `branch.tag.debuff`(약화형/Debuff), `branch.tag.push`(밀치기형/Push), `branch.tag.chain`(연쇄형/Chain), `branch.tag.single`(단일형/Single)
+
+### 스펙 대비 변경
+
+| 항목 | 스펙 | 구현 | 사유 |
+|---|---|---|---|
+| 버튼 크기 | 340x28px | 340x32px | 터치 영역 확보를 위해 높이 4px 증가 |
+| 상단 행 폰트 | 11px | 10px bold | 360px 해상도에서 스탯+비용을 한 줄에 담기 위해 축소 |
+| 하단 행 폰트 | 9px | 8px | 설명+태그를 한 줄에 맞추기 위해 축소 |
+| 타워 정보 위치 | PANEL_Y - 30 (오버레이) | PANEL_Y + 8 (패널 내부) | depth/z-order 단순화 |
+
+### 알려진 제약
+
+- 스탯 변화 색상(증가=#55efc4, 감소=#fdcb6e) 미적용: Phaser Text 단일 객체에 복수 색상 적용 불가. 전체 흰색(#ffffff)으로 표시
+- `updateAffordability()`가 분기 버튼의 실시간 골드 변동을 반영하지 않음. `showTowerInfo()` 호출 시점에만 계산
+- 일부 분기(wind 2a, light 2a, dragon 2a)에서 damage/fireRate/range 변화 없이 특수 스탯만 변경되는 경우 stat diff가 빈 문자열로 표시됨. 태그와 설명으로 보완
+
+### QA 결과
+
+- **판정**: PASS
+- **Playwright 브라우저 테스트**: 17/17 통과
+- **정적 분석 검증 스크립트**: 2개 통과 (stat diff 계산값, Lv.2->3 분기 키 구성 검증)
+
+### 참고 문서
+
+- 스펙: `.claude/specs/2026-02-23-upgrade-branch-ui.md`
+- 구현 리포트: `.claude/specs/2026-02-23-upgrade-branch-ui-report.md`
+- QA 리포트: `.claude/specs/2026-02-23-upgrade-branch-ui-qa.md`
+- 테스트: `tests/upgrade-branch-ui.spec.js`
+
+---
+
 ## 2026-02-23 -- 골드 싱크 시스템
 
 ### 배경

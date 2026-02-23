@@ -45,7 +45,7 @@ Phaser.js 3 기반 판타지 타워 디펜스 게임. 도형 기반 프로토타
 | `js/managers/SoundManager.js` | Web Audio API 프로시저럴 SFX/BGM |
 | `js/i18n.js` | 다국어 지원 (한국어/영어), 모든 UI 텍스트 번역 키 관리 |
 | `js/ui/HUD.js` | 상단 HUD (Wave/Gold/HP, HP 위험 깜빡임, 웨이브 카운트다운, 적 프리뷰) |
-| `js/ui/TowerPanel.js` | 하단 타워 선택(2줄 5열)/정보/A-B 분기 업그레이드/판매/강화/3단 속도(1x/2x/3x) 패널 |
+| `js/ui/TowerPanel.js` | 하단 타워 선택(2줄 5열)/정보/A-B 분기 업그레이드(2줄 340x32 버튼, 스탯변화율+특화태그)/판매/강화/3단 속도(1x/2x/3x) 패널 |
 
 **총 24개 파일**
 
@@ -148,6 +148,7 @@ npx cap open android  # 또는 npx cap open ios
 - Phase 6: 정적 코드 분석 QA PASS (초기 CRITICAL 2건 수정 후 PASS)
 - 면역 시스템: 정적 코드 분석 + Playwright 17건 QA PASS
 - 골드 싱크 시스템: 정적 코드 분석 QA PASS (1차 FAIL 버그 3건 수정 후 2차 PASS)
+- 업그레이드 분기 UI: Playwright 17건 + 정적 분석 검증 스크립트 2건 QA PASS
 
 ## 시스템별 상세 문서
 

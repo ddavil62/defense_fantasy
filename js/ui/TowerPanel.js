@@ -578,10 +578,15 @@ export class TowerPanel {
 
     this.infoContainer = this.scene.add.container(0, 0).setDepth(31);
 
-    // Info background
+    // Info background — full panel when A/B upgrade buttons are shown
+    const hasUpgradeUI = (info.level === 1 || info.level === 2) && info.canUpgrade;
     const infoBg = this.scene.add.rectangle(
-      GAME_WIDTH / 2, infoY + 16, GAME_WIDTH - 10, 48, 0x16213e
-    ).setAlpha(0.9);
+      GAME_WIDTH / 2,
+      hasUpgradeUI ? PANEL_Y + PANEL_HEIGHT / 2 : infoY + 16,
+      GAME_WIDTH,
+      hasUpgradeUI ? PANEL_HEIGHT : 48,
+      0x16213e
+    ).setAlpha(0.92);
     this.infoContainer.add(infoBg);
 
     // Tower info text
@@ -594,8 +599,9 @@ export class TowerPanel {
       const enhStr = info.enhanceLevel > 0 ? `+${info.enhanceLevel}` : '';
       nameStr = `${info.name} Lv.3${enhStr}-${path}: ${info.branchName}`;
     }
+    const infoTextY = hasUpgradeUI ? PANEL_Y + 8 : infoY;
     const infoText = this.scene.add.text(
-      10, infoY,
+      10, infoTextY,
       `${nameStr}  ATK:${info.damage}  SPD:${info.fireRate}s  RNG:${rangeInTiles}`,
       {
         fontSize: '10px',
@@ -606,84 +612,40 @@ export class TowerPanel {
     this.infoContainer.add(infoText);
 
     // Upgrade buttons (A/B) or MAX LEVEL
-    if (info.level === 1 && info.canUpgrade) {
-      // Lv.1 → Lv.2 buttons (existing)
-      const upgAX = GAME_WIDTH / 2 - 75;
-      const upgABtn = this.scene.add.rectangle(
-        upgAX, infoY + 18, 140, 20, COLORS.BUTTON_ACTIVE
-      ).setInteractive({ useHandCursor: true });
-      this.infoContainer.add(upgABtn);
+    if ((info.level === 1 || info.level === 2) && info.canUpgrade) {
+      // Unified A/B branch buttons for Lv.1→2 and Lv.2→3
+      const isLv1 = info.level === 1;
+      const aName = isLv1 ? info.upgradeAName : info.upgrade3AName;
+      const bName = isLv1 ? info.upgradeBName : info.upgrade3BName;
+      const aCost = isLv1 ? info.upgradeACost : info.upgrade3ACost;
+      const bCost = isLv1 ? info.upgradeBCost : info.upgrade3BCost;
+      const aDesc = isLv1 ? info.upgradeADesc : info.upgrade3ADesc;
+      const bDesc = isLv1 ? info.upgradeBDesc : info.upgrade3BDesc;
 
-      const upgAText = this.scene.add.text(upgAX, infoY + 18,
-        `A: ${info.upgradeAName} ${info.upgradeACost}G`, {
-        fontSize: '9px',
-        fontFamily: 'Arial, sans-serif',
-        color: '#ffffff',
-      }).setOrigin(0.5);
-      this.infoContainer.add(upgAText);
+      // Look up branch stats from TOWER_STATS
+      const aKey = isLv1 ? '2a' : `3${tower.branch}a`;
+      const bKey = isLv1 ? '2b' : `3${tower.branch}b`;
+      const aStats = TOWER_STATS[info.type].levels[aKey];
+      const bStats = TOWER_STATS[info.type].levels[bKey];
+      const currentStats = { damage: info.damage, fireRate: info.fireRate, range: info.range };
 
-      upgABtn.on('pointerdown', () => {
+      const gold = this.scene.goldManager?.getGold() ?? Infinity;
+
+      const aBtn = this._createBranchButton(
+        PANEL_Y + 42, 'A', aName, aDesc, aCost, currentStats, aStats,
+        COLORS.BUTTON_ACTIVE, gold >= aCost
+      );
+      aBtn.on('pointerdown', () => {
         if (this.callbacks.onUpgrade) {
           this.callbacks.onUpgrade(tower, 'a');
         }
       });
 
-      const upgBX = GAME_WIDTH / 2 + 75;
-      const upgBBtn = this.scene.add.rectangle(
-        upgBX, infoY + 18, 140, 20, 0x2d8a4e
-      ).setInteractive({ useHandCursor: true });
-      this.infoContainer.add(upgBBtn);
-
-      const upgBText = this.scene.add.text(upgBX, infoY + 18,
-        `B: ${info.upgradeBName} ${info.upgradeBCost}G`, {
-        fontSize: '9px',
-        fontFamily: 'Arial, sans-serif',
-        color: '#ffffff',
-      }).setOrigin(0.5);
-      this.infoContainer.add(upgBText);
-
-      upgBBtn.on('pointerdown', () => {
-        if (this.callbacks.onUpgrade) {
-          this.callbacks.onUpgrade(tower, 'b');
-        }
-      });
-    } else if (info.level === 2 && info.canUpgrade) {
-      // Lv.2 → Lv.3 buttons
-      const upgAX = GAME_WIDTH / 2 - 75;
-      const upgABtn = this.scene.add.rectangle(
-        upgAX, infoY + 18, 140, 20, COLORS.BUTTON_ACTIVE
-      ).setInteractive({ useHandCursor: true });
-      this.infoContainer.add(upgABtn);
-
-      const upgAText = this.scene.add.text(upgAX, infoY + 18,
-        `A: ${info.upgrade3AName} ${info.upgrade3ACost}G`, {
-        fontSize: '9px',
-        fontFamily: 'Arial, sans-serif',
-        color: '#ffffff',
-      }).setOrigin(0.5);
-      this.infoContainer.add(upgAText);
-
-      upgABtn.on('pointerdown', () => {
-        if (this.callbacks.onUpgrade) {
-          this.callbacks.onUpgrade(tower, 'a');
-        }
-      });
-
-      const upgBX = GAME_WIDTH / 2 + 75;
-      const upgBBtn = this.scene.add.rectangle(
-        upgBX, infoY + 18, 140, 20, 0x2d8a4e
-      ).setInteractive({ useHandCursor: true });
-      this.infoContainer.add(upgBBtn);
-
-      const upgBText = this.scene.add.text(upgBX, infoY + 18,
-        `B: ${info.upgrade3BName} ${info.upgrade3BCost}G`, {
-        fontSize: '9px',
-        fontFamily: 'Arial, sans-serif',
-        color: '#ffffff',
-      }).setOrigin(0.5);
-      this.infoContainer.add(upgBText);
-
-      upgBBtn.on('pointerdown', () => {
+      const bBtn = this._createBranchButton(
+        PANEL_Y + 78, 'B', bName, bDesc, bCost, currentStats, bStats,
+        0x2d8a4e, gold >= bCost
+      );
+      bBtn.on('pointerdown', () => {
         if (this.callbacks.onUpgrade) {
           this.callbacks.onUpgrade(tower, 'b');
         }
@@ -729,13 +691,14 @@ export class TowerPanel {
       this.infoContainer.add(maxText);
     }
 
-    // Sell button
+    // Sell button — shifted down when upgrade buttons are shown
+    const sellY = hasUpgradeUI ? PANEL_Y + 106 : infoY + 36;
     const sellBtn = this.scene.add.rectangle(
-      GAME_WIDTH / 2, infoY + 36, 120, 18, 0xd63031
+      GAME_WIDTH / 2, sellY, 120, 18, 0xd63031
     ).setInteractive({ useHandCursor: true });
     this.infoContainer.add(sellBtn);
 
-    const sellText = this.scene.add.text(GAME_WIDTH / 2, infoY + 36, `Sell ${info.sellPrice}G`, {
+    const sellText = this.scene.add.text(GAME_WIDTH / 2, sellY, `Sell ${info.sellPrice}G`, {
       fontSize: '10px',
       fontFamily: 'Arial, sans-serif',
       color: '#ffffff',
@@ -750,6 +713,132 @@ export class TowerPanel {
 
     // Update sell button state
     this.sellBg.setAlpha(1);
+  }
+
+  /**
+   * Create a 2-line branch upgrade button.
+   * @param {number} centerY - Y center of the button
+   * @param {string} branchLabel - 'A' or 'B'
+   * @param {string} name - Branch name
+   * @param {string} desc - Branch description
+   * @param {number} cost - Upgrade cost
+   * @param {object} currentStats - Current tower stats {damage, fireRate, range}
+   * @param {object} branchStats - Target branch stats
+   * @param {number} color - Button background color
+   * @param {boolean} canAfford - Whether the player can afford this upgrade
+   * @returns {Phaser.GameObjects.Rectangle} The interactive button rectangle
+   * @private
+   */
+  _createBranchButton(centerY, branchLabel, name, desc, cost, currentStats, branchStats, color, canAfford) {
+    // Background button (340×32)
+    const btn = this.scene.add.rectangle(
+      GAME_WIDTH / 2, centerY, 340, 32, color
+    ).setInteractive({ useHandCursor: true });
+    if (!canAfford) btn.setAlpha(0.35);
+    this.infoContainer.add(btn);
+
+    // Top row: "A: 폭발 화살  ATK+60% SPD+13%"
+    const statDiff = this._calcStatDiff(currentStats, branchStats);
+    const leftStr = `${branchLabel}: ${name}  ${statDiff}`;
+    const topText = this.scene.add.text(18, centerY - 8, leftStr, {
+      fontSize: '10px',
+      fontFamily: 'Arial, sans-serif',
+      color: '#ffffff',
+      fontStyle: 'bold',
+    }).setOrigin(0, 0.5);
+    this.infoContainer.add(topText);
+
+    // Cost text (right-aligned)
+    const costColor = canAfford ? GOLD_TEXT_CSS : '#ff4757';
+    const costText = this.scene.add.text(GAME_WIDTH - 18, centerY - 8, `${cost}G`, {
+      fontSize: '10px',
+      fontFamily: 'Arial, sans-serif',
+      color: costColor,
+      fontStyle: 'bold',
+    }).setOrigin(1, 0.5);
+    this.infoContainer.add(costText);
+
+    // Bottom row: "소형 범위 피해 추가 • 범위형"
+    const tags = this._getBranchTags(branchStats);
+    const tagStr = tags.length ? ` \u2022 ${tags.join(' ')}` : '';
+    const bottomStr = `${desc || ''}${tagStr}`;
+    const bottomText = this.scene.add.text(28, centerY + 6, bottomStr, {
+      fontSize: '8px',
+      fontFamily: 'Arial, sans-serif',
+      color: '#a0a0b0',
+    }).setOrigin(0, 0.5);
+    this.infoContainer.add(bottomText);
+
+    return btn;
+  }
+
+  /**
+   * Calculate stat difference percentages between current and branch stats.
+   * @param {object} current - {damage, fireRate, range}
+   * @param {object} branch - Branch level stats
+   * @returns {string} Formatted stat diff string
+   * @private
+   */
+  _calcStatDiff(current, branch) {
+    const parts = [];
+    // ATK
+    const atkDiff = Math.round((branch.damage / current.damage - 1) * 100);
+    if (atkDiff !== 0) {
+      parts.push(`ATK${atkDiff > 0 ? '+' : ''}${atkDiff}%`);
+    }
+    // SPD (fireRate decrease = speed increase, so invert sign)
+    const spdDiff = Math.round((1 - branch.fireRate / current.fireRate) * 100);
+    if (spdDiff !== 0) {
+      parts.push(`SPD${spdDiff > 0 ? '+' : ''}${spdDiff}%`);
+    }
+    // RNG
+    const rngDiff = Math.round((branch.range / current.range - 1) * 100);
+    if (rngDiff !== 0) {
+      parts.push(`RNG${rngDiff > 0 ? '+' : ''}${rngDiff}%`);
+    }
+    return parts.join(' ');
+  }
+
+  /**
+   * Derive specialization tags from branch stats (max 2).
+   * @param {object} branchStats - Branch level stats
+   * @returns {string[]} Array of localized tag strings
+   * @private
+   */
+  _getBranchTags(branchStats) {
+    const tags = [];
+    if (branchStats.attackType === 'splash' || branchStats.attackType === 'aoe_instant' || branchStats.splashRadius) {
+      tags.push(t('branch.tag.aoe'));
+    }
+    if (branchStats.slowAmount >= 0.5) {
+      tags.push(t('branch.tag.stun'));
+    } else if (branchStats.slowAmount > 0) {
+      tags.push(t('branch.tag.slow'));
+    }
+    if (branchStats.burnDamage) {
+      tags.push(t('branch.tag.burn'));
+    }
+    if (branchStats.poisonDamage) {
+      tags.push(t('branch.tag.poison'));
+    }
+    if (branchStats.armorPiercing === true) {
+      tags.push(t('branch.tag.pierce'));
+    }
+    if (branchStats.armorReduction) {
+      tags.push(t('branch.tag.debuff'));
+    }
+    if (branchStats.pushbackDistance) {
+      tags.push(t('branch.tag.push'));
+    }
+    if (branchStats.chainCount) {
+      tags.push(t('branch.tag.chain'));
+    }
+    // If no tags matched, it's a single-target type
+    if (tags.length === 0) {
+      tags.push(t('branch.tag.single'));
+    }
+    // Limit to 2 tags
+    return tags.slice(0, 2);
   }
 
   /**

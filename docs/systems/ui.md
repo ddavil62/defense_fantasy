@@ -18,13 +18,82 @@ HUD, TowerPanel, 일시정지, 게임속도, 통계, 골드 싱크 UI, 모바일
   - 하단 행: 바위, 독안개, 바람, 빛, 드래곤(잠금)
 - 판매(S)/속도(x1) 버튼: 상단 행 우측
 - 타워 미선택 시: 타워 그리드만 표시
-- Lv.1 타워 선택 시: A/B Lv.2 업그레이드 버튼
-- Lv.2 타워 선택 시: A/B Lv.3 업그레이드 버튼
+- Lv.1 타워 선택 시: A/B Lv.2 업그레이드 2줄 분기 버튼
+- Lv.2 타워 선택 시: A/B Lv.3 업그레이드 2줄 분기 버튼
 - Lv.3 타워 선택 시 (강화 가능): 보라색(0x8854d0) 강화 버튼 표시
 - Lv.3 타워 선택 시 (최대 강화): 금색 "최대 강화" 텍스트
 - Lv.3 타워 선택 시 (강화 불가/기본): "MAX LEVEL" + 판매 버튼
 - 타워 이름에 강화 레벨 `+N` 표시 (예: "궁수 Lv.3AA +5")
 - 드래곤 잠금: 자물쇠 아이콘, "????G", alpha=0.4, 클릭 불가
+
+## 업그레이드 분기 버튼 (A/B)
+
+Lv.1->Lv.2, Lv.2->Lv.3 업그레이드 시 A/B 분기를 2줄 레이아웃 버튼으로 표시.
+
+### 버튼 구조
+
+```
+┌──────────────────────────────────────────────────────────┐
+│ A: 폭발 화살  ATK+60% SPD+13%                      60G  │  <- 상단 행 (10px bold)
+│    소형 범위 피해 추가 • 범위형                           │  <- 하단 행 (8px #a0a0b0)
+└──────────────────────────────────────────────────────────┘
+```
+
+### 레이아웃 수치
+
+- 버튼 크기: 340x32px
+- infoBg: 패널 전체 영역 (GAME_WIDTH x PANEL_HEIGHT), alpha 0.92
+- 타워 정보 텍스트: Y = PANEL_Y + 8 (패널 내부 상단, 10px)
+- A 버튼 centerY: PANEL_Y + 42 (= 562)
+- B 버튼 centerY: PANEL_Y + 78 (= 598)
+- 판매 버튼 Y: PANEL_Y + 106 (= 626)
+- A 분기 색상: COLORS.BUTTON_ACTIVE (파랑), B 분기 색상: 0x2d8a4e (초록)
+
+### 상단 행
+
+- `{분기라벨}: {분기이름}  {스탯변화}` (좌측 정렬, 10px bold 흰색)
+- `{비용}G` (우측 정렬, 10px bold)
+
+### 하단 행
+
+- `{branchDesc} bullet {특화태그}` (좌측 정렬, 8px #a0a0b0)
+
+### 스탯 변화율 (`_calcStatDiff`)
+
+| 스탯 | 계산식 | 표시 조건 |
+|---|---|---|
+| ATK | `(branch.damage / current.damage - 1) * 100` | 변화 != 0% |
+| SPD | `(1 - branch.fireRate / current.fireRate) * 100` | 변화 != 0% |
+| RNG | `(branch.range / current.range - 1) * 100` | 변화 != 0% |
+
+- fireRate 감소 = 공속 증가이므로 부호 반전 표시
+
+### 특화 태그 (`_getBranchTags`)
+
+| 조건 | 태그 (ko/en) |
+|---|---|
+| `attackType === 'splash'/'aoe_instant'` 또는 `splashRadius` | 범위형/AOE |
+| `slowAmount >= 0.5` | 강감속/Stun |
+| `slowAmount > 0 && < 0.5` | 감속형/Slow |
+| `burnDamage` 존재 | 화상형/Burn |
+| `poisonDamage` 존재 | 독형/Poison |
+| `armorPiercing === true` | 관통형/Pierce |
+| `armorReduction` 존재 | 약화형/Debuff |
+| `pushbackDistance` 존재 | 밀치기형/Push |
+| `chainCount` 존재 | 연쇄형/Chain |
+| 해당 없음 | 단일형/Single |
+
+- 최대 2개 태그, 공백으로 구분
+
+### 골드 부족 표시
+
+- 버튼 alpha: 0.35 (어둡게)
+- 비용 텍스트 색상: #ff4757 (빨간색)
+- `showTowerInfo()` 호출 시점에 계산 (실시간 갱신 미지원)
+
+### Lv.1/Lv.2 통합
+
+`isLv1` 플래그로 분기. Lv.1->2는 `2a`/`2b` 키, Lv.2->3는 `3{branch}a`/`3{branch}b` 키 사용.
 
 ## 타워 설명 팝업
 

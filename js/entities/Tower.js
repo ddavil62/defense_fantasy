@@ -788,6 +788,11 @@ export class Tower {
       upgrade3BCost: this.level === 2 ? TOWER_STATS[this.type].levels[`3${this.branch}b`].cost : null,
       upgrade3AName: this.level === 2 ? TOWER_STATS[this.type].levels[`3${this.branch}a`].branchName : null,
       upgrade3BName: this.level === 2 ? TOWER_STATS[this.type].levels[`3${this.branch}b`].branchName : null,
+      // Branch descriptions
+      upgradeADesc: this.level === 1 ? TOWER_STATS[this.type].levels['2a'].branchDesc : null,
+      upgradeBDesc: this.level === 1 ? TOWER_STATS[this.type].levels['2b'].branchDesc : null,
+      upgrade3ADesc: this.level === 2 ? TOWER_STATS[this.type].levels[`3${this.branch}a`].branchDesc : null,
+      upgrade3BDesc: this.level === 2 ? TOWER_STATS[this.type].levels[`3${this.branch}b`].branchDesc : null,
     };
   }
 
