@@ -1,21 +1,21 @@
 # 타워 시스템
 
-10종 타워, 각 Lv.1 + Lv.2 A/B + Lv.3 A/B = 40종 최종형. Lv.3 이후 골드 투자 강화(최대 +10).
+10종 기본 타워 (Lv.1). 타워 간 드래그&드롭 머지로 상위 티어 합성 (Phase 2 이후 활성화). 강화(+1~+10)로 스탯 추가 보강.
 
 ## 타워 목록
 
-| 타워 | 설치비 | 공격 타입 | 핵심 특성 |
-|---|---|---|---|
-| 궁수 | 50G | 단일(Lv.1/B), 범위(A) | A: splashRadius=30 범위 피해 / B: 사거리 168px 고대미지 |
-| 마법사 | 100G | 광역 폭발 | A: 폭발 반경 60px, 45 피해 / B: 공속 1.2초, 20% 슬로우 |
-| 얼음 | 75G | 단일(Lv.1/A), 즉발 광역(B) | A: 단일 대상 0.5초 완전 정지 / B: 즉발 60px 광역 40% 슬로우 |
-| 번개 | 120G | 체인 연쇄 즉발 | A: 6체인, 80% 유지 / B: 4체인, 50% 이동속도 감소 2초 |
-| 불꽃 | 90G | 단일 도트(Lv.1/A), 즉발 광역(B) | A: 화상 8/초x3초 / B: 50px 광역 화상 도트 |
-| 바위 | 110G | 단일(Lv.1/A), 범위(B) | A: 70 피해, 방어력 무시 / B: 60px 범위 0.5초 완전 정지 |
-| 독안개 | 95G | 즉발 광역 | A: 방어력 35% 감소, 독 6/초 / B: 100px 범위, 독 2중첩 |
-| 바람 | 80G | 단일(Lv.1/A), 즉발 광역(B) | A: 4타일 밀치기 / B: 3개 동시 1타일 밀치기 |
-| 빛 | 130G | 관통 빔(Lv.1/A), 즉발 광역(B) | A: 일직선 관통 + 도트 / B: 80px 원형 광역 35 피해 |
-| 드래곤 | 250G | 즉발 광역(Lv.1/A), 단일 도트(B) | 50 Diamond 해금. Lv.3: 용왕 화염/지옥 브레스/독용의 역병/혼돈의 용 |
+| 타워 | 설치비 | 공격 타입 | 핵심 특성 | 잠금 |
+|---|---|---|---|---|
+| 궁수 | 50G | 단일 | damage:10, fireRate:0.8, range:120 | - |
+| 마법사 | 100G | 범위 폭발 | damage:25, fireRate:2.0, range:100, splashRadius:40 | - |
+| 얼음 | 75G | 단일 | damage:8, fireRate:1.5, range:100, slow:0.3/2.0s | - |
+| 번개 | 120G | 체인 연쇄 즉발 | damage:20, fireRate:1.0, range:120, 4체인 | - |
+| 불꽃 | 90G | 단일 도트 | damage:12, fireRate:1.2, range:100, burn:5/3s | - |
+| 바위 | 110G | 단일 | damage:40, fireRate:2.5, range:80 | - |
+| 독안개 | 95G | 즉발 광역 | damage:5, fireRate:2.0, range:120, poison:4/4s | - |
+| 바람 | 80G | 단일 | damage:5, fireRate:1.0, range:100, pushback:80 | - |
+| 빛 | 130G | 관통 빔 | damage:20, fireRate:1.5, range:600 | - |
+| 드래곤 | 250G | 범위 폭발 | damage:60, fireRate:2.5, range:160, splashRadius:80 | 50 Diamond |
 
 ## 공격 타입 (7종)
 
@@ -27,40 +27,84 @@
 - `dot_splash` -- 범위 지속 피해
 - `piercing_beam` -- 일직선 관통 빔 (즉발)
 
-## 업그레이드 구조
+## 타워 잠금 시스템
 
-```
-Lv.1 → Lv.2 A (공격 특화)  → Lv.3 AA / Lv.3 AB
-     → Lv.2 B (유틸 특화)  → Lv.3 BA / Lv.3 BB
-```
+`TOWER_STATS[type]`의 `locked`/`unlockCost` 필드로 범용 관리.
 
-- Lv.2: A(공격 특화) / B(유틸/서포트 특화) 분기 선택
-- Lv.3: 다시 A/B 분기하여 총 4종의 최종형
-- 비용: 인게임 Gold만 사용 (Diamond 관여 없음)
-- 판매 가격: 총 투자 비용의 60%
+- `locked: false` (또는 undefined) = 사용 가능
+- `locked: true` = 잠금 상태, Diamond로 해금
+- `unlockCost`: 해금에 필요한 Diamond 수량
+- 현재 드래곤만 `locked: true`, `unlockCost: 50`
+- 해금 정보는 `saveData.unlockedTowers[]` 배열에 저장
 
-## Lv.3 최종형 40종
+## 머지 시스템 (인프라 구축 완료, Phase 2에서 활성화)
 
-| 타워 | 3AA | 3AB | 3BA | 3BB |
-|---|---|---|---|---|
-| 궁수 | 폭풍 화살우 | 광역 저지 | 초고속 저격 | 마킹 저격 |
-| 마법사 | 대폭발 | 중력 붕괴 | 마나 격류 | 마법 폭풍 |
-| 얼음 | 절대 빙결 | 파쇄 빙격 | 냉기 폭풍 | 빙하 영역 |
-| 번개 | 천둥신의 심판 | 초전도 연쇄 | 방전 폭풍 | 완전 마비 |
-| 불꽃 | 지옥불 | 불사신의 저주 | 대화염 폭풍 | 용암 지대 |
-| 바위 | 산사태 | 분쇄 파편 | 거대 낙석 | 지진 |
-| 독안개 | 치명적 맹독 | 역병의 안개 | 독 폭풍 | 부패 영역 |
-| 바람 | 대태풍 | 바람 감옥 | 폭풍의 눈 | 질풍 제어 |
-| 빛 | 태양광 레이저 | 신성 레이저 | 성광 폭발 | 정화의 빛 |
-| 드래곤 | 용왕 화염 | 지옥 브레스 | 독용의 역병 | 혼돈의 용 |
+기본 10종 타워를 재료로 드래그&드롭 합성하여 상위 티어 타워를 생성하는 시스템.
+
+### 기본 구조
+
+- 1티어: 기본 재료 타워 10종
+- 2티어: 기본 타워 2개 조합 (동종 10 + 이종 45 = 55종, Phase 2에서 등록)
+- 3~5티어: Phase 3~4에서 정의
+
+### 데이터 구조 (config.js)
+
+- `MERGE_RECIPES`: 합성 레시피 테이블 (키 = typeA+typeB 알파벳 정렬, 값 = { id, tier, displayName, color })
+- `MERGED_TOWER_STATS`: 합성 타워 스탯 테이블 (키 = mergeId, 값 = 스탯 객체)
+- Phase 1에서 두 객체 모두 빈 상태
+
+### 헬퍼 함수
+
+| 함수 | 역할 |
+|---|---|
+| `getMergeKey(typeA, typeB)` | 알파벳 오름차순 정렬 후 `+`로 연결한 키 반환 |
+| `getMergeResult(typeA, typeB)` | MERGE_RECIPES에서 결과 조회, 없으면 null |
+| `isMergeable(tower)` | `tower.enhanceLevel === 0` 체크 |
+| `isUsedAsMergeIngredient(id)` | MERGE_RECIPES에서 해당 id가 재료로 쓰이는지 확인 |
+
+### 합성 규칙
+
+- 합성 결과는 확정값 (실패 없음, 미등록 조합은 합성 불가 피드백)
+- 조합 순서 무관 (A+B == B+A)
+- 강화(`enhanceLevel >= 1`) 타워는 드래그 불가, 드롭 대상으로도 합성 불가
+- 합성 비용: 없음 (타워 배치 비용만)
+- 합성 결과 위치: 드롭 대상(B) 위치에 생성
+- 판매 가격: `floor(totalInvested * 0.6)` -- totalInvested는 두 재료의 투자 비용 합산
+- 합성 완료 시 `saveData.discoveredMerges`에 mergeId 등록
+
+### Tower.js 머지 관련 속성/메서드
+
+| 속성/메서드 | 설명 |
+|---|---|
+| `tier` | 타워 티어 (1=기본, 2~5=합성) |
+| `mergeId` | 합성 결과 ID (기본 타워는 null) |
+| `applyMergeResult(mergeData)` | mergeId/tier 설정, MERGED_TOWER_STATS에서 스탯 로드 |
+| `getInfo()` | tier, mergeId, displayName, isMergeable 포함 |
+
+### 티어별 시각 효과
+
+| 티어 | 테두리 색상 | 두께 | alpha |
+|---|---|---|---|
+| 2 | 은색 (0xb2bec3) | 2px | 0.8 |
+| 3 | 금색 (0xffd700) | 2.5px | 0.7 |
+| 4 | 보라 (0xa29bfe) | 3px | 0.8 |
+| 5 | 금색 (0xffd700) 정적 | 3px | 0.9 |
+
+### Phase 1 상태
+
+- `MERGE_RECIPES = {}` 이므로 드래그/머지 힌트 비활성화
+- `hasRecipes` 가드(`Object.keys(MERGE_RECIPES).length > 0`)로 제어
+- Phase 2에서 55종 레시피 추가 시 자동 활성화
 
 ## 타워 강화 시스템 (골드 싱크)
 
-Lv.3 타워에 추가 골드를 투자하여 스탯을 강화한다.
+추가 골드를 투자하여 스탯을 강화한다.
 
 ### 기본 규칙
 
-- **대상**: Lv.3 이상 타워만 강화 가능
+- **대상**: `canEnhance()` = `enhanceLevel < MAX_ENHANCE_LEVEL && !isUsedAsMergeIngredient(id)`
+  - Phase 1: MERGE_RECIPES가 비어있으므로 모든 기본 타워가 강화 가능
+  - Phase 2 이후: 레시피 재료로 쓰이는 타워는 강화 불가 (합성 우선)
 - **최대 레벨**: +10
 - **비용**: `200 + 100 * currentEnhanceLevel` (에스컬레이팅)
 - **1기 풀강화 총비용**: 6,500G
@@ -75,19 +119,19 @@ Lv.3 타워에 추가 골드를 투자하여 스탯을 강화한다.
 
 +10 풀강화 시 누적 보너스: 공격력 약 +63%, 사거리 약 +28%, 공속 약 -22%.
 
-### Tower.js 관련 속성/메서드
+### Tower.js 강화 관련 속성/메서드
 
 - `enhanceLevel`: 현재 강화 레벨 (0~10)
 - `enhanceInvested`: 강화에 투자한 총 골드
 - `enhance()`: 강화 실행 (스탯 적용 + 레벨 증가)
-- `canEnhance()`: 강화 가능 여부 (Lv.3 이상 + MAX 미달)
+- `canEnhance()`: 강화 가능 여부
 - `getEnhanceCost()`: 현재 강화 비용 반환
 - `_drawEnhanceGlow()`: 금색 글로우 링 시각 효과 렌더링
 
 ### 시각 효과
 
 - 강화된 타워에 금색 글로우 링 표시
-- 타워 이름에 `+N` 표시 (예: "궁수 Lv.3AA +5")
+- 타워 이름에 `+N` 표시 (예: "Archer +5")
 - 최대 강화 시 금색 "최대 강화" 텍스트
 
 ## 배치 & 타겟팅
@@ -96,10 +140,9 @@ Lv.3 타워에 추가 골드를 투자하여 스탯을 강화한다.
 - 배치 가능/불가 시각 피드백
 - 타겟팅 우선순위: First (경로 진행도 최고)
 - 타워 호버 시 사거리 원형 프리뷰 표시
-- Lv.3 타워 도형 크기 1.35배 스케일
 
 ## 메타 업그레이드 (컬렉션 모드)
 
 - 타워당 3티어 x A/B 분기 (총 60개 옵션)
 - Diamond 소모, 영구 스탯 보너스 (damage, range, cooldown 등)
-- 인게임 타워 배치/업그레이드 시 자동 적용
+- 인게임 타워 배치 시 자동 적용

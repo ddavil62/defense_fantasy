@@ -7,7 +7,6 @@
 import {
   GAME_WIDTH, GAME_HEIGHT, COLORS, SAVE_KEY,
   TOWER_STATS, META_UPGRADE_TREE, UTILITY_UPGRADES,
-  DRAGON_UNLOCK_COST,
 } from '../config.js';
 
 /** @const {string[]} Tower type order for the card grid */
@@ -149,14 +148,14 @@ export class CollectionScene extends Phaser.Scene {
    */
   _createTowerCard(type, x, y) {
     const stats = TOWER_STATS[type];
-    const isDragon = type === 'dragon';
-    const isUnlocked = isDragon ? (this.saveData.dragonUnlocked || false) : true;
+    const unlockedTowers = this.saveData.unlockedTowers || [];
+    const isUnlocked = !stats.locked || unlockedTowers.includes(type);
 
     const cx = x + CARD_W / 2;
     const cy = y + CARD_H / 2;
 
     if (!isUnlocked) {
-      // Locked dragon card
+      // Locked tower card
       const bg = this.add.rectangle(cx, cy, CARD_W, CARD_H, COLORS.BACKGROUND)
         .setAlpha(0.6)
         .setStrokeStyle(2, 0x636e72)
@@ -174,21 +173,22 @@ export class CollectionScene extends Phaser.Scene {
       lockG.fillCircle(cx, y + 20 + 2, 2);
 
       // Name
-      this.add.text(cx, y + 52, 'Dragon', {
+      this.add.text(cx, y + 52, stats.displayName, {
         fontSize: '12px',
         fontFamily: 'Arial, sans-serif',
         color: '#636e72',
       }).setOrigin(0.5);
 
       // Cost
-      this.add.text(cx, y + 68, `◆${DRAGON_UNLOCK_COST}`, {
+      const unlockCost = stats.unlockCost || 0;
+      this.add.text(cx, y + 68, `◆${unlockCost}`, {
         fontSize: '11px',
         fontFamily: 'Arial, sans-serif',
         color: COLORS.DIAMOND_CSS,
       }).setOrigin(0.5);
 
       bg.on('pointerdown', () => {
-        this._showDragonUnlockPopup();
+        this._showTowerUnlockPopup(type);
       });
     } else {
       // Normal / unlocked tower card
@@ -990,17 +990,20 @@ export class CollectionScene extends Phaser.Scene {
     this._showUtilityDetailView(key);
   }
 
-  // ── Dragon Unlock Popup ──────────────────────────────────────
+  // ── Tower Unlock Popup ──────────────────────────────────────
 
   /**
-   * Show the dragon tower unlock confirmation popup.
+   * Show the tower unlock confirmation popup (generic, works for any locked tower).
+   * @param {string} type - Tower type key
    * @private
    */
-  _showDragonUnlockPopup() {
+  _showTowerUnlockPopup(type) {
     if (this.overlay) this.overlay.destroy();
 
+    const stats = TOWER_STATS[type];
+    const unlockCost = stats.unlockCost || 0;
     const diamond = this.saveData.diamond || 0;
-    const canAfford = diamond >= DRAGON_UNLOCK_COST;
+    const canAfford = diamond >= unlockCost;
 
     this.overlay = this.add.container(0, 0).setDepth(50);
 
@@ -1017,16 +1020,16 @@ export class CollectionScene extends Phaser.Scene {
     const popY = GAME_HEIGHT / 2;
 
     const popBg = this.add.rectangle(popX, popY, popW, popH, COLORS.UI_PANEL)
-      .setStrokeStyle(2, COLORS.DRAGON_TOWER);
+      .setStrokeStyle(2, stats.color);
     this.overlay.add(popBg);
 
-    // Dragon icon
+    // Tower icon
     const iconG = this.add.graphics();
-    this._drawTowerIcon(iconG, 'dragon', popX - 50, popY - 55, 1.2);
+    this._drawTowerIcon(iconG, type, popX - 50, popY - 55, 1.2);
     this.overlay.add(iconG);
 
     // Title
-    const titleText = this.add.text(popX + 10, popY - 55, 'Dragon Tower', {
+    const titleText = this.add.text(popX + 10, popY - 55, `${stats.displayName} Tower`, {
       fontSize: '16px',
       fontFamily: 'Arial, sans-serif',
       color: '#ffffff',
@@ -1035,7 +1038,7 @@ export class CollectionScene extends Phaser.Scene {
     this.overlay.add(titleText);
 
     // Description
-    const descText = this.add.text(popX, popY - 25, 'Unlock Dragon Tower?', {
+    const descText = this.add.text(popX, popY - 25, `Unlock ${stats.displayName} Tower?`, {
       fontSize: '14px',
       fontFamily: 'Arial, sans-serif',
       color: '#ffffff',
@@ -1044,7 +1047,7 @@ export class CollectionScene extends Phaser.Scene {
 
     // Cost
     const costColor = canAfford ? COLORS.DIAMOND_CSS : '#ff4757';
-    const costText = this.add.text(popX, popY + 0, `Cost: ◆ ${DRAGON_UNLOCK_COST}`, {
+    const costText = this.add.text(popX, popY + 0, `Cost: \u25C6 ${unlockCost}`, {
       fontSize: '14px',
       fontFamily: 'Arial, sans-serif',
       color: costColor,
@@ -1057,7 +1060,7 @@ export class CollectionScene extends Phaser.Scene {
       .setStrokeStyle(1, canAfford ? 0xffffff : 0x636e72);
     this.overlay.add(unlockBg);
 
-    const unlockText = this.add.text(popX - 55, popY + 45, `Unlock ◆${DRAGON_UNLOCK_COST}`, {
+    const unlockText = this.add.text(popX - 55, popY + 45, `Unlock \u25C6${unlockCost}`, {
       fontSize: '12px',
       fontFamily: 'Arial, sans-serif',
       color: canAfford ? '#ffffff' : '#636e72',
@@ -1068,7 +1071,7 @@ export class CollectionScene extends Phaser.Scene {
     if (canAfford) {
       unlockBg.setInteractive({ useHandCursor: true });
       unlockBg.on('pointerdown', () => {
-        this._unlockDragon();
+        this._unlockTower(type);
       });
     }
 
@@ -1091,14 +1094,21 @@ export class CollectionScene extends Phaser.Scene {
   }
 
   /**
-   * Unlock the dragon tower, deducting Diamond and updating save data.
+   * Unlock a tower, deducting Diamond and updating save data.
+   * @param {string} type - Tower type key to unlock
    * @private
    */
-  _unlockDragon() {
-    if ((this.saveData.diamond || 0) < DRAGON_UNLOCK_COST) return;
+  _unlockTower(type) {
+    const unlockCost = TOWER_STATS[type].unlockCost || 0;
+    if ((this.saveData.diamond || 0) < unlockCost) return;
 
-    this.saveData.diamond -= DRAGON_UNLOCK_COST;
-    this.saveData.dragonUnlocked = true;
+    this.saveData.diamond -= unlockCost;
+
+    // Add to unlockedTowers array
+    if (!this.saveData.unlockedTowers) this.saveData.unlockedTowers = [];
+    if (!this.saveData.unlockedTowers.includes(type)) {
+      this.saveData.unlockedTowers.push(type);
+    }
 
     this._saveToDB(this.saveData);
     this._closeOverlay();

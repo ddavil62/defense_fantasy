@@ -5,9 +5,10 @@
  */
 
 import {
-  TOWER_STATS, MAX_TOWER_LEVEL, SELL_RATIO, COLORS, VISUALS,
-  TOWER_SHAPE_SIZE, LV3_SHAPE_SCALE, gridToPixel,
+  TOWER_STATS, SELL_RATIO, COLORS, VISUALS,
+  TOWER_SHAPE_SIZE, gridToPixel,
   MAX_ENHANCE_LEVEL, ENHANCE_STAT_BONUS, calcEnhanceCost,
+  isMergeable, isUsedAsMergeIngredient, MERGED_TOWER_STATS,
 } from '../config.js';
 
 export class Tower {
@@ -21,17 +22,14 @@ export class Tower {
     /** @type {Phaser.Scene} */
     this.scene = scene;
 
-    /** @type {string} */
+    /** @type {string} Base tower type */
     this.type = type;
 
-    /** @type {number} */
-    this.level = 1;
+    /** @type {number} Merge tier (1=base, 2-5=merged) */
+    this.tier = 1;
 
-    /** @type {string|null} Branch selection ('a' or 'b'), null at Lv.1 */
-    this.branch = null;
-
-    /** @type {string|null} Lv.3 sub-branch selection ('a' or 'b'), null at Lv.1/2 */
-    this.branch3 = null;
+    /** @type {string|null} Merge result ID (null for base towers) */
+    this.mergeId = null;
 
     /** @type {number} Grid column */
     this.col = col;
@@ -79,8 +77,7 @@ export class Tower {
     this.graphics.clear();
     const color = TOWER_STATS[this.type].color;
 
-    // Lv.3 shape scale multiplier
-    const sizeScale = this.level >= 3 ? LV3_SHAPE_SCALE : 1.0;
+    const sizeScale = 1.0;
 
     switch (this.type) {
       case 'archer':
@@ -115,14 +112,9 @@ export class Tower {
         break;
     }
 
-    // Lv.2 indicator: branch-specific border
-    if (this.level >= 2) {
-      this._drawLv2Border();
-    }
-
-    // Lv.3 indicator: gold outer border
-    if (this.level >= 3) {
-      this._drawLv3Border();
+    // Tier border indicators
+    if (this.tier >= 2) {
+      this._drawTierBorder();
     }
 
     // Enhancement glow indicator
@@ -132,156 +124,27 @@ export class Tower {
   }
 
   /**
-   * Draw Lv.2 border indicator based on tower type and branch.
+   * Draw tier-based border indicator.
+   * Tier 2 = silver, Tier 3 = gold, Tier 4 = purple, Tier 5 = rainbow.
    * @private
    */
-  _drawLv2Border() {
-    const borderColor = this._getBranchBorderColor();
-    this.graphics.lineStyle(2, borderColor, 0.8);
-
-    switch (this.type) {
-      case 'archer': {
-        const s = this.branch === 'b' ? 32 : TOWER_SHAPE_SIZE.archer;
-        this.graphics.strokeTriangle(
-          this.x, this.y - s / 2,
-          this.x - s / 2, this.y + s / 2,
-          this.x + s / 2, this.y + s / 2
-        );
-        break;
-      }
-      case 'mage':
-        this.graphics.strokeCircle(this.x, this.y, TOWER_SHAPE_SIZE.mage);
-        break;
-      case 'ice': {
-        const sz = (this.branch === 'b' ? 24 : TOWER_SHAPE_SIZE.ice) / 2;
-        this.graphics.strokePoints([
-          { x: this.x, y: this.y - sz },
-          { x: this.x + sz, y: this.y },
-          { x: this.x, y: this.y + sz },
-          { x: this.x - sz, y: this.y },
-        ], true);
-        // A branch: internal crystal lines
-        if (this.branch === 'a') {
-          this.graphics.lineStyle(1, 0xffffff, 0.5);
-          this.graphics.lineBetween(this.x, this.y - 4, this.x, this.y + 4);
-          this.graphics.lineBetween(this.x - 4, this.y, this.x + 4, this.y);
-        }
-        break;
-      }
-      case 'lightning': {
-        const h = TOWER_SHAPE_SIZE.lightning;
-        const w = h * 0.5;
-        this.graphics.strokeRect(this.x - w / 2 - 2, this.y - h / 2 - 2, w + 4, h + 4);
-        break;
-      }
-      case 'flame':
-        this.graphics.strokeCircle(this.x, this.y, TOWER_SHAPE_SIZE.flame + 3);
-        break;
-      case 'rock': {
-        const r = TOWER_SHAPE_SIZE.rock / 2 + 2;
-        this._strokeHexagon(this.x, this.y, r);
-        break;
-      }
-      case 'poison': {
-        const r = (this.branch === 'b' ? 26 : TOWER_SHAPE_SIZE.poison) / 2 + 2;
-        this._strokePentagon(this.x, this.y, r);
-        break;
-      }
-      case 'wind':
-        this.graphics.strokeCircle(this.x, this.y - 2, 16);
-        break;
-      case 'light':
-        this._strokeOctagon(this.x, this.y, TOWER_SHAPE_SIZE.light / 2 + 2);
-        break;
-      case 'dragon':
-        this.graphics.lineStyle(2, 0xffd700, 0.9);
-        this.graphics.strokeCircle(this.x, this.y, 22);
-        break;
-    }
-  }
-
-  /**
-   * Draw Lv.3 border indicator (gold outer border for Lv.3 distinction).
-   * @private
-   */
-  _drawLv3Border() {
-    this.graphics.lineStyle(3, 0xffd700, 0.6);
-    const scale = LV3_SHAPE_SCALE;
-
-    switch (this.type) {
-      case 'archer': {
-        const s = TOWER_SHAPE_SIZE.archer * scale + 6;
-        this.graphics.strokeTriangle(
-          this.x, this.y - s / 2,
-          this.x - s / 2, this.y + s / 2,
-          this.x + s / 2, this.y + s / 2
-        );
-        break;
-      }
-      case 'mage':
-        this.graphics.strokeCircle(this.x, this.y, TOWER_SHAPE_SIZE.mage * scale + 4);
-        break;
-      case 'ice': {
-        const sz = (TOWER_SHAPE_SIZE.ice * scale) / 2 + 4;
-        this.graphics.strokePoints([
-          { x: this.x, y: this.y - sz },
-          { x: this.x + sz, y: this.y },
-          { x: this.x, y: this.y + sz },
-          { x: this.x - sz, y: this.y },
-        ], true);
-        break;
-      }
-      case 'lightning': {
-        const h = TOWER_SHAPE_SIZE.lightning * scale;
-        const w = h * 0.5;
-        this.graphics.strokeRect(this.x - w / 2 - 4, this.y - h / 2 - 4, w + 8, h + 8);
-        break;
-      }
-      case 'flame':
-        this.graphics.strokeCircle(this.x, this.y, TOWER_SHAPE_SIZE.flame * scale + 5);
-        break;
-      case 'rock': {
-        const r = (TOWER_SHAPE_SIZE.rock * scale) / 2 + 4;
-        this._strokeHexagon(this.x, this.y, r);
-        break;
-      }
-      case 'poison': {
-        const r = (TOWER_SHAPE_SIZE.poison * scale) / 2 + 4;
-        this._strokePentagon(this.x, this.y, r);
-        break;
-      }
-      case 'wind':
-        this.graphics.strokeCircle(this.x, this.y - 2, 12 * scale + 5);
-        break;
-      case 'light':
-        this._strokeOctagon(this.x, this.y, (TOWER_SHAPE_SIZE.light * scale) / 2 + 4);
-        break;
-      case 'dragon':
-        this.graphics.strokeCircle(this.x, this.y, 16 * scale + 5);
-        break;
-    }
-  }
-
-  /**
-   * Get the border color for the current branch.
-   * @returns {number} Hex color
-   * @private
-   */
-  _getBranchBorderColor() {
-    const colorMap = {
-      archer:    { a: 0xe17055, b: 0xffffff },
-      mage:     { a: 0xe17055, b: 0x74b9ff },
-      ice:      { a: 0xffffff, b: 0x74b9ff },
-      lightning: { a: 0xe17055, b: 0x6c5ce7 },
-      flame:    { a: 0xe17055, b: 0xd63031 },
-      rock:     { a: 0xd63031, b: 0xe17055 },
-      poison:   { a: 0x2d8a4e, b: 0xfdcb6e },
-      wind:     { a: 0xffffff, b: 0xfdcb6e },
-      light:    { a: 0xfdcb6e, b: 0xe17055 },
-      dragon:   { a: 0xffd700, b: 0xffd700 },
+  _drawTierBorder() {
+    const tierColors = {
+      2: { color: 0xb2bec3, alpha: 0.8, width: 2 },
+      3: { color: 0xffd700, alpha: 0.7, width: 2.5 },
+      4: { color: 0xa29bfe, alpha: 0.8, width: 3 },
     };
-    const entry = colorMap[this.type];
-    return entry ? entry[this.branch] || 0xffffff : 0xffffff;
+
+    const tierStyle = tierColors[this.tier];
+    if (!tierStyle && this.tier < 5) return;
+
+    // Tier 5: rainbow effect via cycling hue — simplified to a static purple-gold mix
+    const borderColor = tierStyle ? tierStyle.color : 0xffd700;
+    const borderAlpha = tierStyle ? tierStyle.alpha : 0.9;
+    const borderWidth = tierStyle ? tierStyle.width : 3;
+
+    this.graphics.lineStyle(borderWidth, borderColor, borderAlpha);
+    this.graphics.strokeCircle(this.x, this.y, 20);
   }
 
   // ── Tower Shape Drawing ───────────────────────────────────────
@@ -289,7 +152,7 @@ export class Tower {
   /**
    * Draw archer tower (upward triangle).
    * @param {number} color - Fill color
-   * @param {number} sizeScale - Size multiplier (1.0 for Lv.1/2, LV3_SHAPE_SCALE for Lv.3)
+   * @param {number} sizeScale - Size multiplier
    * @private
    */
   _drawArcher(color, sizeScale = 1.0) {
@@ -573,10 +436,12 @@ export class Tower {
 
   /**
    * Check if tower can be enhanced.
+   * Enhancement requires enhanceLevel < MAX and the tower is NOT used as a merge ingredient.
    * @returns {boolean}
    */
   canEnhance() {
-    return this.level >= 3 && this.enhanceLevel < MAX_ENHANCE_LEVEL;
+    const id = this.mergeId || this.type;
+    return this.enhanceLevel < MAX_ENHANCE_LEVEL && !isUsedAsMergeIngredient(id);
   }
 
   // ── Attack Logic ──────────────────────────────────────────────
@@ -650,41 +515,23 @@ export class Tower {
     return bestTarget;
   }
 
-  // ── Upgrade / Sell ────────────────────────────────────────────
+  // ── Merge / Sell ─────────────────────────────────────────────
 
   /**
-   * Upgrade the tower to the next level with a selected branch.
-   * Lv.1 → Lv.2: branch = 'a' or 'b' → key = '2a' or '2b'
-   * Lv.2 → Lv.3: branch = 'a' or 'b' → key = '3' + this.branch + branch
-   * @param {string} branch - Branch selection ('a' or 'b')
-   * @returns {boolean} True if upgrade succeeded
+   * Apply a merge result to this tower, transforming it into the merged tower.
+   * @param {object} mergeData - { id, tier, displayName, color } from MERGE_RECIPES
    */
-  upgrade(branch) {
-    if (this.level >= MAX_TOWER_LEVEL) return false;
+  applyMergeResult(mergeData) {
+    this.mergeId = mergeData.id;
+    this.tier = mergeData.tier;
 
-    if (this.level === 1) {
-      // Lv.1 → Lv.2
-      this.level = 2;
-      this.branch = branch;
-      const key = `2${branch}`;
-      this.stats = { ...TOWER_STATS[this.type].levels[key] };
-      this.totalInvested += this.stats.cost;
-      this.draw();
-      return true;
+    // Load stats from MERGED_TOWER_STATS
+    const mergedStats = MERGED_TOWER_STATS[mergeData.id];
+    if (mergedStats) {
+      this.stats = { ...mergedStats };
     }
 
-    if (this.level === 2) {
-      // Lv.2 → Lv.3
-      const key = `3${this.branch}${branch}`;
-      this.level = 3;
-      this.branch3 = branch;
-      this.stats = { ...TOWER_STATS[this.type].levels[key] };
-      this.totalInvested += this.stats.cost;
-      this.draw();
-      return true;
-    }
-
-    return false;
+    this.draw();
   }
 
   /**
@@ -693,34 +540,6 @@ export class Tower {
    */
   getSellPrice() {
     return Math.floor(this.totalInvested * SELL_RATIO);
-  }
-
-  /**
-   * Get the upgrade cost for a given branch.
-   * @param {string} branch - Branch ('a' or 'b')
-   * @returns {number|null} Cost or null if max level
-   */
-  getUpgradeCost(branch) {
-    if (this.level >= MAX_TOWER_LEVEL) return null;
-
-    if (this.level === 1) {
-      return TOWER_STATS[this.type].levels[`2${branch}`].cost;
-    }
-
-    if (this.level === 2) {
-      const key = `3${this.branch}${branch}`;
-      return TOWER_STATS[this.type].levels[key].cost;
-    }
-
-    return null;
-  }
-
-  /**
-   * Check if tower can be upgraded.
-   * @returns {boolean}
-   */
-  canUpgrade() {
-    return this.level < MAX_TOWER_LEVEL;
   }
 
   /**
@@ -751,48 +570,21 @@ export class Tower {
    * @returns {object} Tower info object
    */
   getInfo() {
-    let levelKey;
-    if (this.level === 1) {
-      levelKey = 1;
-    } else if (this.level === 2) {
-      levelKey = `2${this.branch}`;
-    } else if (this.level === 3) {
-      levelKey = `3${this.branch}${this.branch3}`;
-    }
-
-    const stats = TOWER_STATS[this.type].levels[levelKey];
-
     return {
       name: TOWER_STATS[this.type].displayName,
       type: this.type,
-      level: this.level,
-      branch: this.branch || null,
-      branch3: this.branch3 || null,
-      branchName: stats.branchName || null,
+      tier: this.tier,
+      mergeId: this.mergeId,
+      displayName: this.mergeId || TOWER_STATS[this.type].displayName,
+      isMergeable: isMergeable(this),
       damage: this.stats.damage,
       fireRate: this.stats.fireRate,
       range: this.stats.range,
       sellPrice: this.getSellPrice(),
-      canUpgrade: this.canUpgrade(),
       // Enhancement
       enhanceLevel: this.enhanceLevel,
       canEnhance: this.canEnhance(),
       enhanceCost: this.getEnhanceCost(),
-      // Lv.1 → 2 buttons
-      upgradeACost: this.level === 1 ? TOWER_STATS[this.type].levels['2a'].cost : null,
-      upgradeBCost: this.level === 1 ? TOWER_STATS[this.type].levels['2b'].cost : null,
-      upgradeAName: this.level === 1 ? TOWER_STATS[this.type].levels['2a'].branchName : null,
-      upgradeBName: this.level === 1 ? TOWER_STATS[this.type].levels['2b'].branchName : null,
-      // Lv.2 → 3 buttons
-      upgrade3ACost: this.level === 2 ? TOWER_STATS[this.type].levels[`3${this.branch}a`].cost : null,
-      upgrade3BCost: this.level === 2 ? TOWER_STATS[this.type].levels[`3${this.branch}b`].cost : null,
-      upgrade3AName: this.level === 2 ? TOWER_STATS[this.type].levels[`3${this.branch}a`].branchName : null,
-      upgrade3BName: this.level === 2 ? TOWER_STATS[this.type].levels[`3${this.branch}b`].branchName : null,
-      // Branch descriptions
-      upgradeADesc: this.level === 1 ? TOWER_STATS[this.type].levels['2a'].branchDesc : null,
-      upgradeBDesc: this.level === 1 ? TOWER_STATS[this.type].levels['2b'].branchDesc : null,
-      upgrade3ADesc: this.level === 2 ? TOWER_STATS[this.type].levels[`3${this.branch}a`].branchDesc : null,
-      upgrade3BDesc: this.level === 2 ? TOWER_STATS[this.type].levels[`3${this.branch}b`].branchDesc : null,
     };
   }
 

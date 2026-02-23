@@ -22,6 +22,7 @@ import {
   getMetaInitialGold, getMetaWaveBonusMultiplier,
   calcHpRecoverCost, HP_RECOVER_AMOUNT,
   CONSUMABLE_ABILITIES,
+  getMergeResult, MERGE_RECIPES, SAVE_KEY,
 } from '../config.js';
 
 import { MapManager } from '../managers/MapManager.js';
@@ -129,8 +130,8 @@ export class GameScene extends Phaser.Scene {
     this.towerMetaUpgrades = saveData?.towerUpgrades || {};
     /** @type {object} Utility upgrade tiers */
     this.utilityUpgrades = saveData?.utilityUpgrades || {};
-    /** @type {boolean} Whether dragon tower is unlocked */
-    this.dragonUnlocked = saveData?.dragonUnlocked || false;
+    /** @type {string[]} Unlocked tower types */
+    this.unlockedTowers = saveData?.unlockedTowers || [];
 
     // Phase 5: Get SoundManager reference
     /** @type {import('../managers/SoundManager.js').SoundManager|null} */
@@ -167,12 +168,12 @@ export class GameScene extends Phaser.Scene {
     // Create tower panel
     this.towerPanel = new TowerPanel(this, {
       onTowerSelect: (type) => this._onTowerTypeSelect(type),
-      onUpgrade: (tower, branch) => this._onTowerUpgrade(tower, branch),
+      onMerge: (towerA, towerB) => this._onTowerMerge(towerA, towerB),
       onEnhance: (tower) => this._onTowerEnhance(tower),
       onSell: (tower) => this._onTowerSell(tower),
       onSpeedToggle: (speed) => this._onSpeedToggle(speed),
       onDeselect: () => this._onDeselect(),
-      dragonUnlocked: this.dragonUnlocked,
+      unlockedTowers: this.unlockedTowers,
     });
     this.towerPanel.updateAffordability(this.goldManager.getGold());
 
@@ -194,6 +195,7 @@ export class GameScene extends Phaser.Scene {
     // Input handling
     this.input.on('pointerdown', (pointer) => this._onPointerDown(pointer));
     this.input.on('pointermove', (pointer) => this._onPointerMove(pointer));
+    this.input.on('pointerup', (pointer) => this._onPointerUp(pointer));
 
     // Phase 5: Start battle BGM
     if (this.soundManager) {
@@ -293,6 +295,10 @@ export class GameScene extends Phaser.Scene {
     const existingTower = this.mapManager.getTowerAt(col, row);
     if (existingTower) {
       this._selectPlacedTower(existingTower);
+      // Prepare drag for merge — actual drag starts after movement threshold
+      if (existingTower.enhanceLevel === 0 && Object.keys(MERGE_RECIPES).length > 0) {
+        this._pendingDrag = { tower: existingTower, startX: pointer.x, startY: pointer.y };
+      }
       return;
     }
 
@@ -383,26 +389,56 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
-   * Handle tower upgrade with branch selection.
-   * @param {Tower} tower - Tower to upgrade
-   * @param {string} branch - Branch selection ('a' or 'b')
+   * Handle tower merge (drag A onto B).
+   * @param {Tower} towerA - Dragged tower (will be removed)
+   * @param {Tower} towerB - Drop target (will become merge result)
    * @private
    */
-  _onTowerUpgrade(tower, branch) {
-    const upgradeCost = tower.getUpgradeCost(branch);
-    if (upgradeCost === null) return;
-    if (!this.goldManager.canAfford(upgradeCost)) return;
+  _onTowerMerge(towerA, towerB) {
+    const idA = towerA.mergeId || towerA.type;
+    const idB = towerB.mergeId || towerB.type;
+    const mergeResult = getMergeResult(idA, idB);
+    if (!mergeResult) return;
 
-    this.goldManager.spend(upgradeCost);
-    this.gameStats.goldSpent += upgradeCost;
-    tower.upgrade(branch);
-    this.gameStats.towersUpgraded++;
+    // Accumulate totalInvested
+    const combinedInvested = towerA.totalInvested + towerB.totalInvested;
 
-    // Re-apply meta upgrades after level-up (stats were reset)
-    this._applyMetaUpgradesToTower(tower);
+    // Transform towerB into the merge result
+    towerB.totalInvested = combinedInvested;
+    towerB.applyMergeResult(mergeResult);
 
-    // Refresh tower info panel
-    this._selectPlacedTower(tower);
+    // Re-apply meta upgrades to the merged tower
+    this._applyMetaUpgradesToTower(towerB);
+
+    // Remove towerA from map and tower list
+    this.mapManager.removeTower(towerA.col, towerA.row);
+    this.towers = this.towers.filter(t => t !== towerA);
+    towerA.destroy();
+
+    // Register merge discovery
+    this._registerMergeDiscovery(mergeResult.id);
+
+    // Refresh selection
+    this._selectPlacedTower(towerB);
+  }
+
+  /**
+   * Register a merge discovery in save data.
+   * @param {string} mergeId - The merge result ID
+   * @private
+   */
+  _registerMergeDiscovery(mergeId) {
+    const saveData = this.registry.get('saveData');
+    if (!saveData) return;
+    if (!saveData.discoveredMerges) saveData.discoveredMerges = [];
+    if (!saveData.discoveredMerges.includes(mergeId)) {
+      saveData.discoveredMerges.push(mergeId);
+      try {
+        localStorage.setItem(SAVE_KEY, JSON.stringify(saveData));
+      } catch (e) {
+        // Ignore
+      }
+    }
   }
 
   /**
@@ -2008,11 +2044,39 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
-   * Handle pointer move for tower range preview.
+   * Handle pointer up events (drag end).
+   * @param {Phaser.Input.Pointer} pointer
+   * @private
+   */
+  _onPointerUp(pointer) {
+    this._pendingDrag = null;
+    if (this.towerPanel && this.towerPanel.isDragging()) {
+      this.towerPanel.endDrag(pointer, (col, row) => this.mapManager.getTowerAt(col, row));
+    }
+  }
+
+  /**
+   * Handle pointer move for tower range preview and drag ghost update.
    * @param {Phaser.Input.Pointer} pointer
    * @private
    */
   _onPointerMove(pointer) {
+    // Check pending drag threshold (10px movement to start drag)
+    if (this._pendingDrag) {
+      const dx = pointer.x - this._pendingDrag.startX;
+      const dy = pointer.y - this._pendingDrag.startY;
+      if (dx * dx + dy * dy > 100) { // 10px threshold
+        this.towerPanel.startDrag(this._pendingDrag.tower, pointer);
+        this._pendingDrag = null;
+      }
+    }
+
+    // Update drag ghost if dragging
+    if (this.towerPanel && this.towerPanel.isDragging()) {
+      this.towerPanel.updateDrag(pointer);
+      return;
+    }
+
     if (!this.rangePreviewGraphics) return;
     this.rangePreviewGraphics.clear();
 

@@ -58,6 +58,8 @@ const STRINGS = {
     // 강화 시스템
     'ui.enhance': '강화 +{level} ({cost}G)',
     'ui.maxEnhance': '최대 강화',
+    // 합성 시스템
+    'ui.dragToMerge': '드래그하여 합성',
     // HP 회복
     'ui.hpRecover': '+HP ({cost}G)',
     'ui.hpRecoverFull': 'HP 최대',
@@ -106,6 +108,8 @@ const STRINGS = {
     // Enhancement system
     'ui.enhance': 'Enhance +{level} ({cost}G)',
     'ui.maxEnhance': 'MAX Enhanced',
+    // Merge system
+    'ui.dragToMerge': 'Drag to merge',
     // HP recovery
     'ui.hpRecover': '+HP ({cost}G)',
     'ui.hpRecoverFull': 'HP Full',

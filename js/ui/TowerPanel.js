@@ -8,6 +8,7 @@ import {
   TOWER_STATS, TOWER_SHAPE_SIZE, GOLD_TEXT_CSS, CELL_SIZE,
   SPEED_NORMAL, SPEED_FAST, SPEED_TURBO, LONG_PRESS_MS,
   MAX_ENHANCE_LEVEL,
+  isMergeable, getMergeResult, MERGE_RECIPES, pixelToGrid, GRID_COLS, GRID_ROWS, HUD_HEIGHT,
 } from '../config.js';
 import { t } from '../i18n.js';
 
@@ -16,11 +17,12 @@ export class TowerPanel {
    * @param {Phaser.Scene} scene - The game scene
    * @param {object} callbacks - Event callbacks
    * @param {Function} callbacks.onTowerSelect - Called when a tower type is selected
-   * @param {Function} callbacks.onUpgrade - Called when upgrade button is pressed (tower, branch)
+   * @param {Function} callbacks.onMerge - Called when merge drag succeeds (towerA, towerB)
+   * @param {Function} callbacks.onEnhance - Called when enhance button is pressed
    * @param {Function} callbacks.onSell - Called when sell button is pressed
    * @param {Function} callbacks.onSpeedToggle - Called when speed button is pressed
    * @param {Function} callbacks.onDeselect - Called when selection is cleared
-   * @param {boolean} [callbacks.dragonUnlocked] - Whether dragon tower is unlocked
+   * @param {string[]} [callbacks.unlockedTowers] - Array of unlocked tower type keys
    */
   constructor(scene, callbacks) {
     /** @type {Phaser.Scene} */
@@ -29,8 +31,8 @@ export class TowerPanel {
     /** @type {object} */
     this.callbacks = callbacks;
 
-    /** @type {boolean} Whether dragon tower is unlocked via Diamond */
-    this.dragonUnlocked = callbacks.dragonUnlocked || false;
+    /** @type {string[]} Unlocked tower types */
+    this.unlockedTowers = callbacks.unlockedTowers || [];
 
     /** @type {string|null} Currently selected tower type for placement */
     this.selectedTowerType = null;
@@ -49,6 +51,16 @@ export class TowerPanel {
 
     /** @type {Phaser.GameObjects.Container|null} Tower info container */
     this.infoContainer = null;
+
+    // ── Drag & Drop state ──
+    /** @type {boolean} Whether a drag is in progress */
+    this._isDragging = false;
+
+    /** @type {object|null} Tower being dragged */
+    this._dragTower = null;
+
+    /** @type {Phaser.GameObjects.Graphics|null} Ghost graphic following pointer */
+    this._dragGhost = null;
 
     this._create();
   }
@@ -122,7 +134,7 @@ export class TowerPanel {
       const y = rowY + btnSize / 2;
       const stats = TOWER_STATS[type];
       const cost = stats.levels[1].cost;
-      const isLocked = type === 'dragon' && !this.dragonUnlocked;
+      const isLocked = TOWER_STATS[type].locked && !this.unlockedTowers.includes(type);
 
       // Button background
       const bg = this.scene.add.rectangle(x, y, btnSize, btnSize, 0x1a1a2e)
@@ -404,7 +416,7 @@ export class TowerPanel {
     if (this._lpTimer) { this._lpTimer.remove(); this._lpTimer = null; }
     if (!this._lpFired) {
       // Short tap → existing tower select behaviour (skip for locked)
-      const isLocked = type === 'dragon' && !this.dragonUnlocked;
+      const isLocked = TOWER_STATS[type].locked && !this.unlockedTowers.includes(type);
       if (!isLocked) {
         this._onTowerButtonClick(type);
       }
@@ -480,8 +492,9 @@ export class TowerPanel {
     this._descContainer.add(statText);
 
     // Cost
-    const isLocked = type === 'dragon' && !this.dragonUnlocked;
-    const costStr = isLocked ? '\uD83D\uDD12 50\uD83D\uDC8E' : `${stats.cost}G`;
+    const isLocked = TOWER_STATS[type].locked && !this.unlockedTowers.includes(type);
+    const unlockCost = TOWER_STATS[type].unlockCost || 0;
+    const costStr = isLocked ? `\uD83D\uDD12 ${unlockCost}\uD83D\uDC8E` : `${stats.cost}G`;
     const costText = this.scene.add.text(popupX, popupY + 32, costStr, {
       fontSize: '13px',
       fontFamily: 'Outfit, Arial, sans-serif',
@@ -564,7 +577,8 @@ export class TowerPanel {
   }
 
   /**
-   * Show tower info panel for a placed tower with A/B branch upgrade UI.
+   * Show tower info panel for a placed tower.
+   * No A/B upgrade buttons — merge system replaces them.
    * @param {object} tower - Tower instance
    */
   showTowerInfo(tower) {
@@ -578,30 +592,23 @@ export class TowerPanel {
 
     this.infoContainer = this.scene.add.container(0, 0).setDepth(31);
 
-    // Info background — full panel when A/B upgrade buttons are shown
-    const hasUpgradeUI = (info.level === 1 || info.level === 2) && info.canUpgrade;
+    // Info background
     const infoBg = this.scene.add.rectangle(
       GAME_WIDTH / 2,
-      hasUpgradeUI ? PANEL_Y + PANEL_HEIGHT / 2 : infoY + 16,
+      infoY + 28,
       GAME_WIDTH,
-      hasUpgradeUI ? PANEL_HEIGHT : 48,
+      72,
       0x16213e
     ).setAlpha(0.92);
     this.infoContainer.add(infoBg);
 
     // Tower info text
     const rangeInTiles = (info.range / CELL_SIZE).toFixed(1);
-    let nameStr = `${info.name} Lv.${info.level}`;
-    if (info.level === 2 && info.branchName) {
-      nameStr = `${info.name} Lv.2-${tower.branch.toUpperCase()}: ${info.branchName}`;
-    } else if (info.level === 3 && info.branchName) {
-      const path = `${tower.branch.toUpperCase()}${tower.branch3.toUpperCase()}`;
-      const enhStr = info.enhanceLevel > 0 ? `+${info.enhanceLevel}` : '';
-      nameStr = `${info.name} Lv.3${enhStr}-${path}: ${info.branchName}`;
-    }
-    const infoTextY = hasUpgradeUI ? PANEL_Y + 8 : infoY;
+    const tierStr = info.tier > 1 ? ` T${info.tier}` : '';
+    const enhStr = info.enhanceLevel > 0 ? `+${info.enhanceLevel}` : '';
+    const nameStr = `${info.name}${tierStr}${enhStr}`;
     const infoText = this.scene.add.text(
-      10, infoTextY,
+      10, infoY,
       `${nameStr}  ATK:${info.damage}  SPD:${info.fireRate}s  RNG:${rangeInTiles}`,
       {
         fontSize: '10px',
@@ -611,54 +618,28 @@ export class TowerPanel {
     );
     this.infoContainer.add(infoText);
 
-    // Upgrade buttons (A/B) or MAX LEVEL
-    if ((info.level === 1 || info.level === 2) && info.canUpgrade) {
-      // Unified A/B branch buttons for Lv.1→2 and Lv.2→3
-      const isLv1 = info.level === 1;
-      const aName = isLv1 ? info.upgradeAName : info.upgrade3AName;
-      const bName = isLv1 ? info.upgradeBName : info.upgrade3BName;
-      const aCost = isLv1 ? info.upgradeACost : info.upgrade3ACost;
-      const bCost = isLv1 ? info.upgradeBCost : info.upgrade3BCost;
-      const aDesc = isLv1 ? info.upgradeADesc : info.upgrade3ADesc;
-      const bDesc = isLv1 ? info.upgradeBDesc : info.upgrade3BDesc;
-
-      // Look up branch stats from TOWER_STATS
-      const aKey = isLv1 ? '2a' : `3${tower.branch}a`;
-      const bKey = isLv1 ? '2b' : `3${tower.branch}b`;
-      const aStats = TOWER_STATS[info.type].levels[aKey];
-      const bStats = TOWER_STATS[info.type].levels[bKey];
-      const currentStats = { damage: info.damage, fireRate: info.fireRate, range: info.range };
-
-      const gold = this.scene.goldManager?.getGold() ?? Infinity;
-
-      const aBtn = this._createBranchButton(
-        PANEL_Y + 42, 'A', aName, aDesc, aCost, currentStats, aStats,
-        COLORS.BUTTON_ACTIVE, gold >= aCost
-      );
-      aBtn.on('pointerdown', () => {
-        if (this.callbacks.onUpgrade) {
-          this.callbacks.onUpgrade(tower, 'a');
-        }
-      });
-
-      const bBtn = this._createBranchButton(
-        PANEL_Y + 78, 'B', bName, bDesc, bCost, currentStats, bStats,
-        0x2d8a4e, gold >= bCost
-      );
-      bBtn.on('pointerdown', () => {
-        if (this.callbacks.onUpgrade) {
-          this.callbacks.onUpgrade(tower, 'b');
-        }
-      });
-    } else if (info.canEnhance) {
-      // Lv.3 with available enhancement → purple enhance button
+    // Merge hint and/or enhance button
+    let nextY = infoY + 18;
+    const hasRecipes = Object.keys(MERGE_RECIPES).length > 0;
+    if (hasRecipes && info.isMergeable && info.enhanceLevel === 0) {
+      // Show "drag to merge" hint
+      const hintText = this.scene.add.text(GAME_WIDTH / 2, nextY, t('ui.dragToMerge') || 'Drag to merge', {
+        fontSize: '10px',
+        fontFamily: 'Arial, sans-serif',
+        color: '#b2bec3',
+      }).setOrigin(0.5);
+      this.infoContainer.add(hintText);
+      nextY += 16;
+    }
+    if (info.canEnhance) {
+      // Enhancement button
       const enhBtn = this.scene.add.rectangle(
-        GAME_WIDTH / 2, infoY + 18, 200, 20, 0x8854d0
+        GAME_WIDTH / 2, nextY, 200, 20, 0x8854d0
       ).setInteractive({ useHandCursor: true });
       this.infoContainer.add(enhBtn);
 
       const enhLabel = t('ui.enhance').replace('{level}', info.enhanceLevel + 1).replace('{cost}', info.enhanceCost);
-      const enhText = this.scene.add.text(GAME_WIDTH / 2, infoY + 18,
+      const enhText = this.scene.add.text(GAME_WIDTH / 2, nextY,
         `\u2B06 ${enhLabel}`, {
         fontSize: '10px',
         fontFamily: 'Arial, sans-serif',
@@ -666,33 +647,27 @@ export class TowerPanel {
         fontStyle: 'bold',
       }).setOrigin(0.5);
       this.infoContainer.add(enhText);
+      nextY += 18;
 
       enhBtn.on('pointerdown', () => {
         if (this.callbacks.onEnhance) {
           this.callbacks.onEnhance(tower);
         }
       });
-    } else if (info.enhanceLevel >= MAX_ENHANCE_LEVEL) {
-      // Max enhancement reached → gold text
-      const maxText = this.scene.add.text(GAME_WIDTH / 2, infoY + 18, `\u2B50 ${t('ui.maxEnhance')}`, {
+    }
+    if (!info.canEnhance && info.enhanceLevel >= MAX_ENHANCE_LEVEL) {
+      // Max enhancement reached
+      const maxText = this.scene.add.text(GAME_WIDTH / 2, nextY, `\u2B50 ${t('ui.maxEnhance')}`, {
         fontSize: '10px',
         fontFamily: 'Arial, sans-serif',
         color: '#ffd700',
         fontStyle: 'bold',
       }).setOrigin(0.5);
       this.infoContainer.add(maxText);
-    } else {
-      // Lv.3 or cannot upgrade → MAX LEVEL
-      const maxText = this.scene.add.text(GAME_WIDTH / 2, infoY + 18, 'MAX LEVEL', {
-        fontSize: '10px',
-        fontFamily: 'Arial, sans-serif',
-        color: '#636e72',
-      }).setOrigin(0.5);
-      this.infoContainer.add(maxText);
     }
 
-    // Sell button — shifted down when upgrade buttons are shown
-    const sellY = hasUpgradeUI ? PANEL_Y + 106 : infoY + 36;
+    // Sell button
+    const sellY = nextY + 4;
     const sellBtn = this.scene.add.rectangle(
       GAME_WIDTH / 2, sellY, 120, 18, 0xd63031
     ).setInteractive({ useHandCursor: true });
@@ -715,130 +690,140 @@ export class TowerPanel {
     this.sellBg.setAlpha(1);
   }
 
+  // ── Drag & Drop for Merge ────────────────────────────────────────
+
   /**
-   * Create a 2-line branch upgrade button.
-   * @param {number} centerY - Y center of the button
-   * @param {string} branchLabel - 'A' or 'B'
-   * @param {string} name - Branch name
-   * @param {string} desc - Branch description
-   * @param {number} cost - Upgrade cost
-   * @param {object} currentStats - Current tower stats {damage, fireRate, range}
-   * @param {object} branchStats - Target branch stats
-   * @param {number} color - Button background color
-   * @param {boolean} canAfford - Whether the player can afford this upgrade
-   * @returns {Phaser.GameObjects.Rectangle} The interactive button rectangle
-   * @private
+   * Start dragging a tower for merge.
+   * Called from GameScene when pointerdown on a map tower.
+   * @param {object} tower - Tower instance to drag
+   * @param {Phaser.Input.Pointer} pointer - Pointer that started the drag
    */
-  _createBranchButton(centerY, branchLabel, name, desc, cost, currentStats, branchStats, color, canAfford) {
-    // Background button (340×32)
-    const btn = this.scene.add.rectangle(
-      GAME_WIDTH / 2, centerY, 340, 32, color
-    ).setInteractive({ useHandCursor: true });
-    if (!canAfford) btn.setAlpha(0.35);
-    this.infoContainer.add(btn);
+  startDrag(tower, pointer) {
+    // Enhanced towers cannot be dragged
+    if (tower.enhanceLevel > 0) return;
 
-    // Top row: "A: 폭발 화살  ATK+60% SPD+13%"
-    const statDiff = this._calcStatDiff(currentStats, branchStats);
-    const leftStr = `${branchLabel}: ${name}  ${statDiff}`;
-    const topText = this.scene.add.text(18, centerY - 8, leftStr, {
-      fontSize: '10px',
-      fontFamily: 'Arial, sans-serif',
-      color: '#ffffff',
-      fontStyle: 'bold',
-    }).setOrigin(0, 0.5);
-    this.infoContainer.add(topText);
+    this._isDragging = true;
+    this._dragTower = tower;
 
-    // Cost text (right-aligned)
-    const costColor = canAfford ? GOLD_TEXT_CSS : '#ff4757';
-    const costText = this.scene.add.text(GAME_WIDTH - 18, centerY - 8, `${cost}G`, {
-      fontSize: '10px',
-      fontFamily: 'Arial, sans-serif',
-      color: costColor,
-      fontStyle: 'bold',
-    }).setOrigin(1, 0.5);
-    this.infoContainer.add(costText);
+    // Hide original tower
+    tower.graphics.setAlpha(0);
 
-    // Bottom row: "소형 범위 피해 추가 • 범위형"
-    const tags = this._getBranchTags(branchStats);
-    const tagStr = tags.length ? ` \u2022 ${tags.join(' ')}` : '';
-    const bottomStr = `${desc || ''}${tagStr}`;
-    const bottomText = this.scene.add.text(28, centerY + 6, bottomStr, {
-      fontSize: '8px',
-      fontFamily: 'Arial, sans-serif',
-      color: '#a0a0b0',
-    }).setOrigin(0, 0.5);
-    this.infoContainer.add(bottomText);
-
-    return btn;
+    // Create ghost graphic
+    this._dragGhost = this.scene.add.graphics().setDepth(50);
+    this._drawDragGhost(pointer.x, pointer.y, tower.type);
   }
 
   /**
-   * Calculate stat difference percentages between current and branch stats.
-   * @param {object} current - {damage, fireRate, range}
-   * @param {object} branch - Branch level stats
-   * @returns {string} Formatted stat diff string
-   * @private
+   * Update drag ghost position.
+   * @param {Phaser.Input.Pointer} pointer - Current pointer
    */
-  _calcStatDiff(current, branch) {
-    const parts = [];
-    // ATK
-    const atkDiff = Math.round((branch.damage / current.damage - 1) * 100);
-    if (atkDiff !== 0) {
-      parts.push(`ATK${atkDiff > 0 ? '+' : ''}${atkDiff}%`);
-    }
-    // SPD (fireRate decrease = speed increase, so invert sign)
-    const spdDiff = Math.round((1 - branch.fireRate / current.fireRate) * 100);
-    if (spdDiff !== 0) {
-      parts.push(`SPD${spdDiff > 0 ? '+' : ''}${spdDiff}%`);
-    }
-    // RNG
-    const rngDiff = Math.round((branch.range / current.range - 1) * 100);
-    if (rngDiff !== 0) {
-      parts.push(`RNG${rngDiff > 0 ? '+' : ''}${rngDiff}%`);
-    }
-    return parts.join(' ');
+  updateDrag(pointer) {
+    if (!this._isDragging || !this._dragGhost) return;
+    this._dragGhost.clear();
+    this._drawDragGhost(pointer.x, pointer.y, this._dragTower.type);
   }
 
   /**
-   * Derive specialization tags from branch stats (max 2).
-   * @param {object} branchStats - Branch level stats
-   * @returns {string[]} Array of localized tag strings
+   * End drag — attempt merge or cancel.
+   * @param {Phaser.Input.Pointer} pointer - Pointer at release
+   * @param {Function} getTowerAt - Function(col, row) to find tower at grid position
+   */
+  endDrag(pointer, getTowerAt) {
+    if (!this._isDragging) return;
+
+    const towerA = this._dragTower;
+
+    // Clean up ghost
+    if (this._dragGhost) {
+      this._dragGhost.destroy();
+      this._dragGhost = null;
+    }
+
+    this._isDragging = false;
+    this._dragTower = null;
+
+    // Check if dropped on a valid tower
+    const grid = pixelToGrid(pointer.x, pointer.y);
+    const { col, row } = grid;
+
+    if (col >= 0 && col < GRID_COLS && row >= 0 && row < GRID_ROWS) {
+      const towerB = getTowerAt(col, row);
+
+      if (towerB && towerB !== towerA) {
+        // Check if target is mergeable
+        if (!isMergeable(towerB)) {
+          // Target has enhancement — shake feedback
+          towerA.graphics.setAlpha(1);
+          this._playShakeTween(towerB);
+          return;
+        }
+
+        // Check merge recipe
+        const idA = towerA.mergeId || towerA.type;
+        const idB = towerB.mergeId || towerB.type;
+        const result = getMergeResult(idA, idB);
+
+        if (result) {
+          // Merge success — call callback
+          if (this.callbacks.onMerge) {
+            this.callbacks.onMerge(towerA, towerB);
+          }
+          return;
+        } else {
+          // No recipe — shake feedback on target
+          towerA.graphics.setAlpha(1);
+          this._playShakeTween(towerB);
+          return;
+        }
+      }
+    }
+
+    // No valid target — restore original tower
+    towerA.graphics.setAlpha(1);
+  }
+
+  /**
+   * Draw a semi-transparent ghost at pointer position.
+   * @param {number} x - Pointer X
+   * @param {number} y - Pointer Y
+   * @param {string} type - Tower type
    * @private
    */
-  _getBranchTags(branchStats) {
-    const tags = [];
-    if (branchStats.attackType === 'splash' || branchStats.attackType === 'aoe_instant' || branchStats.splashRadius) {
-      tags.push(t('branch.tag.aoe'));
-    }
-    if (branchStats.slowAmount >= 0.5) {
-      tags.push(t('branch.tag.stun'));
-    } else if (branchStats.slowAmount > 0) {
-      tags.push(t('branch.tag.slow'));
-    }
-    if (branchStats.burnDamage) {
-      tags.push(t('branch.tag.burn'));
-    }
-    if (branchStats.poisonDamage) {
-      tags.push(t('branch.tag.poison'));
-    }
-    if (branchStats.armorPiercing === true) {
-      tags.push(t('branch.tag.pierce'));
-    }
-    if (branchStats.armorReduction) {
-      tags.push(t('branch.tag.debuff'));
-    }
-    if (branchStats.pushbackDistance) {
-      tags.push(t('branch.tag.push'));
-    }
-    if (branchStats.chainCount) {
-      tags.push(t('branch.tag.chain'));
-    }
-    // If no tags matched, it's a single-target type
-    if (tags.length === 0) {
-      tags.push(t('branch.tag.single'));
-    }
-    // Limit to 2 tags
-    return tags.slice(0, 2);
+  _drawDragGhost(x, y, type) {
+    const color = TOWER_STATS[type].color;
+    this._dragGhost.fillStyle(color, 0.5);
+    this._dragGhost.fillCircle(x, y, 14);
+    this._dragGhost.lineStyle(2, 0xffffff, 0.5);
+    this._dragGhost.strokeCircle(x, y, 14);
+  }
+
+  /**
+   * Play a horizontal shake tween on a tower (merge fail feedback).
+   * @param {object} tower - Tower to shake
+   * @private
+   */
+  _playShakeTween(tower) {
+    if (!tower.graphics || !tower.graphics.active) return;
+    this.scene.tweens.add({
+      targets: tower.graphics,
+      x: { from: -4, to: 4 },
+      duration: 80,
+      yoyo: true,
+      repeat: 2,
+      onComplete: () => {
+        if (tower.graphics && tower.graphics.active) {
+          tower.graphics.setPosition(0, 0);
+        }
+      },
+    });
+  }
+
+  /**
+   * Check if a drag is currently in progress.
+   * @returns {boolean}
+   */
+  isDragging() {
+    return this._isDragging;
   }
 
   /**
@@ -892,6 +877,12 @@ export class TowerPanel {
     this._hideDescription();
     this._cancelLongPress();
     this._hideInfo();
+    if (this._dragGhost) {
+      this._dragGhost.destroy();
+      this._dragGhost = null;
+    }
+    this._isDragging = false;
+    this._dragTower = null;
     if (this.container) {
       this.container.destroy();
     }

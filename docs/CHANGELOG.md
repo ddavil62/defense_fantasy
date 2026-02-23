@@ -4,6 +4,98 @@
 
 ---
 
+## 2026-02-23 -- 머지 조합 타워 시스템 Phase 1 (기반 구축)
+
+### 배경
+
+기존 A/B 분기 업그레이드 트리(Lv.1->2->3, 40종 최종형)를 제거하고, 배치된 타워끼리 드래그&드롭으로 합성하는 Merge 시스템으로 교체하기 위한 Phase 1 기반 작업. Phase 1에서는 기존 시스템 제거와 머지 인프라(데이터 구조, 드래그 UI, 세이브 마이그레이션)를 구축한다. MERGE_RECIPES는 빈 객체이므로 실제 합성은 Phase 2에서 활성화된다.
+
+### 제거
+
+- **`js/config.js`** -- A/B 분기 관련 상수 및 데이터 제거
+  - `TOWER_STATS[*].levels`에서 `2a`, `2b`, `3aa`, `3ab`, `3ba`, `3bb` 키 전부 삭제, `levels[1]`만 유지
+  - `MAX_TOWER_LEVEL`, `LV3_SHAPE_SCALE`, `DRAGON_TOWER_LOCKED`, `DRAGON_UNLOCK_COST` 상수 제거
+- **`js/entities/Tower.js`** -- `level`, `branch`, `branch3` 필드 제거, `upgrade()` 메서드 제거
+- **`js/ui/TowerPanel.js`** -- A/B 분기 버튼 UI 전체 제거
+  - `_createBranchButton()`, `_calcStatDiff()`, `_getBranchTags()` 메서드 제거
+  - `callbacks.onUpgrade` 제거
+- **`js/scenes/GameScene.js`** -- `_onTowerUpgrade()` 제거
+
+### 추가
+
+- **`js/config.js`** -- 머지 시스템 인프라
+  - `MERGE_RECIPES = {}` (Phase 2에서 55종 채울 예정)
+  - `MERGED_TOWER_STATS = {}` (Phase 2에서 55종 스탯 채울 예정)
+  - `getMergeKey(typeA, typeB)`: 알파벳 오름차순 정렬 + `+` 연결 키 생성
+  - `getMergeResult(typeA, typeB)`: MERGE_RECIPES 조회
+  - `isMergeable(tower)`: `tower.enhanceLevel === 0` 체크
+  - `isUsedAsMergeIngredient(id)`: MERGE_RECIPES에서 재료 여부 확인
+  - `SAVE_DATA_VERSION = 2`
+  - `TOWER_STATS[*].locked`, `TOWER_STATS[*].unlockCost` 필드 (범용 잠금)
+    - dragon: `locked: true`, `unlockCost: 50` / 나머지 9종: `locked: false`, `unlockCost: 0`
+- **`js/entities/Tower.js`** -- 머지 관련 필드/메서드
+  - `tier` (기본 1), `mergeId` (기본 null) 필드
+  - `applyMergeResult(mergeData)`: mergeId, tier, stats 업데이트
+  - `_drawTierBorder()`: 2티어=은색(0xb2bec3), 3티어=금색(0xffd700), 4티어=보라(0xa29bfe), 5티어=정적 금색
+  - `canEnhance()` 조건 변경: `enhanceLevel < MAX && !isUsedAsMergeIngredient(id)`
+  - `getInfo()` 반환값에 `tier`, `mergeId`, `displayName`, `isMergeable` 추가
+- **`js/ui/TowerPanel.js`** -- 드래그&드롭 머지 UI
+  - `startDrag(tower, pointer)`: 원래 타워 alpha=0, 반투명 고스트 생성 (depth 50)
+  - `updateDrag(pointer)`: 고스트 위치 업데이트
+  - `endDrag(pointer, getTowerAt)`: 대상 타워에 드롭 시 합성 또는 흔들림 피드백
+  - `_drawDragGhost(x, y, type)`: 반투명(0.5) 원형 고스트
+  - `_playShakeTween(tower)`: x +-4px 왕복 3회, 80ms, 상대 좌표 기반
+  - `hasRecipes` 가드: `MERGE_RECIPES`가 비어있으면 머지 힌트/드래그 비활성화
+  - `callbacks.onMerge` 콜백
+- **`js/scenes/GameScene.js`** -- 머지 핸들링
+  - `_onTowerMerge(towerA, towerB)`: towerB를 결과로 변환, towerA 제거, totalInvested 합산
+  - `_registerMergeDiscovery(mergeId)`: `saveData.discoveredMerges` 배열에 추가, localStorage 저장
+  - `_pendingDrag` + 10px 이동 threshold로 드래그 시작
+  - `pointermove`/`pointerup` 핸들러에서 드래그 고스트 업데이트/종료
+  - `MERGE_RECIPES.length > 0` 가드: Phase 1에서 드래그 자체 차단
+- **`js/scenes/CollectionScene.js`** -- 범용 타워 잠금 시스템
+  - `_showTowerUnlockPopup(type)`: 드래곤 하드코딩 -> 범용 팝업
+  - `_unlockTower(type)`: `saveData.unlockedTowers[]` 배열 관리
+  - `TOWER_STATS[type].locked` 기반 잠금 상태 판단
+- **`js/i18n.js`** -- 머지 관련 문자열
+  - `ui.dragToMerge`: 한국어 "드래그하여 합성" / 영어 "Drag to merge"
+- **`js/config.js`** -- 세이브 마이그레이션 v1->v2
+  - `dragonUnlocked` -> `unlockedTowers[]` 배열 변환
+  - `towerUpgrades` 유지 (메타 업그레이드)
+  - `discoveredMerges: []` 신규 추가
+  - `diamond`, `stats`, `totalDiamondEarned` 보존
+
+### 스펙 대비 변경
+
+| 항목 | 스펙 | 구현 | 사유 |
+|---|---|---|---|
+| 5티어 테두리 | 무지개 tween | 정적 금색(0xffd700) | Phase 1에서 5티어 타워 미존재, 단순화 |
+| towerUpgrades v1->v2 | 제거 | 유지 | 메타 업그레이드(컬렉션 모드) 데이터 보존 필요 |
+
+### 알려진 제약
+
+- Phase 1에서 `MERGE_RECIPES = {}` 이므로 실제 합성 불가. 드래그/머지 힌트 모두 비활성화
+- sell 버튼 y=640 (하단 9px 화면 밖 경계선 배치). Phase 2에서 `isUsedAsMergeIngredient()`가 true 되면 enhance 버튼 사라지며 자연 해소
+- `_pendingDrag` init() 미초기화: Phase 1에서 `_pendingDrag` 자체가 설정되지 않으므로 무위험. Phase 2에서 `init()`에 `this._pendingDrag = null` 추가 권장
+- `Tower.js` `@fileoverview`에 "A/B branching" 문구 잔존 (기능 무관)
+
+### QA 결과
+
+- **1차 판정**: FAIL (버그 3건 -- shake tween 절대좌표 사용, 강화 UI else-if 패턴, 클릭 즉시 드래그 시작)
+- **2차 판정**: FAIL (N1 sell 버튼 오버플로우 -- merge hint + enhance 동시 표시로 sellY=656 화면 밖)
+- **3차(R3) 판정**: PASS (hasRecipes 가드 추가로 merge hint 숨김, sellY=640 대폭 개선, 전역 S 버튼 사용 가능)
+- 정적 코드 분석 14건 + Playwright 테스트 13건 작성
+
+### 참고 문서
+
+- 스펙: `.claude/specs/2026-02-23-merge-tower-system.md`
+- QA 리포트 (R1): `.claude/specs/2026-02-23-merge-tower-system-phase1-qa.md`
+- QA 리포트 (R2): `.claude/specs/2026-02-23-merge-tower-system-phase1-qa-r2.md`
+- QA 리포트 (R3 최종): `.claude/specs/2026-02-23-merge-tower-system-phase1-qa-r3.md`
+- 테스트: `tests/merge-tower-phase1-r3.spec.js`
+
+---
+
 ## 2026-02-23 -- 업그레이드 분기 선택 UI 개선
 
 ### 배경

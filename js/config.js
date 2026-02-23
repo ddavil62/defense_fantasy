@@ -182,31 +182,24 @@ export const HP_DANGER_THRESHOLD = 5;
 /** @const {number} HP blink interval in ms */
 export const HP_BLINK_INTERVAL = 500;
 
-// ── Dragon Tower Lock ───────────────────────────────────────────
-/** @const {boolean} Whether dragon tower is locked (Phase 3 unlock) */
-export const DRAGON_TOWER_LOCKED = true;
+// (Dragon tower lock is now managed via TOWER_STATS[type].locked field)
 
 // ── Tower Stats ─────────────────────────────────────────────────
 /**
  * Tower statistics indexed by type.
- * levels: {
- *   1: Lv.1 stats,
- *   '2a': Lv.2 branch A stats,
- *   '2b': Lv.2 branch B stats,
- *   '3aa': Lv.3 from 2A → A stats,   (Phase 4)
- *   '3ab': Lv.3 from 2A → B stats,   (Phase 4)
- *   '3ba': Lv.3 from 2B → A stats,   (Phase 4)
- *   '3bb': Lv.3 from 2B → B stats,   (Phase 4)
- * }
- * cost = installation cost (Lv.1) or upgrade cost (Lv.2/Lv.3).
+ * levels: { 1: Lv.1 stats }
+ * locked: true = needs Diamond to unlock, false/undefined = available
+ * unlockCost: Diamond cost to unlock (only when locked=true)
+ * cost = installation cost (Lv.1).
  * sellPrice = floor(totalInvested * 0.6)
- *   where totalInvested = lv1.cost + lv2.cost + lv3.cost
  */
 export const TOWER_STATS = {
   archer: {
     name: 'Archer',
     displayName: 'Archer',
     color: 0x00b894,
+    locked: false,
+    unlockCost: 0,
     levels: {
       1: {
         cost: 50,
@@ -217,86 +210,14 @@ export const TOWER_STATS = {
         attackType: 'single',
         sellPrice: 30,
       },
-      '2a': {
-        cost: 60,
-        damage: 16,
-        fireRate: 0.7,
-        range: 120,
-        projectileSpeed: 280,
-        attackType: 'splash',
-        splashRadius: 30,
-        branchName: '폭발 화살',
-        branchDesc: '소형 범위 피해 추가',
-        sellPrice: 66,
-      },
-      '2b': {
-        cost: 70,
-        damage: 25,
-        fireRate: 1.4,
-        range: 168,
-        projectileSpeed: 400,
-        attackType: 'single',
-        branchName: '저격',
-        branchDesc: '사거리+40%, 고대미지 단일',
-        sellPrice: 72,
-      },
-      // ─── Phase 4: Lv.3 ───
-      '3aa': {
-        cost: 200,
-        damage: 24,
-        fireRate: 0.5,
-        range: 120,
-        projectileSpeed: 280,
-        attackType: 'splash',
-        splashRadius: 55,
-        branchName: '폭풍 화살우',
-        branchDesc: '폭발 반경 1.83배 + 연사속도 30% 향상',
-        sellPrice: 186,
-      },
-      '3ab': {
-        cost: 180,
-        damage: 20,
-        fireRate: 0.7,
-        range: 130,
-        projectileSpeed: 280,
-        attackType: 'splash',
-        splashRadius: 45,
-        slowAmount: 0.25,
-        slowDuration: 1.5,
-        branchName: '광역 저지',
-        branchDesc: '폭발 시 주변 적 25% 슬로우 1.5초',
-        sellPrice: 174,
-      },
-      '3ba': {
-        cost: 220,
-        damage: 38,
-        fireRate: 1.0,
-        range: 200,
-        projectileSpeed: 500,
-        attackType: 'single',
-        branchName: '초고속 저격',
-        branchDesc: '사거리+19%, 공격력+52%, 연사속도 향상',
-        sellPrice: 204,
-      },
-      '3bb': {
-        cost: 200,
-        damage: 30,
-        fireRate: 1.4,
-        range: 190,
-        projectileSpeed: 450,
-        attackType: 'single',
-        armorReduction: 0.25,
-        armorReductionDuration: 4.0,
-        branchName: '마킹 저격',
-        branchDesc: '명중 적 방어력 25% 감소 4초 (아군 시너지)',
-        sellPrice: 192,
-      },
     },
   },
   mage: {
     name: 'Mage',
     displayName: 'Mage',
     color: 0x6c5ce7,
+    locked: false,
+    unlockCost: 0,
     levels: {
       1: {
         cost: 100,
@@ -308,93 +229,14 @@ export const TOWER_STATS = {
         splashRadius: 40,
         sellPrice: 60,
       },
-      '2a': {
-        cost: 110,
-        damage: 45,
-        fireRate: 2.0,
-        range: 100,
-        projectileSpeed: 200,
-        attackType: 'splash',
-        splashRadius: 60,
-        branchName: '강화 폭발',
-        branchDesc: '폭발 반경 1.5배 + 공격력 80% 증가',
-        sellPrice: 126,
-      },
-      '2b': {
-        cost: 90,
-        damage: 28,
-        fireRate: 1.2,
-        range: 120,
-        projectileSpeed: 240,
-        attackType: 'splash',
-        splashRadius: 40,
-        slowAmount: 0.2,
-        slowDuration: 1.0,
-        branchName: '마나 폭풍',
-        branchDesc: '공속 1.67배 + 약한 슬로우',
-        sellPrice: 114,
-      },
-      // ─── Phase 4: Lv.3 ───
-      '3aa': {
-        cost: 250,
-        damage: 72,
-        fireRate: 2.0,
-        range: 110,
-        projectileSpeed: 200,
-        attackType: 'splash',
-        splashRadius: 90,
-        branchName: '대폭발',
-        branchDesc: '폭발 반경 1.5배, 공격력+60%',
-        sellPrice: 276,
-      },
-      '3ab': {
-        cost: 220,
-        damage: 55,
-        fireRate: 2.0,
-        range: 110,
-        projectileSpeed: 200,
-        attackType: 'splash',
-        splashRadius: 70,
-        slowAmount: 0.35,
-        slowDuration: 2.0,
-        branchName: '중력 붕괴',
-        branchDesc: '폭발 시 35% 슬로우 2초 추가',
-        sellPrice: 258,
-      },
-      '3ba': {
-        cost: 240,
-        damage: 45,
-        fireRate: 0.8,
-        range: 130,
-        projectileSpeed: 280,
-        attackType: 'splash',
-        splashRadius: 50,
-        slowAmount: 0.2,
-        slowDuration: 1.0,
-        branchName: '마나 격류',
-        branchDesc: '공속 극한화(0.8s), 공격력+61%',
-        sellPrice: 258,
-      },
-      '3bb': {
-        cost: 200,
-        damage: 35,
-        fireRate: 1.2,
-        range: 140,
-        projectileSpeed: 260,
-        attackType: 'splash',
-        splashRadius: 55,
-        slowAmount: 0.45,
-        slowDuration: 2.5,
-        branchName: '마법 폭풍',
-        branchDesc: '슬로우 45%, 지속 2.5초로 강화된 광역 감속',
-        sellPrice: 234,
-      },
     },
   },
   ice: {
     name: 'Ice',
     displayName: 'Ice',
     color: 0x74b9ff,
+    locked: false,
+    unlockCost: 0,
     levels: {
       1: {
         cost: 75,
@@ -407,95 +249,14 @@ export const TOWER_STATS = {
         slowDuration: 2.0,
         sellPrice: 45,
       },
-      '2a': {
-        cost: 80,
-        damage: 10,
-        fireRate: 1.8,
-        range: 100,
-        projectileSpeed: 260,
-        attackType: 'single',
-        slowAmount: 1.0,
-        slowDuration: 0.5,
-        branchName: '빙결',
-        branchDesc: '단일 대상 0.5초 완전 정지',
-        sellPrice: 93,
-      },
-      '2b': {
-        cost: 75,
-        damage: 6,
-        fireRate: 2.0,
-        range: 120,
-        attackType: 'aoe_instant',
-        splashRadius: 60,
-        slowAmount: 0.4,
-        slowDuration: 2.5,
-        branchName: '냉기 장판',
-        branchDesc: '즉발 광역 슬로우',
-        sellPrice: 90,
-      },
-      // ─── Phase 4: Lv.3 ───
-      '3aa': {
-        cost: 200,
-        damage: 15,
-        fireRate: 1.2,
-        range: 110,
-        projectileSpeed: 280,
-        attackType: 'single',
-        slowAmount: 1.0,
-        slowDuration: 1.2,
-        branchName: '절대 빙결',
-        branchDesc: '완전 정지 1.2초, 연사속도 33% 향상',
-        sellPrice: 213,
-      },
-      '3ab': {
-        cost: 180,
-        damage: 12,
-        fireRate: 1.8,
-        range: 110,
-        projectileSpeed: 270,
-        attackType: 'single',
-        slowAmount: 1.0,
-        slowDuration: 0.8,
-        armorReduction: 0.3,
-        armorReductionDuration: 3.0,
-        branchName: '파쇄 빙격',
-        branchDesc: '정지 후 방어력 30% 감소 3초 (취약 부여)',
-        sellPrice: 201,
-      },
-      '3ba': {
-        cost: 210,
-        damage: 10,
-        fireRate: 1.6,
-        range: 140,
-        attackType: 'aoe_instant',
-        splashRadius: 100,
-        slowAmount: 0.55,
-        slowDuration: 3.0,
-        branchName: '냉기 폭풍',
-        branchDesc: '범위 1.67배, 슬로우 55% 3초',
-        sellPrice: 216,
-      },
-      '3bb': {
-        cost: 190,
-        damage: 8,
-        fireRate: 1.8,
-        range: 130,
-        attackType: 'aoe_instant',
-        splashRadius: 80,
-        slowAmount: 0.45,
-        slowDuration: 2.5,
-        burnDamage: 3,
-        burnDuration: 2,
-        branchName: '빙하 영역',
-        branchDesc: '광역 슬로우 + 동상 피해 도트 (복합 디버프)',
-        sellPrice: 204,
-      },
     },
   },
   lightning: {
     name: 'Lightning',
     displayName: 'Lightning',
     color: 0xfdcb6e,
+    locked: false,
+    unlockCost: 0,
     levels: {
       1: {
         cost: 120,
@@ -508,99 +269,14 @@ export const TOWER_STATS = {
         chainRadius: 80,
         sellPrice: 72,
       },
-      '2a': {
-        cost: 100,
-        damage: 24,
-        fireRate: 1.2,
-        range: 120,
-        attackType: 'chain',
-        chainCount: 6,
-        chainDecay: 0.8,
-        chainRadius: 80,
-        branchName: '연쇄 강화',
-        branchDesc: '최대 6체인, 감쇄율 80%',
-        sellPrice: 132,
-      },
-      '2b': {
-        cost: 90,
-        damage: 18,
-        fireRate: 1.2,
-        range: 140,
-        attackType: 'chain',
-        chainCount: 4,
-        chainDecay: 0.7,
-        chainRadius: 80,
-        slowAmount: 0.5,
-        slowDuration: 2.0,
-        branchName: '마비',
-        branchDesc: '피격 적 2초간 50% 감속',
-        sellPrice: 126,
-      },
-      // ─── Phase 4: Lv.3 ───
-      '3aa': {
-        cost: 280,
-        damage: 38,
-        fireRate: 1.0,
-        range: 130,
-        attackType: 'chain',
-        chainCount: 8,
-        chainDecay: 0.85,
-        chainRadius: 90,
-        branchName: '천둥신의 심판',
-        branchDesc: '최대 8체인, 감쇄율 85%, 공격력+58%',
-        sellPrice: 300,
-      },
-      '3ab': {
-        cost: 240,
-        damage: 28,
-        fireRate: 1.2,
-        range: 130,
-        attackType: 'chain',
-        chainCount: 6,
-        chainDecay: 0.8,
-        chainRadius: 90,
-        slowAmount: 0.55,
-        slowDuration: 2.5,
-        branchName: '초전도 연쇄',
-        branchDesc: '6체인 + 피격 적 55% 마비 2.5초',
-        sellPrice: 276,
-      },
-      '3ba': {
-        cost: 260,
-        damage: 32,
-        fireRate: 1.0,
-        range: 150,
-        attackType: 'chain',
-        chainCount: 6,
-        chainDecay: 0.75,
-        chainRadius: 90,
-        slowAmount: 0.5,
-        slowDuration: 2.0,
-        branchName: '방전 폭풍',
-        branchDesc: '6체인, 공격력+78%, 마비 유지',
-        sellPrice: 282,
-      },
-      '3bb': {
-        cost: 220,
-        damage: 20,
-        fireRate: 1.2,
-        range: 160,
-        attackType: 'chain',
-        chainCount: 5,
-        chainDecay: 0.7,
-        chainRadius: 100,
-        slowAmount: 0.75,
-        slowDuration: 3.0,
-        branchName: '완전 마비',
-        branchDesc: '5체인, 마비 75% × 3초 (거의 정지 수준)',
-        sellPrice: 258,
-      },
     },
   },
   flame: {
     name: 'Flame',
     displayName: 'Flame',
     color: 0xe17055,
+    locked: false,
+    unlockCost: 0,
     levels: {
       1: {
         cost: 90,
@@ -613,95 +289,14 @@ export const TOWER_STATS = {
         burnDuration: 3,
         sellPrice: 54,
       },
-      '2a': {
-        cost: 85,
-        damage: 8,
-        fireRate: 1.5,
-        range: 100,
-        projectileSpeed: 200,
-        attackType: 'dot_single',
-        burnDamage: 8,
-        burnDuration: 3,
-        branchName: '맹화',
-        branchDesc: '도트 피해 2배',
-        sellPrice: 105,
-      },
-      '2b': {
-        cost: 100,
-        damage: 4,
-        fireRate: 2.0,
-        range: 120,
-        attackType: 'aoe_instant',
-        splashRadius: 50,
-        burnDamage: 4,
-        burnDuration: 3,
-        branchName: '화염 폭풍',
-        branchDesc: '범위 화상 도트',
-        sellPrice: 114,
-      },
-      // ─── Phase 4: Lv.3 ───
-      '3aa': {
-        cost: 230,
-        damage: 14,
-        fireRate: 1.3,
-        range: 110,
-        projectileSpeed: 220,
-        attackType: 'dot_single',
-        burnDamage: 16,
-        burnDuration: 5,
-        branchName: '지옥불',
-        branchDesc: '화상 도트 2배(16/s), 지속 5초',
-        sellPrice: 243,
-      },
-      '3ab': {
-        cost: 200,
-        damage: 10,
-        fireRate: 1.5,
-        range: 110,
-        projectileSpeed: 210,
-        attackType: 'dot_single',
-        burnDamage: 12,
-        burnDuration: 4,
-        armorReduction: 0.2,
-        armorReductionDuration: 4.0,
-        branchName: '불사신의 저주',
-        branchDesc: '화상 + 방어력 20% 감소 4초 (DoT 시너지)',
-        sellPrice: 225,
-      },
-      '3ba': {
-        cost: 250,
-        damage: 8,
-        fireRate: 1.6,
-        range: 140,
-        attackType: 'aoe_instant',
-        splashRadius: 85,
-        burnDamage: 8,
-        burnDuration: 4,
-        branchName: '대화염 폭풍',
-        branchDesc: '범위 1.7배, 화상 2배, 지속 4초',
-        sellPrice: 264,
-      },
-      '3bb': {
-        cost: 210,
-        damage: 6,
-        fireRate: 1.8,
-        range: 130,
-        attackType: 'aoe_instant',
-        splashRadius: 65,
-        burnDamage: 6,
-        burnDuration: 4,
-        poisonDamage: 4,
-        poisonDuration: 4,
-        branchName: '용암 지대',
-        branchDesc: '광역 화상+독 복합 도트 (피해 누적)',
-        sellPrice: 240,
-      },
     },
   },
   rock: {
     name: 'Rock',
     displayName: 'Rock',
     color: 0x636e72,
+    locked: false,
+    unlockCost: 0,
     levels: {
       1: {
         cost: 110,
@@ -712,94 +307,14 @@ export const TOWER_STATS = {
         attackType: 'single',
         sellPrice: 66,
       },
-      '2a': {
-        cost: 100,
-        damage: 70,
-        fireRate: 3.0,
-        range: 80,
-        projectileSpeed: 150,
-        attackType: 'single',
-        armorPiercing: true,
-        branchName: '분쇄',
-        branchDesc: '방어형 저항 무시',
-        sellPrice: 126,
-      },
-      '2b': {
-        cost: 110,
-        damage: 45,
-        fireRate: 3.5,
-        range: 100,
-        projectileSpeed: 120,
-        attackType: 'splash',
-        splashRadius: 60,
-        slowAmount: 1.0,
-        slowDuration: 0.5,
-        branchName: '낙석',
-        branchDesc: '광역 0.5초 정지',
-        sellPrice: 132,
-      },
-      // ─── Phase 4: Lv.3 ───
-      '3aa': {
-        cost: 300,
-        damage: 115,
-        fireRate: 2.8,
-        range: 90,
-        projectileSpeed: 160,
-        attackType: 'single',
-        armorPiercing: true,
-        branchName: '산사태',
-        branchDesc: '방어 관통 유지, 공격력+64%, 연사 향상',
-        sellPrice: 306,
-      },
-      '3ab': {
-        cost: 270,
-        damage: 85,
-        fireRate: 3.0,
-        range: 90,
-        projectileSpeed: 150,
-        attackType: 'splash',
-        splashRadius: 40,
-        armorPiercing: true,
-        branchName: '분쇄 파편',
-        branchDesc: '방어 관통 + 소형 광역(40px), 파편 도달 시',
-        sellPrice: 288,
-      },
-      '3ba': {
-        cost: 310,
-        damage: 75,
-        fireRate: 3.2,
-        range: 120,
-        projectileSpeed: 130,
-        attackType: 'splash',
-        splashRadius: 100,
-        slowAmount: 1.0,
-        slowDuration: 0.8,
-        branchName: '거대 낙석',
-        branchDesc: '광역 1.67배, 공격력+67%, 정지 0.8초',
-        sellPrice: 318,
-      },
-      '3bb': {
-        cost: 260,
-        damage: 55,
-        fireRate: 3.5,
-        range: 110,
-        projectileSpeed: 120,
-        attackType: 'splash',
-        splashRadius: 75,
-        slowAmount: 1.0,
-        slowDuration: 0.6,
-        armorReduction: 0.3,
-        armorReductionDuration: 3.0,
-        branchName: '지진',
-        branchDesc: '광역 정지 + 방어력 30% 감소 (후속 타워 시너지)',
-        sellPrice: 288,
-      },
     },
   },
   poison: {
     name: 'Poison',
     displayName: 'Poison',
     color: 0xa8e063,
+    locked: false,
+    unlockCost: 0,
     levels: {
       1: {
         cost: 95,
@@ -814,109 +329,14 @@ export const TOWER_STATS = {
         armorReductionDuration: 4,
         sellPrice: 57,
       },
-      '2a': {
-        cost: 90,
-        damage: 5,
-        fireRate: 2.0,
-        range: 120,
-        attackType: 'aoe_instant',
-        splashRadius: 60,
-        poisonDamage: 6,
-        poisonDuration: 4,
-        armorReduction: 0.35,
-        armorReductionDuration: 4,
-        branchName: '맹독',
-        branchDesc: '방어력 감소 35% + 도트 2배',
-        sellPrice: 111,
-      },
-      '2b': {
-        cost: 95,
-        damage: 2,
-        fireRate: 2.5,
-        range: 140,
-        attackType: 'aoe_instant',
-        splashRadius: 100,
-        poisonDamage: 3,
-        poisonDuration: 4,
-        armorReduction: 0.2,
-        armorReductionDuration: 4,
-        maxPoisonStacks: 2,
-        branchName: '독 확산',
-        branchDesc: '범위 2배, 독 2중첩',
-        sellPrice: 114,
-      },
-      // ─── Phase 4: Lv.3 ───
-      '3aa': {
-        cost: 230,
-        damage: 8,
-        fireRate: 1.8,
-        range: 130,
-        attackType: 'aoe_instant',
-        splashRadius: 70,
-        poisonDamage: 12,
-        poisonDuration: 5,
-        armorReduction: 0.5,
-        armorReductionDuration: 5,
-        branchName: '치명적 맹독',
-        branchDesc: '독 도트 2배(12/s), 방어력 50% 감소 5초',
-        sellPrice: 249,
-      },
-      '3ab': {
-        cost: 200,
-        damage: 6,
-        fireRate: 2.0,
-        range: 140,
-        attackType: 'aoe_instant',
-        splashRadius: 90,
-        poisonDamage: 8,
-        poisonDuration: 6,
-        armorReduction: 0.35,
-        armorReductionDuration: 4,
-        maxPoisonStacks: 3,
-        branchName: '역병의 안개',
-        branchDesc: '독 3중첩 허용, 범위 확장, 지속 6초',
-        sellPrice: 231,
-      },
-      '3ba': {
-        cost: 260,
-        damage: 5,
-        fireRate: 2.0,
-        range: 160,
-        attackType: 'aoe_instant',
-        splashRadius: 140,
-        poisonDamage: 6,
-        poisonDuration: 5,
-        armorReduction: 0.3,
-        armorReductionDuration: 4,
-        maxPoisonStacks: 2,
-        branchName: '독 폭풍',
-        branchDesc: '범위 1.4배(140px), 독 강화, 초광역 오염',
-        sellPrice: 270,
-      },
-      '3bb': {
-        cost: 220,
-        damage: 3,
-        fireRate: 2.2,
-        range: 150,
-        attackType: 'aoe_instant',
-        splashRadius: 110,
-        poisonDamage: 5,
-        poisonDuration: 5,
-        armorReduction: 0.4,
-        armorReductionDuration: 5,
-        maxPoisonStacks: 2,
-        burnDamage: 3,
-        burnDuration: 3,
-        branchName: '부패 영역',
-        branchDesc: '독+화상 복합, 방어력 40% 감소 (복합 약화)',
-        sellPrice: 246,
-      },
     },
   },
   wind: {
     name: 'Wind',
     displayName: 'Wind',
     color: 0x81ecec,
+    locked: false,
+    unlockCost: 0,
     levels: {
       1: {
         cost: 80,
@@ -928,92 +348,14 @@ export const TOWER_STATS = {
         pushbackDistance: 80,
         sellPrice: 48,
       },
-      '2a': {
-        cost: 75,
-        damage: 5,
-        fireRate: 2.5,
-        range: 120,
-        projectileSpeed: 350,
-        attackType: 'single',
-        pushbackDistance: 160,
-        branchName: '회오리',
-        branchDesc: '4타일 밀치기',
-        sellPrice: 93,
-      },
-      '2b': {
-        cost: 80,
-        damage: 4,
-        fireRate: 2.0,
-        range: 120,
-        attackType: 'aoe_instant',
-        splashRadius: 60,
-        pushbackDistance: 40,
-        pushbackTargets: 3,
-        branchName: '돌풍',
-        branchDesc: '3개 동시 밀치기',
-        sellPrice: 96,
-      },
-      // ─── Phase 4: Lv.3 ───
-      '3aa': {
-        cost: 180,
-        damage: 10,
-        fireRate: 2.0,
-        range: 130,
-        projectileSpeed: 400,
-        attackType: 'single',
-        pushbackDistance: 280,
-        branchName: '대태풍',
-        branchDesc: '밀치기 7타일(280px), 공격력 2배',
-        sellPrice: 201,
-      },
-      '3ab': {
-        cost: 160,
-        damage: 7,
-        fireRate: 2.5,
-        range: 130,
-        projectileSpeed: 380,
-        attackType: 'single',
-        pushbackDistance: 200,
-        slowAmount: 0.3,
-        slowDuration: 2.0,
-        branchName: '바람 감옥',
-        branchDesc: '5타일 밀치기 + 30% 슬로우 2초',
-        sellPrice: 189,
-      },
-      '3ba': {
-        cost: 200,
-        damage: 8,
-        fireRate: 1.6,
-        range: 140,
-        attackType: 'aoe_instant',
-        splashRadius: 80,
-        pushbackDistance: 80,
-        pushbackTargets: 5,
-        branchName: '폭풍의 눈',
-        branchDesc: '5개 동시 밀치기, 거리 2배, 공격력 2배',
-        sellPrice: 216,
-      },
-      '3bb': {
-        cost: 170,
-        damage: 5,
-        fireRate: 1.8,
-        range: 135,
-        attackType: 'aoe_instant',
-        splashRadius: 75,
-        pushbackDistance: 60,
-        pushbackTargets: 4,
-        slowAmount: 0.4,
-        slowDuration: 2.0,
-        branchName: '질풍 제어',
-        branchDesc: '4개 밀치기 + 40% 슬로우 2초 (흐름 제어)',
-        sellPrice: 198,
-      },
     },
   },
   light: {
     name: 'Light',
     displayName: 'Light',
     color: 0xffeaa7,
+    locked: false,
+    unlockCost: 0,
     levels: {
       1: {
         cost: 130,
@@ -1023,82 +365,6 @@ export const TOWER_STATS = {
         attackType: 'piercing_beam',
         sellPrice: 78,
       },
-      '2a': {
-        cost: 120,
-        damage: 20,
-        fireRate: 1.8,
-        range: 600,
-        attackType: 'piercing_beam',
-        burnDamage: 3,
-        burnDuration: 2,
-        branchName: '레이저',
-        branchDesc: '관통 + 도트 추가',
-        sellPrice: 150,
-      },
-      '2b': {
-        cost: 110,
-        damage: 35,
-        fireRate: 2.5,
-        range: 100,
-        attackType: 'aoe_instant',
-        splashRadius: 80,
-        branchName: '성광',
-        branchDesc: '원형 광역 폭발',
-        sellPrice: 144,
-      },
-      // ─── Phase 4: Lv.3 ───
-      '3aa': {
-        cost: 300,
-        damage: 35,
-        fireRate: 1.4,
-        range: 600,
-        attackType: 'piercing_beam',
-        burnDamage: 8,
-        burnDuration: 3,
-        branchName: '태양광 레이저',
-        branchDesc: '빔 공격력+75%, 화상 도트 2.67배, 연사 향상',
-        sellPrice: 330,
-      },
-      '3ab': {
-        cost: 260,
-        damage: 25,
-        fireRate: 1.8,
-        range: 600,
-        attackType: 'piercing_beam',
-        burnDamage: 5,
-        burnDuration: 3,
-        armorReduction: 0.25,
-        armorReductionDuration: 3.0,
-        branchName: '신성 레이저',
-        branchDesc: '관통 빔 + 방어력 25% 감소 (라인 전체 약화)',
-        sellPrice: 306,
-      },
-      '3ba': {
-        cost: 280,
-        damage: 58,
-        fireRate: 2.2,
-        range: 120,
-        attackType: 'aoe_instant',
-        splashRadius: 120,
-        branchName: '성광 폭발',
-        branchDesc: '반경 1.5배(120px), 공격력+66%',
-        sellPrice: 312,
-      },
-      '3bb': {
-        cost: 240,
-        damage: 45,
-        fireRate: 2.5,
-        range: 110,
-        attackType: 'aoe_instant',
-        splashRadius: 95,
-        slowAmount: 0.35,
-        slowDuration: 2.0,
-        burnDamage: 4,
-        burnDuration: 2,
-        branchName: '정화의 빛',
-        branchDesc: '광역 폭발 + 슬로우 35% + 화상 (복합 제어)',
-        sellPrice: 288,
-      },
     },
   },
   dragon: {
@@ -1106,6 +372,7 @@ export const TOWER_STATS = {
     displayName: 'Dragon',
     color: 0xd63031,
     locked: true,
+    unlockCost: 50,
     levels: {
       1: {
         cost: 250,
@@ -1117,109 +384,68 @@ export const TOWER_STATS = {
         splashRadius: 80,
         sellPrice: 150,
       },
-      '2a': {
-        cost: 200,
-        damage: 60,
-        fireRate: 2.5,
-        range: 160,
-        projectileSpeed: 200,
-        attackType: 'splash',
-        splashRadius: 80,
-        burnDamage: 8,
-        burnDuration: 3,
-        branchName: '화염 브레스',
-        branchDesc: '범위 화상 도트',
-        sellPrice: 270,
-      },
-      '2b': {
-        cost: 180,
-        damage: 40,
-        fireRate: 3.0,
-        range: 160,
-        projectileSpeed: 200,
-        attackType: 'aoe_instant',
-        splashRadius: 80,
-        poisonDamage: 10,
-        poisonDuration: 5,
-        branchName: '독 브레스',
-        branchDesc: '원형 광역 독 도트',
-        sellPrice: 258,
-      },
-      // ─── Phase 4: Lv.3 ───
-      '3aa': {
-        cost: 350,
-        damage: 100,
-        fireRate: 2.2,
-        range: 180,
-        projectileSpeed: 220,
-        attackType: 'splash',
-        splashRadius: 120,
-        burnDamage: 16,
-        burnDuration: 4,
-        branchName: '용왕 화염',
-        branchDesc: '광역+50%(120px), 공격력+67%, 화상 2배',
-        sellPrice: 480,
-      },
-      '3ab': {
-        cost: 300,
-        damage: 75,
-        fireRate: 2.5,
-        range: 170,
-        projectileSpeed: 210,
-        attackType: 'splash',
-        splashRadius: 90,
-        burnDamage: 10,
-        burnDuration: 4,
-        poisonDamage: 8,
-        poisonDuration: 4,
-        armorReduction: 0.3,
-        armorReductionDuration: 4,
-        branchName: '지옥 브레스',
-        branchDesc: '화상+독+방어력 감소 3종 복합 디버프',
-        sellPrice: 450,
-      },
-      '3ba': {
-        cost: 330,
-        damage: 65,
-        fireRate: 2.5,
-        range: 180,
-        attackType: 'aoe_instant',
-        splashRadius: 110,
-        poisonDamage: 18,
-        poisonDuration: 6,
-        maxPoisonStacks: 3,
-        branchName: '독용의 역병',
-        branchDesc: '독 3중첩, 도트+80%, 지속 6초',
-        sellPrice: 456,
-      },
-      '3bb': {
-        cost: 280,
-        damage: 50,
-        fireRate: 2.8,
-        range: 170,
-        attackType: 'aoe_instant',
-        splashRadius: 95,
-        poisonDamage: 12,
-        poisonDuration: 5,
-        burnDamage: 6,
-        burnDuration: 3,
-        slowAmount: 0.35,
-        slowDuration: 2.0,
-        armorReduction: 0.25,
-        armorReductionDuration: 3,
-        branchName: '혼돈의 용',
-        branchDesc: '독+화상+슬로우+방어감소 4종 복합 오염',
-        sellPrice: 426,
-      },
     },
   },
 };
 
-/** @const {number} Maximum tower level */
-export const MAX_TOWER_LEVEL = 3;
+// ── Merge System ─────────────────────────────────────────────────
+/**
+ * Merge recipes: key = typeA+typeB (alphabetically sorted), value = merge result.
+ * Phase 1: empty object. Phase 2 will populate with 55 2-tier recipes.
+ * @type {Object<string, { id: string, tier: number, displayName: string, color: number }>}
+ */
+export const MERGE_RECIPES = {};
 
-/** @const {number} Lv.3 tower shape scale multiplier */
-export const LV3_SHAPE_SCALE = 1.35;
+/**
+ * Stats for merged towers, keyed by merge result ID.
+ * Phase 1: empty object. Phase 2 will populate with 55 stat blocks.
+ * @type {Object<string, object>}
+ */
+export const MERGED_TOWER_STATS = {};
+
+/**
+ * Get a canonical merge key from two tower type/merge IDs.
+ * Sorts alphabetically and joins with '+'.
+ * @param {string} typeA - Tower type or merge ID
+ * @param {string} typeB - Tower type or merge ID
+ * @returns {string} Sorted merge key (e.g. 'archer+mage')
+ */
+export function getMergeKey(typeA, typeB) {
+  return [typeA, typeB].sort().join('+');
+}
+
+/**
+ * Look up a merge recipe result for two tower type/merge IDs.
+ * @param {string} typeA - Tower type or merge ID
+ * @param {string} typeB - Tower type or merge ID
+ * @returns {object|null} Merge recipe result or null if not found
+ */
+export function getMergeResult(typeA, typeB) {
+  const key = getMergeKey(typeA, typeB);
+  return MERGE_RECIPES[key] || null;
+}
+
+/**
+ * Check if a tower is mergeable (enhanceLevel must be 0).
+ * @param {{ enhanceLevel: number }} tower - Tower instance
+ * @returns {boolean}
+ */
+export function isMergeable(tower) {
+  return tower.enhanceLevel === 0;
+}
+
+/**
+ * Check if a tower type or merge ID is used as a merge ingredient in any recipe.
+ * @param {string} id - Tower type or merge ID
+ * @returns {boolean}
+ */
+export function isUsedAsMergeIngredient(id) {
+  for (const key of Object.keys(MERGE_RECIPES)) {
+    const parts = key.split('+');
+    if (parts.includes(id)) return true;
+  }
+  return false;
+}
 
 // ── Enemy Base Stats ────────────────────────────────────────────
 /**
@@ -1572,8 +798,7 @@ export function calcDiamondReward(round) {
   return Math.floor(round / 5) * 2 + Math.floor(round / 10) * 3;
 }
 
-/** @const {number} Diamond cost to unlock dragon tower */
-export const DRAGON_UNLOCK_COST = 50;
+// (Dragon unlock cost is now in TOWER_STATS.dragon.unlockCost)
 
 // ── Meta Upgrade Tree (10 towers × 3 tiers × A/B) ─────────────
 /**
@@ -1960,15 +1185,20 @@ function createDefaultStats() {
   };
 }
 
+/** @const {number} Current save data schema version */
+export const SAVE_DATA_VERSION = 2;
+
 /**
  * Migrate save data to latest schema.
- * Adds missing fields with default values while preserving existing data.
+ * v1 → v2: Remove towerUpgrades, dragonUnlocked; add unlockedTowers, discoveredMerges.
+ * Preserves diamond, stats, totalDiamondEarned.
  * @param {object|null} saveData - Existing save data (may be null or older format)
  * @returns {object} Migrated save data with all fields
  */
 export function migrateSaveData(saveData) {
   if (!saveData) {
     return {
+      saveDataVersion: SAVE_DATA_VERSION,
       bestRound: 0,
       bestKills: 0,
       totalGames: 0,
@@ -1976,24 +1206,71 @@ export function migrateSaveData(saveData) {
       totalDiamondEarned: 0,
       towerUpgrades: {},
       utilityUpgrades: { baseHp: 0, goldBoost: 0, waveBonus: 0 },
-      dragonUnlocked: false,
+      unlockedTowers: [],
+      discoveredMerges: [],
       stats: createDefaultStats(),
     };
   }
 
-  // Phase 3 field migration
+  // ── v1 → v2 migration ──
+  if (!saveData.saveDataVersion || saveData.saveDataVersion < 2) {
+    // Preserve diamond, stats, totalDiamondEarned
+    const diamond = saveData.diamond || 0;
+    const totalDiamondEarned = saveData.totalDiamondEarned || 0;
+    const stats = saveData.stats || createDefaultStats();
+
+    // Migrate dragonUnlocked → unlockedTowers array
+    const unlockedTowers = [];
+    if (saveData.dragonUnlocked) {
+      unlockedTowers.push('dragon');
+    }
+
+    // Preserve utility upgrades and tower meta upgrades
+    const utilityUpgrades = saveData.utilityUpgrades || { baseHp: 0, goldBoost: 0, waveBonus: 0 };
+    const towerUpgrades = saveData.towerUpgrades || {};
+
+    // Seed stats from existing top-level fields if needed
+    if (!stats.totalGamesPlayed && saveData.totalGames) {
+      stats.totalGamesPlayed = saveData.totalGames;
+    }
+    if (!stats.bestRound && saveData.bestRound) {
+      stats.bestRound = saveData.bestRound;
+    }
+    if (!stats.bestKills && saveData.bestKills) {
+      stats.bestKills = saveData.bestKills;
+    }
+    if (!stats.gameHistory) stats.gameHistory = [];
+
+    // Build v2 save data
+    saveData = {
+      saveDataVersion: SAVE_DATA_VERSION,
+      bestRound: saveData.bestRound || 0,
+      bestKills: saveData.bestKills || 0,
+      totalGames: saveData.totalGames || 0,
+      diamond,
+      totalDiamondEarned,
+      towerUpgrades,
+      utilityUpgrades,
+      unlockedTowers,
+      discoveredMerges: [],
+      stats,
+    };
+
+    return saveData;
+  }
+
+  // ── Ensure all v2 fields exist ──
   if (saveData.diamond === undefined) saveData.diamond = 0;
   if (saveData.totalDiamondEarned === undefined) saveData.totalDiamondEarned = 0;
   if (!saveData.towerUpgrades) saveData.towerUpgrades = {};
   if (!saveData.utilityUpgrades) {
     saveData.utilityUpgrades = { baseHp: 0, goldBoost: 0, waveBonus: 0 };
   }
-  if (saveData.dragonUnlocked === undefined) saveData.dragonUnlocked = false;
+  if (!saveData.unlockedTowers) saveData.unlockedTowers = [];
+  if (!saveData.discoveredMerges) saveData.discoveredMerges = [];
 
-  // Phase 6 field migration: stats
   if (!saveData.stats) {
     saveData.stats = createDefaultStats();
-    // Seed from existing top-level fields
     saveData.stats.totalGamesPlayed = saveData.totalGames || 0;
     saveData.stats.bestRound = saveData.bestRound || 0;
     saveData.stats.bestKills = saveData.bestKills || 0;
