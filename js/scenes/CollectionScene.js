@@ -1,13 +1,16 @@
 /**
  * @fileoverview CollectionScene - Tower meta-upgrade collection mode.
- * Displays tower cards in a grid, utility upgrade cards, and provides
- * detail overlay views for purchasing permanent upgrades with Diamond currency.
+ * Two-tab layout: (1) Meta Upgrades, (2) Merge Codex (T1~T5 tower catalogue).
+ * Provides detail overlay views for purchasing permanent upgrades with Diamond currency,
+ * and displays discovered/undiscovered merge towers with recipe hints.
  */
 
 import {
   GAME_WIDTH, GAME_HEIGHT, COLORS, SAVE_KEY,
   TOWER_STATS, META_UPGRADE_TREE, UTILITY_UPGRADES,
+  MERGE_RECIPES, MERGED_TOWER_STATS,
 } from '../config.js';
+import { t } from '../i18n.js';
 
 /** @const {string[]} Tower type order for the card grid */
 const TOWER_ORDER = [
@@ -19,6 +22,7 @@ const TOWER_ORDER = [
 /** @const {string[]} Utility upgrade keys in display order */
 const UTILITY_ORDER = ['baseHp', 'goldBoost', 'waveBonus'];
 
+// ── Meta Upgrade Tab Constants ──────────────────────────────────
 /** @const {number} Tower card width */
 const CARD_W = 76;
 /** @const {number} Tower card height */
@@ -26,16 +30,34 @@ const CARD_H = 90;
 /** @const {number} Card grid gap */
 const CARD_GAP = 8;
 /** @const {number} Grid columns */
-const GRID_COLS = 4;
+const META_GRID_COLS = 4;
 /** @const {number} Grid start X */
-const GRID_X = 16;
-/** @const {number} Grid start Y */
-const GRID_Y = 56;
+const META_GRID_X = 16;
+/** @const {number} Grid start Y (below tab bar) */
+const META_GRID_Y = 96;
 
 /** @const {number} Utility card width */
 const UTIL_W = 104;
 /** @const {number} Utility card height */
 const UTIL_H = 80;
+
+// ── Tab Bar Constants ───────────────────────────────────────────
+const TAB_Y = 48;
+const TAB_H = 36;
+const TAB_W = 165;
+
+// ── Codex Tab Constants ─────────────────────────────────────────
+const SUBTAB_Y = 88;
+const SUBTAB_H = 28;
+const SUBTAB_W = 64;
+const SUBTAB_GAP = 4;
+const PROGRESS_Y = 122;
+const CODEX_GRID_Y = 142;
+const CODEX_CARD_W = 62;
+const CODEX_CARD_H = 74;
+const CODEX_COLS = 5;
+const CODEX_CARD_GAP = 6;
+const CODEX_GRID_X = (GAME_WIDTH - (CODEX_COLS * CODEX_CARD_W + (CODEX_COLS - 1) * CODEX_CARD_GAP)) / 2;
 
 export class CollectionScene extends Phaser.Scene {
   constructor() {
@@ -54,6 +76,36 @@ export class CollectionScene extends Phaser.Scene {
 
     /** @type {Phaser.GameObjects.Container|null} Active overlay container */
     this.overlay = null;
+
+    /** @type {'meta'|'codex'} Currently active main tab */
+    this.activeTab = 'meta';
+
+    /** @type {number} Currently active codex sub-tab tier (1~5) */
+    this.codexTier = 1;
+
+    /** @type {Phaser.GameObjects.Container|null} Tab content container */
+    this.tabContent = null;
+
+    /** @type {Phaser.GameObjects.Container|null} Codex scrollable container */
+    this.codexScrollContainer = null;
+
+    /** @type {number} Codex scroll offset Y */
+    this.codexScrollY = 0;
+
+    /** @type {boolean} Whether user is dragging the codex scroll area */
+    this.codexDragging = false;
+
+    /** @type {number} Pointer Y at drag start */
+    this.codexDragStartY = 0;
+
+    /** @type {number} Scroll offset at drag start */
+    this.codexDragStartScroll = 0;
+
+    /** @type {boolean} Whether a drag has moved enough to count as scroll (vs click) */
+    this.codexDragMoved = false;
+
+    /** @type {object|null} Pre-built tier data cache */
+    this._tierDataCache = null;
   }
 
   /**
@@ -66,8 +118,9 @@ export class CollectionScene extends Phaser.Scene {
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, COLORS.BACKGROUND);
 
     this._createTopBar();
-    this._createTowerCards();
-    this._createUtilitySection();
+    this._createTabBar();
+    this._buildTierData();
+    this._showTab(this.activeTab);
   }
 
   // ── Top Bar ──────────────────────────────────────────────────
@@ -105,7 +158,7 @@ export class CollectionScene extends Phaser.Scene {
 
     // Diamond display
     const diamond = this.saveData.diamond || 0;
-    this.diamondText = this.add.text(352, 24, `◆ ${diamond}`, {
+    this.diamondText = this.add.text(352, 24, `\u25C6 ${diamond}`, {
       fontSize: '16px',
       fontFamily: 'Arial, sans-serif',
       color: COLORS.DIAMOND_CSS,
@@ -118,8 +171,122 @@ export class CollectionScene extends Phaser.Scene {
    */
   _refreshDiamondDisplay() {
     if (this.diamondText) {
-      this.diamondText.setText(`◆ ${this.saveData.diamond || 0}`);
+      this.diamondText.setText(`\u25C6 ${this.saveData.diamond || 0}`);
     }
+  }
+
+  // ── Tab Bar ──────────────────────────────────────────────────
+
+  /**
+   * Create the main tab bar with "Meta Upgrade" and "Merge Codex" tabs.
+   * @private
+   */
+  _createTabBar() {
+    this._tabBarContainer = this.add.container(0, 0).setDepth(10);
+    this._renderTabBar();
+  }
+
+  /**
+   * Render tab bar buttons reflecting current active tab.
+   * @private
+   */
+  _renderTabBar() {
+    if (this._tabBarContainer) this._tabBarContainer.removeAll(true);
+
+    const tabCenterY = TAB_Y + TAB_H / 2;
+    const leftX = GAME_WIDTH / 2 - TAB_W / 2 - 2;
+    const rightX = GAME_WIDTH / 2 + TAB_W / 2 + 2;
+
+    // Meta Upgrade tab
+    const metaActive = this.activeTab === 'meta';
+    const metaBg = this.add.rectangle(leftX, tabCenterY, TAB_W, TAB_H,
+      metaActive ? COLORS.UI_PANEL : COLORS.BACKGROUND);
+    this._tabBarContainer.add(metaBg);
+
+    if (metaActive) {
+      const accentLine = this.add.rectangle(leftX, TAB_Y + TAB_H - 1, TAB_W, 2, COLORS.DIAMOND);
+      this._tabBarContainer.add(accentLine);
+    }
+
+    const metaText = this.add.text(leftX, tabCenterY, t('collection.tab.meta'), {
+      fontSize: '13px',
+      fontFamily: 'Arial, sans-serif',
+      color: metaActive ? '#ffffff' : '#636e72',
+      fontStyle: metaActive ? 'bold' : 'normal',
+    }).setOrigin(0.5);
+    this._tabBarContainer.add(metaText);
+
+    metaBg.setInteractive({ useHandCursor: true });
+    metaBg.on('pointerdown', () => {
+      if (this.activeTab !== 'meta') {
+        this.activeTab = 'meta';
+        this._renderTabBar();
+        this._showTab('meta');
+      }
+    });
+
+    // Codex tab
+    const codexActive = this.activeTab === 'codex';
+    const codexBg = this.add.rectangle(rightX, tabCenterY, TAB_W, TAB_H,
+      codexActive ? COLORS.UI_PANEL : COLORS.BACKGROUND);
+    this._tabBarContainer.add(codexBg);
+
+    if (codexActive) {
+      const accentLine = this.add.rectangle(rightX, TAB_Y + TAB_H - 1, TAB_W, 2, COLORS.DIAMOND);
+      this._tabBarContainer.add(accentLine);
+    }
+
+    const codexText = this.add.text(rightX, tabCenterY, t('collection.tab.codex'), {
+      fontSize: '13px',
+      fontFamily: 'Arial, sans-serif',
+      color: codexActive ? '#ffffff' : '#636e72',
+      fontStyle: codexActive ? 'bold' : 'normal',
+    }).setOrigin(0.5);
+    this._tabBarContainer.add(codexText);
+
+    codexBg.setInteractive({ useHandCursor: true });
+    codexBg.on('pointerdown', () => {
+      if (this.activeTab !== 'codex') {
+        this.activeTab = 'codex';
+        this._renderTabBar();
+        this._showTab('codex');
+      }
+    });
+  }
+
+  /**
+   * Switch tab content.
+   * @param {'meta'|'codex'} tab
+   * @private
+   */
+  _showTab(tab) {
+    if (this.tabContent) {
+      this.tabContent.destroy();
+      this.tabContent = null;
+    }
+    this.codexScrollContainer = null;
+    this._cleanupCodexDrag();
+
+    this.tabContent = this.add.container(0, 0).setDepth(5);
+
+    if (tab === 'meta') {
+      this._buildMetaTab();
+    } else {
+      this._buildCodexTab();
+    }
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // TAB 1: META UPGRADES
+  // ══════════════════════════════════════════════════════════════
+
+  /**
+   * Build the meta upgrade tab content.
+   * @private
+   */
+  _buildMetaTab() {
+    this._createTowerCards();
+    this._createUtilitySection();
   }
 
   // ── Tower Cards ──────────────────────────────────────────────
@@ -131,10 +298,10 @@ export class CollectionScene extends Phaser.Scene {
   _createTowerCards() {
     for (let i = 0; i < TOWER_ORDER.length; i++) {
       const type = TOWER_ORDER[i];
-      const col = i % GRID_COLS;
-      const row = Math.floor(i / GRID_COLS);
-      const x = GRID_X + col * (CARD_W + CARD_GAP);
-      const y = GRID_Y + row * (CARD_H + CARD_GAP);
+      const col = i % META_GRID_COLS;
+      const row = Math.floor(i / META_GRID_COLS);
+      const x = META_GRID_X + col * (CARD_W + CARD_GAP);
+      const y = META_GRID_Y + row * (CARD_H + CARD_GAP);
       this._createTowerCard(type, x, y);
     }
   }
@@ -160,6 +327,7 @@ export class CollectionScene extends Phaser.Scene {
         .setAlpha(0.6)
         .setStrokeStyle(2, 0x636e72)
         .setInteractive({ useHandCursor: true });
+      this.tabContent.add(bg);
 
       // Lock icon
       const lockG = this.add.graphics();
@@ -171,21 +339,24 @@ export class CollectionScene extends Phaser.Scene {
       lockG.strokePath();
       lockG.fillStyle(COLORS.BACKGROUND, 1);
       lockG.fillCircle(cx, y + 20 + 2, 2);
+      this.tabContent.add(lockG);
 
       // Name
-      this.add.text(cx, y + 52, stats.displayName, {
+      const nameText = this.add.text(cx, y + 52, stats.displayName, {
         fontSize: '12px',
         fontFamily: 'Arial, sans-serif',
         color: '#636e72',
       }).setOrigin(0.5);
+      this.tabContent.add(nameText);
 
       // Cost
       const unlockCost = stats.unlockCost || 0;
-      this.add.text(cx, y + 68, `◆${unlockCost}`, {
+      const costText = this.add.text(cx, y + 68, `\u25C6${unlockCost}`, {
         fontSize: '11px',
         fontFamily: 'Arial, sans-serif',
         color: COLORS.DIAMOND_CSS,
       }).setOrigin(0.5);
+      this.tabContent.add(costText);
 
       bg.on('pointerdown', () => {
         this._showTowerUnlockPopup(type);
@@ -196,26 +367,30 @@ export class CollectionScene extends Phaser.Scene {
       const bg = this.add.rectangle(cx, cy, CARD_W, CARD_H, COLORS.UI_PANEL)
         .setStrokeStyle(2, borderColor)
         .setInteractive({ useHandCursor: true });
+      this.tabContent.add(bg);
 
       // Tower icon (scaled 0.6x)
       const iconG = this.add.graphics();
       this._drawTowerIcon(iconG, type, cx, y + 20, 0.6);
+      this.tabContent.add(iconG);
 
       // Name
-      this.add.text(cx, y + 52, stats.displayName, {
+      const nameText = this.add.text(cx, y + 52, stats.displayName, {
         fontSize: '12px',
         fontFamily: 'Arial, sans-serif',
         color: '#ffffff',
       }).setOrigin(0.5);
+      this.tabContent.add(nameText);
 
       // Current meta tier
       const maxTier = this._getMaxMetaTier(type);
       const tierStr = maxTier > 0 ? `Lv.${maxTier}` : 'Lv.0';
-      this.add.text(cx, y + 68, tierStr, {
+      const tierText = this.add.text(cx, y + 68, tierStr, {
         fontSize: '11px',
         fontFamily: 'Arial, sans-serif',
         color: '#ffd700',
       }).setOrigin(0.5);
+      this.tabContent.add(tierText);
 
       bg.on('pointerdown', () => {
         this._showTowerDetailView(type);
@@ -363,21 +538,24 @@ export class CollectionScene extends Phaser.Scene {
    * @private
    */
   _createUtilitySection() {
-    // Section header
-    const headerY = 350;
-    this.add.text(GAME_WIDTH / 2, headerY, '── UTILITY ──', {
+    // Section header (adjusted for tab bar offset)
+    const headerY = 390;
+    const headerText = this.add.text(GAME_WIDTH / 2, headerY, '── UTILITY ──', {
       fontSize: '13px',
       fontFamily: 'Arial, sans-serif',
       color: '#636e72',
     }).setOrigin(0.5);
+    this.tabContent.add(headerText);
 
     // Left/right decorative lines
-    this.add.rectangle(60, headerY, 80, 1, 0x636e72).setAlpha(0.3);
-    this.add.rectangle(300, headerY, 80, 1, 0x636e72).setAlpha(0.3);
+    const lineL = this.add.rectangle(60, headerY, 80, 1, 0x636e72).setAlpha(0.3);
+    const lineR = this.add.rectangle(300, headerY, 80, 1, 0x636e72).setAlpha(0.3);
+    this.tabContent.add(lineL);
+    this.tabContent.add(lineR);
 
     // Utility cards
     const utilStartX = 16;
-    const utilY = 370;
+    const utilY = 410;
     for (let i = 0; i < UTILITY_ORDER.length; i++) {
       const key = UTILITY_ORDER[i];
       const x = utilStartX + i * (UTIL_W + CARD_GAP);
@@ -404,23 +582,27 @@ export class CollectionScene extends Phaser.Scene {
     const bg = this.add.rectangle(cx, cy, UTIL_W, UTIL_H, COLORS.UI_PANEL)
       .setStrokeStyle(1, borderColor)
       .setInteractive({ useHandCursor: true });
+    this.tabContent.add(bg);
 
     // Icon + name
     const iconG = this.add.graphics();
     this._drawUtilityIcon(iconG, key, x + 18, y + 16);
+    this.tabContent.add(iconG);
 
-    this.add.text(x + 32, y + 16, util.name, {
+    const nameText = this.add.text(x + 32, y + 16, util.name, {
       fontSize: '12px',
       fontFamily: 'Arial, sans-serif',
       color: '#ffffff',
     }).setOrigin(0, 0.5);
+    this.tabContent.add(nameText);
 
     // Tier display
-    this.add.text(cx, y + 40, `Tier ${tier}/${maxTier}`, {
+    const tierText = this.add.text(cx, y + 40, `Tier ${tier}/${maxTier}`, {
       fontSize: '11px',
       fontFamily: 'Arial, sans-serif',
       color: '#ffd700',
     }).setOrigin(0.5);
+    this.tabContent.add(tierText);
 
     // Current effect text
     let effectStr = '';
@@ -429,11 +611,12 @@ export class CollectionScene extends Phaser.Scene {
     } else {
       effectStr = util.tiers[tier - 1].desc;
     }
-    this.add.text(cx, y + 56, effectStr, {
+    const effectText = this.add.text(cx, y + 56, effectStr, {
       fontSize: '10px',
       fontFamily: 'Arial, sans-serif',
       color: '#b2bec3',
     }).setOrigin(0.5);
+    this.tabContent.add(effectText);
 
     bg.on('pointerdown', () => {
       this._showUtilityDetailView(key);
@@ -455,7 +638,6 @@ export class CollectionScene extends Phaser.Scene {
     switch (util.icon) {
       case 'heart': {
         g.fillStyle(color, 1);
-        // Simple heart approximation: two circles + triangle
         g.fillCircle(x - 3, y - 2, 4);
         g.fillCircle(x + 3, y - 2, 4);
         g.fillTriangle(x - 7, y - 1, x + 7, y - 1, x, y + 6);
@@ -483,6 +665,565 @@ export class CollectionScene extends Phaser.Scene {
       }
     }
   }
+
+  // ══════════════════════════════════════════════════════════════
+  // TAB 2: MERGE CODEX
+  // ══════════════════════════════════════════════════════════════
+
+  /**
+   * Build tier data from TOWER_STATS, MERGE_RECIPES, MERGED_TOWER_STATS.
+   * Creates a cache of { tier -> [{ id, displayName, color, attackType, recipeKey, tier, discovered }] }
+   * @private
+   */
+  _buildTierData() {
+    if (this._tierDataCache) return;
+
+    const discovered = new Set(this.saveData.discoveredMerges || []);
+    const data = { 1: [], 2: [], 3: [], 4: [], 5: [] };
+
+    // T1: base 10 towers, always discovered
+    // Use i18n key for display name to ensure language consistency with T2+ (BUG-3 fix).
+    for (const type of TOWER_ORDER) {
+      const stats = TOWER_STATS[type];
+      const lv1 = stats.levels[1];
+      data[1].push({
+        id: type,
+        displayName: t(`tower.${type}.name`) || stats.displayName,
+        color: stats.color,
+        attackType: lv1.attackType,
+        recipeKey: null,
+        tier: 1,
+        discovered: true,
+      });
+    }
+
+    // T2~T5: from MERGE_RECIPES
+    for (const [recipeKey, recipe] of Object.entries(MERGE_RECIPES)) {
+      const mergedStats = MERGED_TOWER_STATS[recipe.id];
+      const tier = recipe.tier;
+      if (tier < 2 || tier > 5) continue;
+
+      data[tier].push({
+        id: recipe.id,
+        displayName: recipe.displayName,
+        color: recipe.color,
+        attackType: mergedStats ? mergedStats.attackType : 'unknown',
+        recipeKey: recipeKey,
+        tier: tier,
+        discovered: discovered.has(recipe.id),
+      });
+    }
+
+    // Sort each tier alphabetically by id for consistent order
+    for (let t = 2; t <= 5; t++) {
+      data[t].sort((a, b) => a.id.localeCompare(b.id));
+    }
+
+    this._tierDataCache = data;
+  }
+
+  /**
+   * Build the codex tab content with sub-tabs.
+   * @private
+   */
+  _buildCodexTab() {
+    this._buildCodexSubTabs();
+    this._buildCodexContent();
+  }
+
+  /**
+   * Build sub-tab bar for codex (T1~T5).
+   * @private
+   */
+  _buildCodexSubTabs() {
+    // Remove old sub-tab elements if any
+    if (this._subTabContainer) {
+      this._subTabContainer.destroy();
+    }
+    this._subTabContainer = this.add.container(0, 0).setDepth(8);
+    this.tabContent.add(this._subTabContainer);
+
+    const totalW = 5 * SUBTAB_W + 4 * SUBTAB_GAP;
+    const startX = (GAME_WIDTH - totalW) / 2 + SUBTAB_W / 2;
+    const cy = SUBTAB_Y + SUBTAB_H / 2;
+
+    for (let tier = 1; tier <= 5; tier++) {
+      const x = startX + (tier - 1) * (SUBTAB_W + SUBTAB_GAP);
+      const isActive = tier === this.codexTier;
+
+      const bg = this.add.rectangle(x, cy, SUBTAB_W, SUBTAB_H,
+        isActive ? COLORS.UI_PANEL : COLORS.BACKGROUND)
+        .setStrokeStyle(1, isActive ? COLORS.DIAMOND : 0x636e72)
+        .setInteractive({ useHandCursor: true });
+      this._subTabContainer.add(bg);
+
+      const label = this.add.text(x, cy, `T${tier}`, {
+        fontSize: '12px',
+        fontFamily: 'Arial, sans-serif',
+        color: isActive ? '#ffffff' : '#636e72',
+        fontStyle: isActive ? 'bold' : 'normal',
+      }).setOrigin(0.5);
+      this._subTabContainer.add(label);
+
+      bg.on('pointerdown', () => {
+        if (this.codexTier !== tier) {
+          this.codexTier = tier;
+          this.codexScrollY = 0;
+          // Rebuild sub-tabs and content
+          this._buildCodexSubTabs();
+          this._buildCodexContent();
+        }
+      });
+    }
+  }
+
+  /**
+   * Build the codex grid content for the current sub-tab tier.
+   * @private
+   */
+  _buildCodexContent() {
+    // Remove old content
+    if (this._codexContentContainer) {
+      this._codexContentContainer.destroy();
+    }
+    this._cleanupCodexDrag();
+
+    const tierData = this._tierDataCache[this.codexTier] || [];
+    const discoveredCount = tierData.filter(d => d.discovered).length;
+    const totalCount = tierData.length;
+
+    // Progress text
+    this._codexContentContainer = this.add.container(0, 0).setDepth(6);
+    this.tabContent.add(this._codexContentContainer);
+
+    const progressStr = t('collection.codex.progress')
+      .replace('{tier}', `T${this.codexTier}`)
+      .replace('{count}', String(discoveredCount))
+      .replace('{total}', String(totalCount));
+
+    const progressText = this.add.text(GAME_WIDTH / 2, PROGRESS_Y + 8, progressStr, {
+      fontSize: '12px',
+      fontFamily: 'Arial, sans-serif',
+      color: '#b2bec3',
+    }).setOrigin(0.5);
+    this._codexContentContainer.add(progressText);
+
+    // Scroll mask & container
+    // Track maskShape as instance variable and add to container to prevent
+    // memory leak on sub-tab switching (BUG-2 fix).
+    const scrollAreaH = GAME_HEIGHT - CODEX_GRID_Y;
+    this._maskShape = this.add.rectangle(GAME_WIDTH / 2, CODEX_GRID_Y + scrollAreaH / 2,
+      GAME_WIDTH, scrollAreaH, 0x000000).setVisible(false);
+    this._codexContentContainer.add(this._maskShape);
+
+    this.codexScrollContainer = this.add.container(0, 0);
+    this._codexContentContainer.add(this.codexScrollContainer);
+
+    const mask = this._maskShape.createGeometryMask();
+    this.codexScrollContainer.setMask(mask);
+
+    // Compute total content height
+    const rows = Math.ceil(tierData.length / CODEX_COLS);
+    const totalContentH = rows * (CODEX_CARD_H + CODEX_CARD_GAP);
+    this._codexMaxScroll = Math.max(0, totalContentH - scrollAreaH + 10);
+
+    // Build cards
+    for (let i = 0; i < tierData.length; i++) {
+      const col = i % CODEX_COLS;
+      const row = Math.floor(i / CODEX_COLS);
+      const x = CODEX_GRID_X + col * (CODEX_CARD_W + CODEX_CARD_GAP);
+      const y = CODEX_GRID_Y + row * (CODEX_CARD_H + CODEX_CARD_GAP);
+      this._createCodexCard(tierData[i], x, y);
+    }
+
+    // Apply initial scroll offset
+    this.codexScrollY = 0;
+    this._applyCodexScroll();
+
+    // Setup drag-scroll
+    this._setupCodexDrag();
+  }
+
+  /**
+   * Create a single codex card.
+   * @param {object} entry - Tier data entry
+   * @param {number} x - Top-left X
+   * @param {number} y - Top-left Y
+   * @private
+   */
+  _createCodexCard(entry, x, y) {
+    const cx = x + CODEX_CARD_W / 2;
+    const cy = y + CODEX_CARD_H / 2;
+
+    if (entry.discovered) {
+      // Discovered card
+      const borderColor = this._getTierBorderColor(entry.tier);
+      const bg = this.add.rectangle(cx, cy, CODEX_CARD_W, CODEX_CARD_H, COLORS.UI_PANEL)
+        .setStrokeStyle(2, borderColor)
+        .setInteractive({ useHandCursor: true });
+      this.codexScrollContainer.add(bg);
+
+      // Color circle
+      const circleG = this.add.graphics();
+      circleG.fillStyle(entry.color, 1);
+      circleG.fillCircle(cx, y + 18, 10);
+      this.codexScrollContainer.add(circleG);
+
+      // Tower name (truncated)
+      const displayName = entry.displayName.length > 6
+        ? entry.displayName.substring(0, 5) + '..'
+        : entry.displayName;
+      const nameText = this.add.text(cx, y + 38, displayName, {
+        fontSize: '9px',
+        fontFamily: 'Arial, sans-serif',
+        color: '#ffffff',
+      }).setOrigin(0.5);
+      this.codexScrollContainer.add(nameText);
+
+      // attackType badge
+      const badgeStr = this._getAttackTypeBadge(entry.attackType);
+      const badgeText = this.add.text(cx, y + 54, badgeStr, {
+        fontSize: '8px',
+        fontFamily: 'Arial, sans-serif',
+        color: '#81ecec',
+        backgroundColor: '#0d1117',
+        padding: { x: 2, y: 1 },
+      }).setOrigin(0.5);
+      this.codexScrollContainer.add(badgeText);
+
+      // Tier indicator
+      const tierBadge = this.add.text(cx, y + 67, `T${entry.tier}`, {
+        fontSize: '8px',
+        fontFamily: 'Arial, sans-serif',
+        color: '#ffd700',
+      }).setOrigin(0.5);
+      this.codexScrollContainer.add(tierBadge);
+
+      bg.on('pointerdown', () => {
+        if (!this.codexDragMoved) {
+          this._showCodexCardOverlay(entry);
+        }
+      });
+    } else {
+      // Undiscovered card
+      const bg = this.add.rectangle(cx, cy, CODEX_CARD_W, CODEX_CARD_H, 0x0d1117)
+        .setStrokeStyle(1, 0x636e72)
+        .setInteractive({ useHandCursor: true });
+      this.codexScrollContainer.add(bg);
+
+      // "???" text
+      const unknownText = this.add.text(cx, y + 22, t('collection.codex.unknown'), {
+        fontSize: '16px',
+        fontFamily: 'Arial, sans-serif',
+        color: '#636e72',
+      }).setOrigin(0.5);
+      this.codexScrollContainer.add(unknownText);
+
+      // Tier indicator
+      const tierBadge = this.add.text(cx, y + 50, `T${entry.tier}`, {
+        fontSize: '8px',
+        fontFamily: 'Arial, sans-serif',
+        color: '#636e72',
+      }).setOrigin(0.5);
+      this.codexScrollContainer.add(tierBadge);
+
+      bg.on('pointerdown', () => {
+        if (!this.codexDragMoved) {
+          this._showCodexCardOverlay(entry);
+        }
+      });
+    }
+  }
+
+  /**
+   * Get the border color for a given tier.
+   * @param {number} tier
+   * @returns {number} Color hex
+   * @private
+   */
+  _getTierBorderColor(tier) {
+    switch (tier) {
+      case 1: return 0xb2bec3;
+      case 2: return 0xb2bec3;
+      case 3: return 0xffd700;
+      case 4: return 0xa29bfe;
+      case 5: return 0xffd700;
+      default: return 0x636e72;
+    }
+  }
+
+  /**
+   * Get a short badge string for an attack type.
+   * @param {string} attackType
+   * @returns {string}
+   * @private
+   */
+  _getAttackTypeBadge(attackType) {
+    const map = {
+      'single': 'Single',
+      'splash': 'Splash',
+      'aoe_instant': 'AoE',
+      'chain': 'Chain',
+      'piercing_beam': 'Beam',
+      'dot_single': 'DoT',
+    };
+    return map[attackType] || attackType;
+  }
+
+  /**
+   * Show an overlay with info for a codex card.
+   * @param {object} entry - The tier data entry
+   * @private
+   */
+  _showCodexCardOverlay(entry) {
+    // T4~T5 undiscovered: no reaction
+    if (!entry.discovered && entry.tier >= 4) return;
+
+    if (this.overlay) this.overlay.destroy();
+    this.overlay = this.add.container(0, 0).setDepth(50);
+
+    // Backdrop
+    const backdrop = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000)
+      .setAlpha(0.7)
+      .setInteractive();
+    this.overlay.add(backdrop);
+    backdrop.on('pointerdown', () => this._closeOverlay());
+
+    // Panel
+    const panelW = 280;
+    const panelH = entry.tier === 1 ? 200 : 180;
+    const panelX = GAME_WIDTH / 2;
+    const panelY = GAME_HEIGHT / 2;
+    const panelTop = panelY - panelH / 2;
+
+    const borderColor = entry.discovered ? this._getTierBorderColor(entry.tier) : 0x636e72;
+    const panelBg = this.add.rectangle(panelX, panelY, panelW, panelH, COLORS.UI_PANEL)
+      .setStrokeStyle(2, borderColor);
+    this.overlay.add(panelBg);
+
+    // Close button
+    const closeX = panelX + panelW / 2 - 20;
+    const closeY = panelTop + 15;
+    const closeBg = this.add.circle(closeX, closeY, 12, COLORS.BUTTON_ACTIVE)
+      .setInteractive({ useHandCursor: true });
+    this.overlay.add(closeBg);
+    const closeText = this.add.text(closeX, closeY, 'X', {
+      fontSize: '14px', fontFamily: 'Arial, sans-serif', color: '#ffffff', fontStyle: 'bold',
+    }).setOrigin(0.5);
+    this.overlay.add(closeText);
+    closeBg.on('pointerdown', () => this._closeOverlay());
+
+    if (entry.tier === 1) {
+      // T1: basic info
+      const nameText = this.add.text(panelX, panelTop + 40, entry.displayName, {
+        fontSize: '18px', fontFamily: 'Arial, sans-serif', color: '#ffffff', fontStyle: 'bold',
+      }).setOrigin(0.5);
+      this.overlay.add(nameText);
+
+      // Color circle
+      const circleG = this.add.graphics();
+      circleG.fillStyle(entry.color, 1);
+      circleG.fillCircle(panelX, panelTop + 70, 14);
+      this.overlay.add(circleG);
+
+      // Attack type
+      const atkText = this.add.text(panelX, panelTop + 95, `Type: ${this._getAttackTypeBadge(entry.attackType)}`, {
+        fontSize: '13px', fontFamily: 'Arial, sans-serif', color: '#b2bec3',
+      }).setOrigin(0.5);
+      this.overlay.add(atkText);
+
+      // Basic stats
+      const lv1 = TOWER_STATS[entry.id]?.levels?.[1];
+      if (lv1) {
+        const statsStr = `DMG: ${lv1.damage}  |  SPD: ${lv1.fireRate}s  |  RNG: ${lv1.range}`;
+        const statsText = this.add.text(panelX, panelTop + 120, statsStr, {
+          fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#b2bec3',
+        }).setOrigin(0.5);
+        this.overlay.add(statsText);
+      }
+
+      // Tier badge
+      const tierBadge = this.add.text(panelX, panelTop + 145, 'Tier 1', {
+        fontSize: '12px', fontFamily: 'Arial, sans-serif', color: '#ffd700',
+      }).setOrigin(0.5);
+      this.overlay.add(tierBadge);
+
+    } else if (entry.tier <= 3) {
+      // T2~T3: recipe hint
+      const parts = entry.recipeKey ? entry.recipeKey.split('+') : ['?', '?'];
+      const matA = this._getDisplayNameById(parts[0]);
+      const matB = this._getDisplayNameById(parts[1]);
+
+      if (entry.discovered) {
+        // "matA + matB -> resultName"
+        const nameText = this.add.text(panelX, panelTop + 40, entry.displayName, {
+          fontSize: '16px', fontFamily: 'Arial, sans-serif', color: '#ffffff', fontStyle: 'bold',
+        }).setOrigin(0.5);
+        this.overlay.add(nameText);
+
+        const recipeStr = `${matA} + ${matB}`;
+        const recipeText = this.add.text(panelX, panelTop + 65, recipeStr, {
+          fontSize: '13px', fontFamily: 'Arial, sans-serif', color: '#81ecec',
+        }).setOrigin(0.5);
+        this.overlay.add(recipeText);
+
+        const arrowText = this.add.text(panelX, panelTop + 85, `\u2192 ${entry.displayName}`, {
+          fontSize: '13px', fontFamily: 'Arial, sans-serif', color: '#ffd700',
+        }).setOrigin(0.5);
+        this.overlay.add(arrowText);
+
+        // Attack type
+        const atkText = this.add.text(panelX, panelTop + 110, `Type: ${this._getAttackTypeBadge(entry.attackType)}`, {
+          fontSize: '12px', fontFamily: 'Arial, sans-serif', color: '#b2bec3',
+        }).setOrigin(0.5);
+        this.overlay.add(atkText);
+
+        const tierBadge = this.add.text(panelX, panelTop + 135, `Tier ${entry.tier}`, {
+          fontSize: '12px', fontFamily: 'Arial, sans-serif', color: '#ffd700',
+        }).setOrigin(0.5);
+        this.overlay.add(tierBadge);
+      } else {
+        // "matA + matB -> ???"
+        const recipeStr = `${matA} + ${matB}`;
+        const recipeText = this.add.text(panelX, panelTop + 45, recipeStr, {
+          fontSize: '13px', fontFamily: 'Arial, sans-serif', color: '#81ecec',
+        }).setOrigin(0.5);
+        this.overlay.add(recipeText);
+
+        const arrowText = this.add.text(panelX, panelTop + 70, `\u2192 ${t('collection.codex.unknown')}`, {
+          fontSize: '14px', fontFamily: 'Arial, sans-serif', color: '#636e72',
+        }).setOrigin(0.5);
+        this.overlay.add(arrowText);
+
+        const tierBadge = this.add.text(panelX, panelTop + 100, `Tier ${entry.tier}`, {
+          fontSize: '12px', fontFamily: 'Arial, sans-serif', color: '#636e72',
+        }).setOrigin(0.5);
+        this.overlay.add(tierBadge);
+      }
+
+    } else {
+      // T4~T5 discovered: recipe hidden
+      const nameText = this.add.text(panelX, panelTop + 40, entry.displayName, {
+        fontSize: '16px', fontFamily: 'Arial, sans-serif', color: '#ffffff', fontStyle: 'bold',
+      }).setOrigin(0.5);
+      this.overlay.add(nameText);
+
+      const tierBadge = this.add.text(panelX, panelTop + 65, `Tier ${entry.tier}`, {
+        fontSize: '13px', fontFamily: 'Arial, sans-serif', color: '#ffd700',
+      }).setOrigin(0.5);
+      this.overlay.add(tierBadge);
+
+      const secretText = this.add.text(panelX, panelTop + 95, t('collection.codex.recipeHidden'), {
+        fontSize: '13px', fontFamily: 'Arial, sans-serif', color: '#636e72',
+      }).setOrigin(0.5);
+      this.overlay.add(secretText);
+
+      // Attack type
+      const atkText = this.add.text(panelX, panelTop + 120, `Type: ${this._getAttackTypeBadge(entry.attackType)}`, {
+        fontSize: '12px', fontFamily: 'Arial, sans-serif', color: '#b2bec3',
+      }).setOrigin(0.5);
+      this.overlay.add(atkText);
+    }
+  }
+
+  /**
+   * Get display name for a tower/merge ID.
+   * Looks up TOWER_STATS first, then MERGE_RECIPES values.
+   * @param {string} id
+   * @returns {string}
+   * @private
+   */
+  _getDisplayNameById(id) {
+    // Check base towers - use i18n key for language consistency (BUG-3/BUG-4 fix).
+    if (TOWER_STATS[id]) return t(`tower.${id}.name`) || TOWER_STATS[id].displayName;
+
+    // Check merged towers (search by recipe id)
+    for (const recipe of Object.values(MERGE_RECIPES)) {
+      if (recipe.id === id) return recipe.displayName;
+    }
+
+    return id;
+  }
+
+  // ── Codex Drag Scroll ────────────────────────────────────────
+
+  /**
+   * Set up pointer-based drag scroll for the codex grid.
+   * @private
+   */
+  _setupCodexDrag() {
+    // Use global scene input events instead of a drag zone rectangle
+    // to avoid blocking card pointerdown events (BUG-1 fix).
+    this.input.on('pointerdown', this._onCodexPointerDown, this);
+    this.input.on('pointermove', this._onCodexPointerMove, this);
+    this.input.on('pointerup', this._onCodexPointerUp, this);
+  }
+
+  /**
+   * Handle pointer down for codex scroll (global scene event).
+   * Only activates drag if within the codex grid area and codex tab is active.
+   * @param {Phaser.Input.Pointer} pointer
+   * @private
+   */
+  _onCodexPointerDown(pointer) {
+    if (this.activeTab !== 'codex') return;
+    if (pointer.y < CODEX_GRID_Y) return;
+    this.codexDragging = true;
+    this.codexDragStartY = pointer.y;
+    this.codexDragStartScroll = this.codexScrollY;
+    this.codexDragMoved = false;
+  }
+
+  /**
+   * Handle pointer move for codex scroll.
+   * @param {Phaser.Input.Pointer} pointer
+   * @private
+   */
+  _onCodexPointerMove(pointer) {
+    if (!this.codexDragging) return;
+    const dy = pointer.y - this.codexDragStartY;
+    if (Math.abs(dy) > 5) {
+      this.codexDragMoved = true;
+    }
+    this.codexScrollY = Phaser.Math.Clamp(
+      this.codexDragStartScroll - dy,
+      0, this._codexMaxScroll
+    );
+    this._applyCodexScroll();
+  }
+
+  /**
+   * Handle pointer up for codex scroll.
+   * @private
+   */
+  _onCodexPointerUp() {
+    this.codexDragging = false;
+  }
+
+  /**
+   * Apply the current codex scroll offset to the scroll container.
+   * @private
+   */
+  _applyCodexScroll() {
+    if (this.codexScrollContainer) {
+      this.codexScrollContainer.y = -this.codexScrollY;
+    }
+  }
+
+  /**
+   * Clean up drag scroll event listeners.
+   * @private
+   */
+  _cleanupCodexDrag() {
+    this.codexDragging = false;
+    this.input.off('pointerdown', this._onCodexPointerDown, this);
+    this.input.off('pointermove', this._onCodexPointerMove, this);
+    this.input.off('pointerup', this._onCodexPointerUp, this);
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // OVERLAYS (Meta Upgrade Detail, Utility Detail, Tower Unlock)
+  // ══════════════════════════════════════════════════════════════
 
   // ── Tower Detail View (Overlay) ──────────────────────────────
 
@@ -568,7 +1309,7 @@ export class CollectionScene extends Phaser.Scene {
 
     // Tier sections
     const tierStartY = panelTop + 95;
-    const tierHeight = 85; // Space for each tier block
+    const tierHeight = 85;
 
     for (let tier = 1; tier <= 3; tier++) {
       const tierY = tierStartY + (tier - 1) * tierHeight;
@@ -695,8 +1436,8 @@ export class CollectionScene extends Phaser.Scene {
 
     // Effect description
     let descStr = optionData.desc;
-    if (isSelected) descStr = '✓ ' + descStr;
-    if (isLocked) descStr = '🔒 ' + descStr;
+    if (isSelected) descStr = '\u2713 ' + descStr;
+    if (isLocked) descStr = '\uD83D\uDD12 ' + descStr;
 
     const descText = this.add.text(x - 10, y, descStr, {
       fontSize: '11px',
@@ -706,7 +1447,7 @@ export class CollectionScene extends Phaser.Scene {
     this.overlay.add(descText);
 
     // Cost display
-    const costStr = isSelected ? '' : `◆ ${optionData.cost}`;
+    const costStr = isSelected ? '' : `\u25C6 ${optionData.cost}`;
     const costText = this.add.text(x + w / 2 - 30, y, costStr, {
       fontSize: '11px',
       fontFamily: 'Arial, sans-serif',
@@ -930,7 +1671,7 @@ export class CollectionScene extends Phaser.Scene {
       }
 
       // Tier label
-      const labelPrefix = isCompleted ? '✓ ' : isLocked ? '🔒 ' : '';
+      const labelPrefix = isCompleted ? '\u2713 ' : isLocked ? '\uD83D\uDD12 ' : '';
       const tierLabel = this.add.text(panelX - panelW / 2 + 40, btnY, `${labelPrefix}Tier ${tier}`, {
         fontSize: '13px',
         fontFamily: 'Arial, sans-serif',
@@ -949,7 +1690,7 @@ export class CollectionScene extends Phaser.Scene {
 
       // Cost
       const costColor = isCompleted ? '#ffd700' : canAfford ? COLORS.DIAMOND_CSS : '#ff4757';
-      const costStr = isCompleted ? '' : `◆ ${tierData.cost}`;
+      const costStr = isCompleted ? '' : `\u25C6 ${tierData.cost}`;
       const costText = this.add.text(panelX + panelW / 2 - 30, btnY, costStr, {
         fontSize: '12px',
         fontFamily: 'Arial, sans-serif',
@@ -993,7 +1734,7 @@ export class CollectionScene extends Phaser.Scene {
   // ── Tower Unlock Popup ──────────────────────────────────────
 
   /**
-   * Show the tower unlock confirmation popup (generic, works for any locked tower).
+   * Show the tower unlock confirmation popup.
    * @param {string} type - Tower type key
    * @private
    */

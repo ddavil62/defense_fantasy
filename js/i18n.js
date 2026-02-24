@@ -312,6 +312,12 @@ const STRINGS = {
     'branch.tag.push': '밀치기형',
     'branch.tag.chain': '연쇄형',
     'branch.tag.single': '단일형',
+    // 컬렉션 UI
+    'collection.tab.meta': '메타업그레이드',
+    'collection.tab.codex': '합성도감',
+    'collection.codex.progress': '{tier}: {count} / {total} 발견',
+    'collection.codex.unknown': '???',
+    'collection.codex.recipeHidden': '레시피 비공개',
   },
   en: {
     'tower.archer.name': 'Archer',
@@ -595,5 +601,11 @@ const STRINGS = {
     'branch.tag.push': 'Push',
     'branch.tag.chain': 'Chain',
     'branch.tag.single': 'Single',
+    // Collection UI
+    'collection.tab.meta': 'Meta Upgrade',
+    'collection.tab.codex': 'Merge Codex',
+    'collection.codex.progress': '{tier}: {count} / {total} discovered',
+    'collection.codex.unknown': '???',
+    'collection.codex.recipeHidden': 'Recipe Hidden',
   },
 };

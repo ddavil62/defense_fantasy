@@ -4,6 +4,80 @@
 
 ---
 
+## 2026-02-24 -- 머지 조합 타워 시스템 Phase 4-B (CollectionScene 합성도감)
+
+### 배경
+
+Phase 4-A에서 추가된 T4 12종 + T5 5종 데이터에 맞춰, CollectionScene을 "메타업그레이드 탭 + 합성도감 탭" 이중 탭 구조로 전면 교체했다. 합성도감에서 T1~T5 전 타워를 서브탭으로 분류하여 발견/미발견 카드를 표시하고, 레시피 힌트와 드래그 스크롤을 지원한다.
+
+### 추가
+
+- **`js/scenes/CollectionScene.js`** -- 전면 재작성
+  - 탭 바 (y=48, h=36): "메타업그레이드" / "합성도감" 2개 탭 버튼 (각 W=165)
+  - 선택 탭: COLORS.UI_PANEL 배경 + 하단 강조선 2px (COLORS.DIAMOND)
+  - 비선택 탭: COLORS.BACKGROUND 배경, 텍스트 #636e72
+  - 기본 탭: 메타업그레이드 (기존 로직 유지, META_GRID_Y=96으로 조정)
+  - 합성도감 탭:
+    - 서브탭 바 (T1~T5, 각 64px, 간격 4px, y=88)
+    - 진행률 표시 (y=122, "T{n}: {count} / {total} 발견")
+    - 카드 그리드 (y=142~640, 62x74px 카드, 5열, 간격 6px, 자동 중앙정렬)
+    - 발견 카드: 타워 색상 원 + 이름(6자 초과 truncate) + attackType 뱃지 + 티어 뱃지
+    - 미발견 카드: 검은 배경(0x0d1117) + "???" + 티어 뱃지
+    - 드래그 스크롤: `this.input.on()` 전역 이벤트 기반, 5px threshold로 클릭/드래그 구분
+    - Geometry Mask: CODEX_GRID_Y~GAME_HEIGHT 영역 클리핑
+  - 카드 클릭 오버레이:
+    - T1: 타워 기본 정보 (이름, 색상원, attackType, DMG/SPD/RNG 스탯)
+    - T2~T3 발견: 레시피 힌트 ("재료A + 재료B -> 결과이름", attackType, Tier)
+    - T2~T3 미발견: 레시피 힌트 ("재료A + 재료B -> ???")
+    - T4~T5 발견: "레시피 비공개" + attackType
+    - T4~T5 미발견: 반응 없음
+  - `_buildTierData()`: TOWER_STATS + MERGE_RECIPES에서 T1~T5 데이터 캐시 생성
+  - `_getDisplayNameById()`: 타워/머지 ID에서 i18n 기반 표시이름 조회
+
+- **`js/i18n.js`** -- 컬렉션 UI 문자열 10개 추가 (ko 5개 + en 5개)
+  - `collection.tab.meta`: 메타업그레이드 / Meta Upgrade
+  - `collection.tab.codex`: 합성도감 / Merge Codex
+  - `collection.codex.progress`: {tier}: {count} / {total} 발견 / discovered
+  - `collection.codex.unknown`: ??? / ???
+  - `collection.codex.recipeHidden`: 레시피 비공개 / Recipe Hidden
+
+### 수정
+
+- **BUG-1 [HIGH]**: 드래그 존 rectangle이 카드 클릭 차단 -- `_codexDragZone` 완전 제거, `this.input.on()` 전역 이벤트로 대체. `activeTab !== 'codex'` 및 `pointer.y < CODEX_GRID_Y` 가드 조건으로 메타탭/서브탭 영역 간섭 방지
+- **BUG-2 [MEDIUM]**: maskShape 메모리 누수 -- `this._maskShape` 인스턴스 변수로 추적 + `_codexContentContainer.add()` 자식 추가. 서브탭 전환 시 컨테이너 파괴와 함께 자동 정리
+- **BUG-3 [MEDIUM]**: T1 이름 영어/T2+ 한국어 혼재 -- `_buildTierData()` T1 섹션에서 `t('tower.${type}.name')` i18n 키 사용으로 통일
+- **BUG-4 [MEDIUM]**: T2+T1 레시피 힌트 재료명 영한 혼재 -- `_getDisplayNameById()`에서도 i18n 적용 (BUG-3과 동일 패턴)
+
+### 스펙 대비 변경
+
+| 항목 | 스펙 | 구현 | 사유 |
+|---|---|---|---|
+| i18n 문자열 수 | 10개 | ko 5개 + en 5개 (합계 10개) | 스펙과 일치 |
+| 티어 테두리 색상 | 스펙 미명시 | T1/T2=은색(0xb2bec3), T3/T5=금색(0xffd700), T4=보라(0xa29bfe) | 기존 Tower.js `_drawTierBorder()` 패턴과 통일 |
+
+### 알려진 제약
+
+- **NEW-1 [LOW]**: 5px 이상 드래그 스크롤 후 첫 번째 카드 클릭이 무시될 수 있음. Phaser 3의 이벤트 발생 순서(game object -> scene input)에 기인. 두 번째 클릭부터 정상 동작
+- **NEW-2 [LOW]**: 오버레이 표시 중 backdrop 영역에서 드래그하면 뒤쪽 스크롤이 활성화됨. 오버레이가 UI를 차단하므로 사용자 영향 극히 적음
+- **T4/T5 미발견 카드**: `useHandCursor: true`가 설정되어 있으나, T4/T5 미발견 시 클릭 반응 없음. 시각적 불일치 있으나 기능 영향 없음
+
+### QA 결과
+
+- **1차 판정**: FAIL (BUG-1 HIGH 1건, BUG-2 MEDIUM 1건, BUG-3/BUG-4 MEDIUM 2건)
+- **2차(R2) 판정**: PASS (조건부) -- 4건 전체 수정 확인, 신규 LOW 이슈 2건 발견 (즉시 수정 불요)
+- 정적 코드 분석 23건 (정상 15개 + 예외 8개) + Playwright 테스트 23개 작성
+
+### 참고 문서
+
+- 스펙: `.claude/specs/2026-02-23-merge-tower-system-phase4.md`
+- 구현 리포트: `.claude/specs/2026-02-23-merge-tower-system-phase4b-report.md`
+- 수정 리포트: `.claude/specs/2026-02-23-merge-tower-system-phase4b-fix-report.md`
+- QA 리포트 (R1): `.claude/specs/2026-02-23-merge-tower-system-phase4b-qa.md`
+- QA 리포트 (R2 최종): `.claude/specs/2026-02-23-merge-tower-system-phase4b-qa-r2.md`
+- 테스트: `tests/collection-scene-phase4b-r2.spec.js`
+
+---
+
 ## 2026-02-24 -- 머지 조합 타워 시스템 Phase 4-A (T4 12종 + T5 5종)
 
 ### 배경
