@@ -81,6 +81,9 @@ export class MergeCodexScene extends Phaser.Scene {
 
     /** @type {Phaser.GameObjects.Container|null} Active overlay container */
     this.overlay = null;
+
+    /** @type {number} Timestamp when overlay was last closed */
+    this._overlayClosedAt = 0;
   }
 
   /**
@@ -355,8 +358,8 @@ export class MergeCodexScene extends Phaser.Scene {
     }).setOrigin(0.5);
     this.codexScrollContainer.add(tierBadge);
 
-    bg.on('pointerdown', () => {
-      if (!this.codexDragMoved) {
+    bg.on('pointerup', () => {
+      if (!this.codexDragMoved && Date.now() - this._overlayClosedAt > 200) {
         this._showCodexCardOverlay(entry);
       }
     });
@@ -486,6 +489,7 @@ export class MergeCodexScene extends Phaser.Scene {
     if (this.overlay) {
       this.overlay.destroy();
       this.overlay = null;
+      this._overlayClosedAt = Date.now();
     }
   }
 
