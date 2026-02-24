@@ -391,7 +391,7 @@ export const TOWER_STATS = {
 // ── Merge System ─────────────────────────────────────────────────
 /**
  * Merge recipes: key = typeA+typeB (alphabetically sorted), value = merge result.
- * 85 recipes: 55 T2 (10 same-type + 45 cross-type) + 30 T3 (12 T2+T2 + 18 T2+T1).
+ * 102 recipes: 55 T2 (10 same-type + 45 cross-type) + 30 T3 (12 T2+T2 + 18 T2+T1) + 12 T4 + 5 T5.
  * @type {Object<string, { id: string, tier: number, displayName: string, color: number }>}
  */
 export const MERGE_RECIPES = {
@@ -507,11 +507,36 @@ export const MERGE_RECIPES = {
   'ice+zero_field':               { id: 'permafrost',              tier: 3, displayName: '만년설원',       color: 0x81d4fa },
   'holy_thunder+light':           { id: 'sacred_judgement_beam',   tier: 3, displayName: '신성심판광',     color: 0xfff176 },
   'mage+overload_mage':           { id: 'arcane_cannon',           tier: 3, displayName: '마법대포',       color: 0x7e57c2 },
+
+  // ══════════════════════════════════════════════════════════════════
+  // T4 merges (12): T3+T1, T3+T2, T3+T3 combos
+  // ══════════════════════════════════════════════════════════════════
+  'absolute_frost_domain+ice':              { id: 'glacial_epoch',         tier: 4, displayName: '빙하 시대',       color: 0x2196f3 },
+  'archer+cosmos_dragon':                   { id: 'void_sniper',           tier: 4, displayName: '허공 저격자',     color: 0xe040fb },
+  'celestial_judgment+cosmos_dragon':       { id: 'genesis_verdict',       tier: 4, displayName: '창세 심판',       color: 0xffab00 },
+  'celestial_judgment+light':               { id: 'radiant_ruin',          tier: 4, displayName: '성광 붕괴',       color: 0xffd740 },
+  'earth_shatterer+tectonic_dragon':        { id: 'world_breaker',         tier: 4, displayName: '세계 파괴자',     color: 0x4e342e },
+  'flame+hellquake':                        { id: 'magma_core',            tier: 4, displayName: '마그마 핵',       color: 0xdd2c00 },
+  'grand_pyromancer+solar_burst':           { id: 'solar_cremation',       tier: 4, displayName: '태양 소각로',     color: 0xff6d00 },
+  'lightning_tempest+typhoon':              { id: 'maelstrom_herald',      tier: 4, displayName: '회오리 전령',     color: 0x00bfa5 },
+  'plague_wyrm+venom_sovereign':            { id: 'pandemic_sovereign',    tier: 4, displayName: '역병 군주',       color: 0x558b2f },
+  'poison+venom_sovereign':                 { id: 'apex_toxin',            tier: 4, displayName: '독점 지배자',     color: 0x76ff03 },
+  'primal_dragon_lord+wind':                { id: 'annihilation_gale',     tier: 4, displayName: '소멸 폭풍신',     color: 0x7c4dff },
+  'thunder_lord+thunder_wyrm_king':         { id: 'storm_dominion',        tier: 4, displayName: '폭풍 지배신',     color: 0xfbc02d },
+
+  // ══════════════════════════════════════════════════════════════════
+  // T5 merges (5): T4+T4 combos
+  // ══════════════════════════════════════════════════════════════════
+  'annihilation_gale+maelstrom_herald':     { id: 'void_maelstrom',        tier: 5, displayName: '공허 소용돌이',   color: 0x6200ea },
+  'genesis_verdict+void_sniper':            { id: 'omega_herald',          tier: 5, displayName: '오메가 전령',     color: 0xd500f9 },
+  'glacial_epoch+storm_dominion':           { id: 'absolute_dominion',     tier: 5, displayName: '절대 지배',       color: 0x304ffe },
+  'magma_core+solar_cremation':             { id: 'star_forge',            tier: 5, displayName: '항성 용광로',     color: 0xff3d00 },
+  'pandemic_sovereign+world_breaker':       { id: 'extinction_engine',     tier: 5, displayName: '소멸 기관',       color: 0x1b5e20 },
 };
 
 /**
  * Stats for merged towers, keyed by merge result ID.
- * 85 stat blocks: 55 T2 + 30 T3.
+ * 102 stat blocks: 55 T2 + 30 T3 + 12 T4 + 5 T5.
  * @type {Object<string, object>}
  */
 export const MERGED_TOWER_STATS = {
@@ -1094,6 +1119,133 @@ export const MERGED_TOWER_STATS = {
     attackType: 'splash',
     splashRadius: 100,
     projectileSpeed: 200,
+  },
+
+  // ══════════════════════════════════════════════════════════════════
+  // T4 merges (12)
+  // ══════════════════════════════════════════════════════════════════
+  void_sniper: {
+    damage: 180, fireRate: 1.0, range: 230,
+    attackType: 'chain',
+    chainCount: 12, chainDecay: 0.9, chainRadius: 140,
+    burnDamage: 20, burnDuration: 6,
+    poisonDamage: 15, poisonDuration: 8,
+    projectileSpeed: 400,
+  },
+  annihilation_gale: {
+    damage: 90, fireRate: 1.5, range: 240,
+    attackType: 'aoe_instant',
+    splashRadius: 180,
+    burnDamage: 20, burnDuration: 7,
+    pushbackDistance: 140, pushbackTargets: 12,
+  },
+  magma_core: {
+    damage: 180, fireRate: 2.5, range: 200,
+    attackType: 'aoe_instant',
+    splashRadius: 130,
+    burnDamage: 50, burnDuration: 8,
+  },
+  glacial_epoch: {
+    damage: 40, fireRate: 1.2, range: 230,
+    attackType: 'aoe_instant',
+    splashRadius: 180,
+    slowAmount: 0.95, slowDuration: 6.0,
+  },
+  apex_toxin: {
+    damage: 60, fireRate: 1.8, range: 240,
+    attackType: 'aoe_instant',
+    splashRadius: 160,
+    poisonDamage: 40, poisonDuration: 12,
+    maxPoisonStacks: 5,
+    armorReduction: 0.8, armorReductionDuration: 12,
+  },
+  radiant_ruin: {
+    damage: 160, fireRate: 1.8, range: 600,
+    attackType: 'piercing_beam',
+    burnDamage: 20, burnDuration: 6,
+  },
+  storm_dominion: {
+    damage: 120, fireRate: 1.0, range: 220,
+    attackType: 'chain',
+    chainCount: 16, chainDecay: 0.9, chainRadius: 160,
+    burnDamage: 25, burnDuration: 6,
+  },
+  maelstrom_herald: {
+    damage: 25, fireRate: 1.5, range: 220,
+    attackType: 'aoe_instant',
+    splashRadius: 140,
+    pushbackDistance: 220, pushbackTargets: 14,
+  },
+  solar_cremation: {
+    damage: 30, fireRate: 1.2, range: 200,
+    attackType: 'aoe_instant',
+    splashRadius: 180,
+    burnDamage: 45, burnDuration: 8,
+  },
+  world_breaker: {
+    damage: 280, fireRate: 3.0, range: 200,
+    attackType: 'splash',
+    splashRadius: 110,
+    slowAmount: 1.0, slowDuration: 1.0,
+    armorPiercing: true,
+    projectileSpeed: 150,
+  },
+  genesis_verdict: {
+    damage: 200, fireRate: 2.0, range: 600,
+    attackType: 'piercing_beam',
+    burnDamage: 25, burnDuration: 7,
+    poisonDamage: 20, poisonDuration: 8,
+  },
+  pandemic_sovereign: {
+    damage: 60, fireRate: 1.8, range: 250,
+    attackType: 'aoe_instant',
+    splashRadius: 180,
+    poisonDamage: 50, poisonDuration: 14,
+    maxPoisonStacks: 6,
+    armorReduction: 0.9, armorReductionDuration: 14,
+    burnDamage: 20, burnDuration: 6,
+  },
+
+  // ══════════════════════════════════════════════════════════════════
+  // T5 merges (5)
+  // ══════════════════════════════════════════════════════════════════
+  omega_herald: {
+    damage: 350, fireRate: 0.8, range: 600,
+    attackType: 'chain',
+    chainCount: 20, chainDecay: 0.92, chainRadius: 200,
+    burnDamage: 40, burnDuration: 10,
+    poisonDamage: 30, poisonDuration: 12,
+    armorPiercing: true,
+  },
+  extinction_engine: {
+    damage: 120, fireRate: 1.5, range: 280,
+    attackType: 'aoe_instant',
+    splashRadius: 220,
+    poisonDamage: 80, poisonDuration: 18,
+    maxPoisonStacks: 8,
+    armorReduction: 1.0, armorReductionDuration: 18,
+    burnDamage: 35, burnDuration: 9,
+  },
+  absolute_dominion: {
+    damage: 200, fireRate: 0.8, range: 260,
+    attackType: 'chain',
+    chainCount: 18, chainDecay: 0.92, chainRadius: 180,
+    slowAmount: 0.9, slowDuration: 5.0,
+    pushbackDistance: 180, pushbackTargets: 15,
+  },
+  star_forge: {
+    damage: 60, fireRate: 1.0, range: 260,
+    attackType: 'aoe_instant',
+    splashRadius: 220,
+    burnDamage: 100, burnDuration: 12,
+  },
+  void_maelstrom: {
+    damage: 150, fireRate: 1.2, range: 600,
+    attackType: 'piercing_beam',
+    burnDamage: 50, burnDuration: 10,
+    poisonDamage: 40, poisonDuration: 12,
+    pushbackDistance: 300,
+    armorPiercing: true,
   },
 };
 

@@ -4,6 +4,54 @@
 
 ---
 
+## 2026-02-24 -- 머지 조합 타워 시스템 Phase 4-A (T4 12종 + T5 5종)
+
+### 배경
+
+Phase 3에서 구축한 T3 30종 위에 T4 합성 타워 12종(T3+T1 6종, T3+T2 3종, T3+T3 3종)과 T5 전설 합성 타워 5종(T4+T4 조합)의 레시피, 스탯, i18n 문자열을 추가했다. 신규 attackType이나 특수효과 없이 기존 효과의 강화 조합만 사용하며, config.js 데이터 추가와 i18n.js 문자열 추가만으로 구현 완료되었다. Tower.js, GameScene.js, TowerPanel.js는 기존 인프라가 tier:4/5를 자동 처리하므로 수정 없음.
+
+### 추가
+
+- **`js/config.js`** -- MERGE_RECIPES에 T4 12종 + T5 5종 레시피 등록 (tier: 4, 5)
+  - T4 T3+T1 6종: void_sniper, annihilation_gale, magma_core, glacial_epoch, apex_toxin, radiant_ruin
+  - T4 T3+T2 3종: storm_dominion, maelstrom_herald, solar_cremation
+  - T4 T3+T3 3종: world_breaker, genesis_verdict, pandemic_sovereign
+  - T5 T4+T4 5종: omega_herald, extinction_engine, absolute_dominion, star_forge, void_maelstrom
+  - 각 레시피: `{ id, tier, displayName, color }`
+
+- **`js/config.js`** -- MERGED_TOWER_STATS에 T4 12종 + T5 5종 스탯 블록 등록
+  - T4 공격 타입별: chain 2종 (void_sniper, storm_dominion), aoe_instant 7종, splash 1종 (world_breaker), piercing_beam 2종 (radiant_ruin, genesis_verdict)
+  - T5 공격 타입별: chain 2종 (omega_herald, absolute_dominion), aoe_instant 2종 (extinction_engine, star_forge), piercing_beam 1종 (void_maelstrom)
+  - 모든 스탯이 스펙과 1:1 일치
+
+- **`js/i18n.js`** -- T4 12종 + T5 5종 타워 이름/설명 ko+en 추가 (68개 문자열)
+  - 키 형식: `tower.[mergeId].name`, `tower.[mergeId].desc`
+
+### 변경
+
+- **`js/config.js`** -- JSDoc 주석 업데이트
+  - MERGE_RECIPES: "85 recipes" -> "102 recipes: 55 T2 + 30 T3 + 12 T4 + 5 T5"
+  - MERGED_TOWER_STATS: "85 stat blocks" -> "102 stat blocks: 55 T2 + 30 T3 + 12 T4 + 5 T5"
+
+### 스펙 대비 변경
+
+| 항목 | 스펙 | 구현 | 사유 |
+|---|---|---|---|
+| color 필드 | 스펙에 미명시 | 각 T4/T5 타워에 테마 기반 고유 색상 할당 | 기존 T2/T3 데이터 패턴과 동일하게 color 필드 필수, 재료 타워 색상 참고하여 배정 |
+
+### QA 결과
+
+- **판정**: PASS
+- 정적 코드 분석 24건 검증 (수용 기준 4개 + 데이터 정합성 6개 + 레시피 유효성 4개 + 스탯 검증 7개 + 핸들러 호환성 1개 + 자체 도출 예외 6개)
+- 수용 기준 4/4 충족, 17개 타워 스펙 1:1 대조 완료
+
+### 참고 문서
+
+- 스펙: `.claude/specs/2026-02-23-merge-tower-system-phase4.md`
+- QA 리포트: `.claude/specs/2026-02-23-merge-tower-system-phase4a-qa.md`
+
+---
+
 ## 2026-02-24 -- 머지 조합 타워 시스템 Phase 3 (3티어 30종)
 
 ### 배경
