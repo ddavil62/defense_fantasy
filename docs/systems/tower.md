@@ -45,13 +45,14 @@
 
 - 1티어: 기본 재료 타워 10종
 - 2티어: 기본 타워 2개 조합 (동종 10 + 이종 45 = 55종) -- 구현 완료
-- 3~5티어: Phase 3~4에서 정의
+- 3티어: T2+T2 또는 T2+T1 조합 (12 + 18 = 30종) -- 구현 완료
+- 4~5티어: Phase 4에서 정의
 
 ### 데이터 구조 (config.js)
 
 - `MERGE_RECIPES`: 합성 레시피 테이블 (키 = typeA+typeB 알파벳 정렬, 값 = { id, tier, displayName, color })
 - `MERGED_TOWER_STATS`: 합성 타워 스탯 테이블 (키 = mergeId, 값 = 스탯 객체)
-- 현재 55종 T2 레시피/스탯 등록 완료
+- 현재 85종 레시피/스탯 등록 완료 (55종 T2 + 30종 T3)
 
 ### 헬퍼 함수
 
@@ -198,6 +199,59 @@
 | dragon+poison | venom_dragon | 독룡 | aoe_instant | dmg:35, spd:2.5, rng:165, splash:90, poison:12/6s, maxStacks:3 |
 | dragon+wind | storm_dragon | 폭풍룡 | splash | dmg:48, spd:2.5, rng:165, splash:85, burn:8/3s, push:60 |
 | dragon+light | holy_dragon | 성룡 | piercing_beam | dmg:40, spd:2.2, rng:600, burn:8/3s |
+
+### 3티어 합성 타워 30종
+
+T2+T2 또는 T2+T1 조합으로 30종의 T3 타워를 생성할 수 있다. 신규 attackType 없이 기존 효과의 강화 조합만 사용.
+
+#### T2+T2 조합 (12종)
+
+| 조합 키 | ID | 이름 | 공격 타입 | 주요 스탯 |
+|---|---|---|---|---|
+| ancient_dragon+thunder_lord | thunder_wyrm_king | 용뇌황제 | chain | dmg:65, spd:1.5, rng:190, chain:10, decay:0.85, burn:20/5s, poison:15/7s |
+| ancient_dragon+plague | plague_wyrm | 역병용신 | aoe_instant | dmg:45, spd:2.0, rng:200, splash:130, burn:12/4s, poison:20/8s, armor:-60% |
+| ancient_dragon+solar_burst | cosmos_dragon | 창세룡 | aoe_instant | dmg:100, spd:3.0, rng:210, splash:150, burn:15/5s, poison:12/6s |
+| quake+stone_dragon | tectonic_dragon | 지각파괴룡 | splash | dmg:130, spd:3.5, rng:160, splash:90, slow:1.0/0.8s, armorPiercing |
+| stone_dragon+thunder_strike | adamantine_lightning | 아다만 뇌격룡 | chain | dmg:60, spd:1.5, rng:165, chain:7, decay:0.85, armorPiercing |
+| plague+venom_dragon | venom_sovereign | 독황 | aoe_instant | dmg:50, spd:2.0, rng:195, splash:120, poison:25/9s, stacks:4, armor:-70% |
+| frost_dragon+zero_field | absolute_frost_domain | 절대빙령역 | aoe_instant | dmg:18, spd:1.5, rng:190, splash:140, slow:0.75/4.5s |
+| holy_dragon+solar_burst | celestial_judgment | 천상심판 | piercing_beam | dmg:80, spd:2.0, rng:600, burn:12/4s |
+| storm_mage+thunder_dragon | superconductor_mage | 초전도뇌마 | chain | dmg:70, spd:1.8, rng:175, chain:7, decay:0.8, burn:10/4s |
+| inferno+pyromancer | grand_pyromancer | 대화염마도사 | aoe_instant | dmg:18, spd:1.5, rng:145, splash:100, burn:22/6s |
+| storm_mage+thunder_lord | lightning_tempest | 번개대폭풍 | chain | dmg:55, spd:1.2, rng:165, chain:12, decay:0.9 |
+| inferno_dragon+quake | hellquake | 지옥균열 | splash | dmg:115, spd:3.0, rng:170, splash:100, slow:1.0/0.5s, burn:18/5s |
+
+#### T2+T1 조합 (18종)
+
+| 조합 키 | ID | 이름 | 공격 타입 | 주요 스탯 |
+|---|---|---|---|---|
+| ancient_dragon+dragon | primal_dragon_lord | 원시용왕 | splash | dmg:140, spd:2.5, rng:200, splash:120, burn:18/6s, poison:15/7s |
+| flame+inferno_dragon | molten_hell | 용화지옥 | aoe_instant | dmg:14, spd:1.8, rng:155, splash:110, burn:28/7s |
+| rock+stone_dragon | iron_dragon | 철갑룡 | splash | dmg:115, spd:2.8, rng:170, splash:100, armorPiercing |
+| frost_dragon+ice | eternal_blizzard | 영구동설 | aoe_instant | dmg:30, spd:2.0, rng:185, splash:130, slow:0.85/4.0s |
+| lightning+thunder_dragon | storm_deity | 뇌신 | chain | dmg:75, spd:1.8, rng:180, chain:8, decay:0.85, burn:10/4s |
+| poison+venom_dragon | great_poison_king | 독제왕 | aoe_instant | dmg:40, spd:2.0, rng:190, splash:130, poison:22/8s, stacks:3, armor:-50% |
+| storm_dragon+wind | wind_dragon_king | 풍신룡왕 | splash | dmg:80, spd:2.0, rng:190, splash:115, burn:12/4s, push:100 |
+| holy_dragon+light | divine_sun_ray | 태양성룡포 | piercing_beam | dmg:70, spd:2.0, rng:600, burn:14/5s |
+| dragon_mage+mage | arcane_dragon_sage | 용마도사 | splash | dmg:95, spd:2.5, rng:175, splash:110, burn:14/5s |
+| archer+dragon_rider | sky_lancer | 천룡창기 | splash | dmg:75, spd:1.8, rng:190, splash:100, burn:10/4s |
+| plague+poison | death_miasma | 사령역병 | aoe_instant | dmg:10, spd:1.8, rng:170, splash:120, poison:16/8s, armor:-55% |
+| lightning+thunder_lord | thunderstorm_king | 천뢰지배자 | chain | dmg:50, spd:1.0, rng:175, chain:12, decay:0.9 |
+| light+solar_burst | solar_cannon | 태양포 | aoe_instant | dmg:95, spd:2.5, rng:170, splash:140 |
+| typhoon+wind | great_typhoon | 거대태풍신 | aoe_instant | dmg:15, spd:1.8, rng:180, splash:110, push:180, targets:10 |
+| quake+rock | earth_shatterer | 대지파괴자 | splash | dmg:145, spd:3.2, rng:110, splash:70, slow:1.0/0.8s |
+| ice+zero_field | permafrost | 만년설원 | aoe_instant | dmg:8, spd:1.2, rng:175, splash:130, slow:0.8/4.0s |
+| holy_thunder+light | sacred_judgement_beam | 신성심판광 | chain | dmg:55, spd:1.5, rng:160, chain:8, decay:0.85 |
+| mage+overload_mage | arcane_cannon | 마법대포 | splash | dmg:110, spd:3.2, rng:135, splash:100 |
+
+### T3 타워 공격 타입별 분포
+
+| 공격 타입 | 수량 | 타워 ID |
+|---|---|---|
+| chain | 8 | thunder_wyrm_king, adamantine_lightning, superconductor_mage, lightning_tempest, storm_deity, thunderstorm_king, sacred_judgement_beam |
+| aoe_instant | 13 | plague_wyrm, cosmos_dragon, venom_sovereign, absolute_frost_domain, grand_pyromancer, molten_hell, eternal_blizzard, great_poison_king, death_miasma, solar_cannon, great_typhoon, permafrost |
+| splash | 7 | tectonic_dragon, hellquake, primal_dragon_lord, iron_dragon, wind_dragon_king, arcane_dragon_sage, sky_lancer, earth_shatterer, arcane_cannon |
+| piercing_beam | 2 | celestial_judgment, divine_sun_ray |
 
 ### 공격 핸들러별 지원 효과
 

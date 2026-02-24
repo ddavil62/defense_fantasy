@@ -4,6 +4,69 @@
 
 ---
 
+## 2026-02-24 -- 머지 조합 타워 시스템 Phase 3 (3티어 30종)
+
+### 배경
+
+Phase 2에서 구축한 T2 합성 타워 55종 위에 T3 합성 타워 30종(T2+T2 12종, T2+T1 18종)의 레시피, 스탯, i18n 문자열을 추가했다. 신규 attackType이나 특수효과 없이 기존 효과의 강화 조합만 사용하며, config.js 데이터 추가와 i18n.js 문자열 추가만으로 구현 완료되었다. Tower.js, GameScene.js, TowerPanel.js는 기존 인프라가 tier:3을 자동 처리하므로 수정 없음.
+
+### 추가
+
+- **`js/config.js`** -- MERGE_RECIPES에 T3 30종 레시피 등록 (tier: 3)
+  - T2+T2 12종: thunder_wyrm_king, plague_wyrm, cosmos_dragon, tectonic_dragon, adamantine_lightning, venom_sovereign, absolute_frost_domain, celestial_judgment, superconductor_mage, grand_pyromancer, lightning_tempest, hellquake
+  - T2+T1 18종: primal_dragon_lord, molten_hell, iron_dragon, eternal_blizzard, storm_deity, great_poison_king, wind_dragon_king, divine_sun_ray, arcane_dragon_sage, sky_lancer, death_miasma, thunderstorm_king, solar_cannon, great_typhoon, earth_shatterer, permafrost, sacred_judgement_beam, arcane_cannon
+  - 각 레시피: `{ id, tier:3, displayName, color }`
+
+- **`js/config.js`** -- MERGED_TOWER_STATS에 T3 30종 스탯 블록 등록
+  - 공격 타입별: chain 8종, aoe_instant 13종, splash 7종, piercing_beam 2종
+  - 모든 스탯이 스펙과 1:1 일치
+
+- **`js/i18n.js`** -- T3 30종 타워 이름/설명 ko+en 추가 (120개 문자열)
+  - 키 형식: `tower.[mergeId].name`, `tower.[mergeId].desc`
+
+### 변경
+
+- **`js/config.js`** -- JSDoc 주석 업데이트
+  - MERGE_RECIPES: "55 T2 recipes" -> "85 recipes: 55 T2 + 30 T3"
+  - MERGED_TOWER_STATS: "55 T2 stat blocks" -> "85 stat blocks: 55 T2 + 30 T3"
+
+### 스펙 대비 변경
+
+| 항목 | 스펙 | 구현 | 사유 |
+|---|---|---|---|
+| color 필드 | 스펙에 미명시 | 각 T3 타워에 테마 기반 고유 색상 할당 | 기존 T2 데이터 패턴과 동일하게 color 필드 필수, 재료 타워 색상 참고하여 배정 |
+
+### T1 10종 활용 현황
+
+모든 T1 타워 10종이 최소 1회 이상 T3 재료로 사용됨.
+
+| T1 | 횟수 | T3 타워 |
+|---|---|---|
+| archer | 1 | sky_lancer |
+| mage | 2 | arcane_dragon_sage, arcane_cannon |
+| ice | 2 | eternal_blizzard, permafrost |
+| lightning | 2 | storm_deity, thunderstorm_king |
+| flame | 1 | molten_hell |
+| rock | 2 | iron_dragon, earth_shatterer |
+| poison | 2 | great_poison_king, death_miasma |
+| wind | 2 | wind_dragon_king, great_typhoon |
+| light | 3 | divine_sun_ray, solar_cannon, sacred_judgement_beam |
+| dragon | 1 | primal_dragon_lord |
+
+### QA 결과
+
+- **판정**: PASS
+- 정적 코드 분석 27건 검증 (정상 19개 + 예외/엣지케이스 8개)
+- 수용 기준 8/8 충족, 데이터 정합성 6/6 통과, 스탯 검증 7/7 통과
+
+### 참고 문서
+
+- 스펙: `.claude/specs/2026-02-23-merge-tower-system-phase3.md`
+- 구현 리포트: `.claude/specs/2026-02-23-merge-tower-system-phase3-report.md`
+- QA 리포트: `.claude/specs/2026-02-23-merge-tower-system-phase3-qa.md`
+
+---
+
 ## 2026-02-23 -- 머지 조합 타워 시스템 Phase 2 (2티어 55종)
 
 ### 배경

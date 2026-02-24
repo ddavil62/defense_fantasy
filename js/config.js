@@ -391,7 +391,7 @@ export const TOWER_STATS = {
 // ── Merge System ─────────────────────────────────────────────────
 /**
  * Merge recipes: key = typeA+typeB (alphabetically sorted), value = merge result.
- * 55 T2 recipes (10 same-type + 45 cross-type).
+ * 85 recipes: 55 T2 (10 same-type + 45 cross-type) + 30 T3 (12 T2+T2 + 18 T2+T1).
  * @type {Object<string, { id: string, tier: number, displayName: string, color: number }>}
  */
 export const MERGE_RECIPES = {
@@ -469,11 +469,49 @@ export const MERGE_RECIPES = {
   'dragon+poison':       { id: 'venom_dragon',   tier: 2, displayName: '독룡',         color: 0xbf894a },
   'dragon+wind':         { id: 'storm_dragon',   tier: 2, displayName: '폭풍룡',       color: 0xab798e },
   'dragon+light':        { id: 'holy_dragon',    tier: 2, displayName: '성룡',         color: 0xea956c },
+
+  // ══════════════════════════════════════════════════════════════════
+  // T3 merges: T2+T2 combos (12)
+  // ══════════════════════════════════════════════════════════════════
+  'ancient_dragon+thunder_lord':  { id: 'thunder_wyrm_king',       tier: 3, displayName: '용뇌황제',       color: 0xffc312 },
+  'ancient_dragon+plague':        { id: 'plague_wyrm',             tier: 3, displayName: '역병용신',       color: 0x8b5e3c },
+  'ancient_dragon+solar_burst':   { id: 'cosmos_dragon',           tier: 3, displayName: '창세룡',         color: 0xff6b81 },
+  'quake+stone_dragon':           { id: 'tectonic_dragon',         tier: 3, displayName: '지각파괴룡',     color: 0x6d4c41 },
+  'stone_dragon+thunder_strike':  { id: 'adamantine_lightning',    tier: 3, displayName: '아다만 뇌격룡',   color: 0xc5a028 },
+  'plague+venom_dragon':          { id: 'venom_sovereign',         tier: 3, displayName: '독황',           color: 0x5b8c3e },
+  'frost_dragon+zero_field':      { id: 'absolute_frost_domain',   tier: 3, displayName: '절대빙령역',     color: 0x3d8bfd },
+  'holy_dragon+solar_burst':      { id: 'celestial_judgment',      tier: 3, displayName: '천상심판',       color: 0xffd32a },
+  'storm_mage+thunder_dragon':    { id: 'superconductor_mage',     tier: 3, displayName: '초전도뇌마',     color: 0xd4a017 },
+  'inferno+pyromancer':           { id: 'grand_pyromancer',        tier: 3, displayName: '대화염마도사',   color: 0xff3838 },
+  'storm_mage+thunder_lord':      { id: 'lightning_tempest',       tier: 3, displayName: '번개대폭풍',     color: 0xe4c613 },
+  'inferno_dragon+quake':         { id: 'hellquake',               tier: 3, displayName: '지옥균열',       color: 0xc0392b },
+
+  // ══════════════════════════════════════════════════════════════════
+  // T3 merges: T2+T1 combos (18)
+  // ══════════════════════════════════════════════════════════════════
+  'ancient_dragon+dragon':        { id: 'primal_dragon_lord',      tier: 3, displayName: '원시용왕',       color: 0x8e1a1a },
+  'flame+inferno_dragon':         { id: 'molten_hell',             tier: 3, displayName: '용화지옥',       color: 0xff4500 },
+  'rock+stone_dragon':            { id: 'iron_dragon',             tier: 3, displayName: '철갑룡',         color: 0x7f8c8d },
+  'frost_dragon+ice':             { id: 'eternal_blizzard',        tier: 3, displayName: '영구동설',       color: 0x4fc3f7 },
+  'lightning+thunder_dragon':     { id: 'storm_deity',             tier: 3, displayName: '뇌신',           color: 0xf9ca24 },
+  'poison+venom_dragon':          { id: 'great_poison_king',       tier: 3, displayName: '독제왕',         color: 0x6ab04c },
+  'storm_dragon+wind':            { id: 'wind_dragon_king',        tier: 3, displayName: '풍신룡왕',       color: 0x7ec8e3 },
+  'holy_dragon+light':            { id: 'divine_sun_ray',          tier: 3, displayName: '태양성룡포',     color: 0xffe082 },
+  'dragon_mage+mage':             { id: 'arcane_dragon_sage',      tier: 3, displayName: '용마도사',       color: 0x9b59b6 },
+  'archer+dragon_rider':          { id: 'sky_lancer',              tier: 3, displayName: '천룡창기',       color: 0x27ae60 },
+  'plague+poison':                { id: 'death_miasma',            tier: 3, displayName: '사령역병',       color: 0x4a752c },
+  'lightning+thunder_lord':       { id: 'thunderstorm_king',       tier: 3, displayName: '천뢰지배자',     color: 0xf1c40f },
+  'light+solar_burst':            { id: 'solar_cannon',            tier: 3, displayName: '태양포',         color: 0xffab00 },
+  'typhoon+wind':                 { id: 'great_typhoon',           tier: 3, displayName: '거대태풍신',     color: 0x00bcd4 },
+  'quake+rock':                   { id: 'earth_shatterer',         tier: 3, displayName: '대지파괴자',     color: 0x5d4037 },
+  'ice+zero_field':               { id: 'permafrost',              tier: 3, displayName: '만년설원',       color: 0x81d4fa },
+  'holy_thunder+light':           { id: 'sacred_judgement_beam',   tier: 3, displayName: '신성심판광',     color: 0xfff176 },
+  'mage+overload_mage':           { id: 'arcane_cannon',           tier: 3, displayName: '마법대포',       color: 0x7e57c2 },
 };
 
 /**
  * Stats for merged towers, keyed by merge result ID.
- * 55 T2 stat blocks.
+ * 85 stat blocks: 55 T2 + 30 T3.
  * @type {Object<string, object>}
  */
 export const MERGED_TOWER_STATS = {
@@ -863,6 +901,199 @@ export const MERGED_TOWER_STATS = {
     damage: 40, fireRate: 2.2, range: 600,
     attackType: 'piercing_beam',
     burnDamage: 8, burnDuration: 3,
+  },
+
+  // ══════════════════════════════════════════════════════════════════
+  // T3 merges: T2+T2 combos (12)
+  // ══════════════════════════════════════════════════════════════════
+  thunder_wyrm_king: {
+    damage: 65, fireRate: 1.5, range: 190,
+    attackType: 'chain',
+    chainCount: 10, chainDecay: 0.85, chainRadius: 120,
+    burnDamage: 20, burnDuration: 5, poisonDamage: 15, poisonDuration: 7,
+  },
+  plague_wyrm: {
+    damage: 45, fireRate: 2.0, range: 200,
+    attackType: 'aoe_instant',
+    splashRadius: 130,
+    burnDamage: 12, burnDuration: 4,
+    poisonDamage: 20, poisonDuration: 8, armorReduction: 0.6, armorReductionDuration: 8,
+  },
+  cosmos_dragon: {
+    damage: 100, fireRate: 3.0, range: 210,
+    attackType: 'aoe_instant',
+    splashRadius: 150,
+    burnDamage: 15, burnDuration: 5, poisonDamage: 12, poisonDuration: 6,
+  },
+  tectonic_dragon: {
+    damage: 130, fireRate: 3.5, range: 160,
+    attackType: 'splash',
+    splashRadius: 90,
+    slowAmount: 1.0, slowDuration: 0.8, armorPiercing: true,
+    projectileSpeed: 150,
+  },
+  adamantine_lightning: {
+    damage: 60, fireRate: 1.5, range: 165,
+    attackType: 'chain',
+    chainCount: 7, chainDecay: 0.85, chainRadius: 100,
+    armorPiercing: true,
+  },
+  venom_sovereign: {
+    damage: 50, fireRate: 2.0, range: 195,
+    attackType: 'aoe_instant',
+    splashRadius: 120,
+    poisonDamage: 25, poisonDuration: 9, maxPoisonStacks: 4,
+    armorReduction: 0.7, armorReductionDuration: 9,
+  },
+  absolute_frost_domain: {
+    damage: 18, fireRate: 1.5, range: 190,
+    attackType: 'aoe_instant',
+    splashRadius: 140,
+    slowAmount: 0.75, slowDuration: 4.5,
+  },
+  celestial_judgment: {
+    damage: 80, fireRate: 2.0, range: 600,
+    attackType: 'piercing_beam',
+    burnDamage: 12, burnDuration: 4,
+  },
+  superconductor_mage: {
+    damage: 70, fireRate: 1.8, range: 175,
+    attackType: 'chain',
+    chainCount: 7, chainDecay: 0.8, chainRadius: 110,
+    burnDamage: 10, burnDuration: 4,
+  },
+  grand_pyromancer: {
+    damage: 18, fireRate: 1.5, range: 145,
+    attackType: 'aoe_instant',
+    splashRadius: 100,
+    burnDamage: 22, burnDuration: 6,
+  },
+  lightning_tempest: {
+    damage: 55, fireRate: 1.2, range: 165,
+    attackType: 'chain',
+    chainCount: 12, chainDecay: 0.9, chainRadius: 130,
+  },
+  hellquake: {
+    damage: 115, fireRate: 3.0, range: 170,
+    attackType: 'splash',
+    splashRadius: 100,
+    slowAmount: 1.0, slowDuration: 0.5, burnDamage: 18, burnDuration: 5,
+    projectileSpeed: 150,
+  },
+
+  // ══════════════════════════════════════════════════════════════════
+  // T3 merges: T2+T1 combos (18)
+  // ══════════════════════════════════════════════════════════════════
+  primal_dragon_lord: {
+    damage: 140, fireRate: 2.5, range: 200,
+    attackType: 'splash',
+    splashRadius: 120,
+    burnDamage: 18, burnDuration: 6, poisonDamage: 15, poisonDuration: 7,
+    projectileSpeed: 200,
+  },
+  molten_hell: {
+    damage: 14, fireRate: 1.8, range: 155,
+    attackType: 'aoe_instant',
+    splashRadius: 110,
+    burnDamage: 28, burnDuration: 7,
+  },
+  iron_dragon: {
+    damage: 115, fireRate: 2.8, range: 170,
+    attackType: 'splash',
+    splashRadius: 100,
+    armorPiercing: true,
+    projectileSpeed: 200,
+  },
+  eternal_blizzard: {
+    damage: 30, fireRate: 2.0, range: 185,
+    attackType: 'aoe_instant',
+    splashRadius: 130,
+    slowAmount: 0.85, slowDuration: 4.0,
+  },
+  storm_deity: {
+    damage: 75, fireRate: 1.8, range: 180,
+    attackType: 'chain',
+    chainCount: 8, chainDecay: 0.85, chainRadius: 120,
+    burnDamage: 10, burnDuration: 4,
+  },
+  great_poison_king: {
+    damage: 40, fireRate: 2.0, range: 190,
+    attackType: 'aoe_instant',
+    splashRadius: 130,
+    poisonDamage: 22, poisonDuration: 8, maxPoisonStacks: 3,
+    armorReduction: 0.5, armorReductionDuration: 8,
+  },
+  wind_dragon_king: {
+    damage: 80, fireRate: 2.0, range: 190,
+    attackType: 'splash',
+    splashRadius: 115,
+    burnDamage: 12, burnDuration: 4, pushbackDistance: 100,
+    projectileSpeed: 250,
+  },
+  divine_sun_ray: {
+    damage: 70, fireRate: 2.0, range: 600,
+    attackType: 'piercing_beam',
+    burnDamage: 14, burnDuration: 5,
+  },
+  arcane_dragon_sage: {
+    damage: 95, fireRate: 2.5, range: 175,
+    attackType: 'splash',
+    splashRadius: 110,
+    burnDamage: 14, burnDuration: 5,
+    projectileSpeed: 200,
+  },
+  sky_lancer: {
+    damage: 75, fireRate: 1.8, range: 190,
+    attackType: 'splash',
+    splashRadius: 100,
+    burnDamage: 10, burnDuration: 4,
+    projectileSpeed: 300,
+  },
+  death_miasma: {
+    damage: 10, fireRate: 1.8, range: 170,
+    attackType: 'aoe_instant',
+    splashRadius: 120,
+    poisonDamage: 16, poisonDuration: 8, armorReduction: 0.55, armorReductionDuration: 8,
+  },
+  thunderstorm_king: {
+    damage: 50, fireRate: 1.0, range: 175,
+    attackType: 'chain',
+    chainCount: 12, chainDecay: 0.9, chainRadius: 140,
+  },
+  solar_cannon: {
+    damage: 95, fireRate: 2.5, range: 170,
+    attackType: 'aoe_instant',
+    splashRadius: 140,
+  },
+  great_typhoon: {
+    damage: 15, fireRate: 1.8, range: 180,
+    attackType: 'aoe_instant',
+    splashRadius: 110,
+    pushbackDistance: 180, pushbackTargets: 10,
+  },
+  earth_shatterer: {
+    damage: 145, fireRate: 3.2, range: 110,
+    attackType: 'splash',
+    splashRadius: 70,
+    slowAmount: 1.0, slowDuration: 0.8,
+    projectileSpeed: 150,
+  },
+  permafrost: {
+    damage: 8, fireRate: 1.2, range: 175,
+    attackType: 'aoe_instant',
+    splashRadius: 130,
+    slowAmount: 0.8, slowDuration: 4.0,
+  },
+  sacred_judgement_beam: {
+    damage: 55, fireRate: 1.5, range: 160,
+    attackType: 'chain',
+    chainCount: 8, chainDecay: 0.85, chainRadius: 120,
+  },
+  arcane_cannon: {
+    damage: 110, fireRate: 3.2, range: 135,
+    attackType: 'splash',
+    splashRadius: 100,
+    projectileSpeed: 200,
   },
 };
 
