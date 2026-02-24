@@ -12,7 +12,7 @@ Phaser.js 3 기반 판타지 타워 디펜스 게임. 도형 기반 프로토타
 | 언어 | JavaScript ES6+ (바닐라, 프레임워크 없음) |
 | 빌드 도구 | Vite (dev 서버, 번들링) |
 | 모바일 패키징 | Capacitor (Android + iOS) |
-| 모듈 구조 | ES6 모듈 기반 멀티 파일 (24개) |
+| 모듈 구조 | ES6 모듈 기반 멀티 파일 (25개) |
 | 렌더링 | HTML5 Canvas (Phaser 기본) |
 | 데이터 저장 | localStorage (최고 기록, Diamond, 메타 업그레이드, 타워 해금, 머지 발견, 통계, 게임 히스토리) -- 세이브 v2 |
 | 해상도 | 360x640 (모바일 세로, portrait) |
@@ -31,9 +31,10 @@ Phaser.js 3 기반 판타지 타워 디펜스 게임. 도형 기반 프로토타
 | `js/config.js` | 모든 게임 상수/밸런스 수치 집중 관리 (타워 10종, 적 8종, 웨이브 R1~R20, 메타 업그레이드 트리, 유틸리티 업그레이드, 저항 캡 0.55, 골드 싱크 상수, 머지 레시피 102종/스탯 102종 (T2 55종 + T3 30종 + T4 12종 + T5 5종), 세이브 마이그레이션 v2) |
 | `js/scenes/BootScene.js` | 초기 설정, localStorage 로드, 세이브 마이그레이션 (stats 필드 포함), 메뉴 전환 |
 | `js/scenes/MenuScene.js` | 메뉴 화면, Diamond 표시, GAME START/COLLECTION/STATISTICS 버튼 |
-| `js/scenes/GameScene.js` | 핵심 게임플레이 (맵/타워/적/투사체/웨이브/AoE/체인/빔/메타 업그레이드/ProjectilePool/delta 캡/통계 추적/사거리 프리뷰/골드 싱크/머지 드래그 핸들링) |
+| `js/scenes/GameScene.js` | 핵심 게임플레이 (맵/타워/적/투사체/웨이브/AoE/체인/빔/메타 업그레이드/ProjectilePool/delta 캡/통계 추적/사거리 프리뷰/골드 싱크/머지 드래그 핸들링/Pause 오버레이 합성도감 버튼/wake 이벤트 처리) |
 | `js/scenes/GameOverScene.js` | 결과 표시, Diamond 획득, 통계 저장, 게임 히스토리 관리, RETRY/MENU 버튼 |
-| `js/scenes/CollectionScene.js` | 컬렉션 모드 -- 이중 탭: (1) 메타업그레이드 (타워 카드 그리드, 메타 업그레이드 트리, 유틸리티 업그레이드, 범용 타워 해금), (2) 합성도감 (T1~T5 서브탭, 발견/미발견 카드, 레시피 힌트, 드래그 스크롤) |
+| `js/scenes/CollectionScene.js` | 컬렉션 모드 -- 이중 탭: (1) 메타업그레이드 (타워 카드 그리드, 메타 업그레이드 트리, 유틸리티 업그레이드, 범용 타워 해금), (2) 합성도감 탭 클릭 시 MergeCodexScene으로 전환 |
+| `js/scenes/MergeCodexScene.js` | 합성도감 전용 씬 -- T1~T5 서브탭, 전체 112종 타워 카드(발견 여부 무관 전부 공개), 레시피 상세 오버레이, 드래그 스크롤. GameScene(Pause)과 CollectionScene 양쪽에서 진입 |
 | `js/scenes/StatsScene.js` | 통계 표시 (스크롤 가능 UI, killsByType/killsByTower/goldEarned/damageDealt, 게임 히스토리) |
 | `js/entities/Tower.js` | 타워 배치/공격/판매/사거리 표시/강화(+1~+10)/머지(tier, mergeId, applyMergeResult) |
 | `js/entities/Enemy.js` | 적 이동/피격/슬로우/화상/독/방어력 감소/밀치기/분열/HP바 |
@@ -47,25 +48,30 @@ Phaser.js 3 기반 판타지 타워 디펜스 게임. 도형 기반 프로토타
 | `js/ui/HUD.js` | 상단 HUD (Wave/Gold/HP, HP 위험 깜빡임, 웨이브 카운트다운, 적 프리뷰) |
 | `js/ui/TowerPanel.js` | 하단 타워 선택(2줄 5열)/정보/판매/강화/드래그&드롭 머지 UI/머지 프리뷰(조합 목록+드래그 하이라이트+호버 말풍선)/3단 속도(1x/2x/3x) 패널 |
 
-**총 24개 파일**
+**총 25개 파일**
 
 ## Phaser 씬 구조
 
 ```
 BootScene -> MenuScene -> GameScene -> GameOverScene
-               ^    \  \                    |    |
-               |     \  \                   |    |
-               |      v  v                  |    |
-               |  Collection  Stats         |    |
-               |  Scene       Scene         |    |
-               |      |         |           |    |
-               |______| (BACK)  |           |    |
+               ^    \  \     |              |    |
+               |     \  \    v (sleep/wake) |    |
+               |      v  v MergeCodexScene  |    |
+               |  Collection  Stats   ^     |    |
+               |  Scene       Scene   |     |    |
+               |      |  |      |     |     |    |
+               |      |  +------+-----+     |    |
+               |      |  (codex tab)        |    |
+               |______| (BACK)              |    |
                |________________| (BACK)    |    |
                |____________________________|    |
                |       (RETRY)                   |
                |_________________________________|
                        (MENU)
 ```
+
+- GameScene -> MergeCodexScene: Pause 오버레이 합성도감 버튼 (scene.launch + sleep/wake)
+- CollectionScene -> MergeCodexScene: 합성도감 탭 클릭 (scene.start)
 
 ## 맵 시스템
 
@@ -160,6 +166,7 @@ npx cap open android  # 또는 npx cap open ios
 - 머지 타워 시스템 Phase 4-A: 정적 코드 분석 24건 (수용 기준 4 + 데이터 6 + 레시피 4 + 스탯 7 + 핸들러 1 + 예외 6 = 24건 전수 검증 중 일부 카테고리별), QA PASS
 - 머지 타워 시스템 Phase 4-B: 정적 코드 분석 23건 (정상 15 + 예외 8) + Playwright 테스트 23개 작성, QA PASS (R2, 1차 FAIL BUG 4건 수정 후 PASS)
 - 머지 프리뷰 UI: Playwright 테스트 49개 (정상 36 + 예외/엣지케이스 13) + 시각적 검증 2건, QA PASS
+- 합성도감 전용 씬: Playwright 테스트 50개 (정상 36 + 예외 14) + 시각적 검증 13건 QA PASS (R2, 1차 ISSUE-1 수정 후 PASS)
 
 ## 시스템별 상세 문서
 
@@ -170,7 +177,7 @@ npx cap open android  # 또는 npx cap open ios
 | [systems/wave.md](systems/wave.md) | R1~R20 정의, R21+ 스케일링, 보스 라운드 |
 | [systems/economy.md](systems/economy.md) | Gold, Diamond, 메타 업그레이드, 컬렉션, 골드 싱크 |
 | [systems/sound.md](systems/sound.md) | SFX 8종, BGM 3종, Web Audio API |
-| [systems/ui.md](systems/ui.md) | HUD, TowerPanel, 머지 프리뷰(조합 목록+드래그 하이라이트+호버 말풍선), 일시정지, 게임속도, 골드 싱크 UI, 컬렉션(이중 탭: 메타업그레이드+합성도감), 모바일 |
+| [systems/ui.md](systems/ui.md) | HUD, TowerPanel, 머지 프리뷰(조합 목록+드래그 하이라이트+호버 말풍선), 일시정지(합성도감 버튼 포함), 게임속도, 골드 싱크 UI, 컬렉션(이중 탭: 메타업그레이드+합성도감), MergeCodexScene(합성도감 전용 씬), 모바일 |
 
 ## 향후 계획
 

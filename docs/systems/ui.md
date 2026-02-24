@@ -235,58 +235,108 @@ META_GRID_Y=96 (탭 바 아래).
 
 ### 탭 2: 합성도감
 
-T1~T5 전 타워 카탈로그. saveData.discoveredMerges 기반 발견/미발견 표시.
+합성도감 탭 클릭 시 `scene.start('MergeCodexScene', { fromScene: 'CollectionScene' })`로 MergeCodexScene 전용 씬으로 전환한다.
 
-#### 서브탭 (y=88, h=28)
+- 기존 CollectionScene 내부의 Codex 관련 메서드/상태 변수/상수는 전부 제거됨
+- MergeCodexScene에서 BACK 클릭 시 `scene.start('CollectionScene')`로 복귀
+- 상세는 아래 "합성도감 전용 씬 (MergeCodexScene)" 섹션 참조
 
-- [ T1 ] [ T2 ] [ T3 ] [ T4 ] [ T5 ] -- 각 64px, 간격 4px
-- 선택 시: COLORS.UI_PANEL 배경, COLORS.DIAMOND 테두리, bold
-- 비선택 시: COLORS.BACKGROUND 배경, 0x636e72 테두리
+## 합성도감 전용 씬 (MergeCodexScene)
 
-#### 진행률 (y=122, h=16)
+T1~T5 전체 112종(기본 10 + 합성 102) 타워를 발견 여부와 무관하게 모두 공개하는 전용 씬. GameScene(Pause 오버레이)과 CollectionScene(합성도감 탭) 양쪽에서 진입 가능.
 
-- "T{n}: {count} / {total} 발견" 중앙 정렬, 12px, #b2bec3
-- i18n 키: `collection.codex.progress`
+### 진입 경로
 
-#### 카드 그리드 (y=142~640)
-
-- 카드: 62x74px, 5열, 간격 6px
-- 자동 중앙정렬: CODEX_GRID_X = (360 - (5*62 + 4*6)) / 2 = 16
-- Geometry Mask로 CODEX_GRID_Y~GAME_HEIGHT 클리핑
-
-| 상태 | 표시 내용 |
-|---|---|
-| 발견 | 타워 색상 원 + 이름(6자 초과 truncate) + attackType 뱃지 + 티어 뱃지, 티어별 테두리 색상 |
-| 미발견 | 검은 배경(0x0d1117) + "???" + 티어 뱃지, 회색 테두리 |
-
-- 티어 테두리 색상: T1/T2=은색(0xb2bec3), T3/T5=금색(0xffd700), T4=보라(0xa29bfe)
-- attackType 뱃지: Single, Splash, AoE, Chain, Beam, DoT
-
-#### 카드 클릭 오버레이
-
-| 티어 | 발견 | 미발견 |
+| 진입 경로 | 씬 전환 방식 | BACK 동작 |
 |---|---|---|
-| T1 | 타워 기본 정보 (이름, 색상원, attackType, DMG/SPD/RNG) | -- (항상 발견) |
-| T2~T3 | 레시피 공개 ("재료A + 재료B -> 결과") + attackType + Tier | 재료 힌트 ("재료A + 재료B -> ???") |
-| T4~T5 | "레시피 비공개" + attackType + Tier | 반응 없음 |
+| GameScene Pause 오버레이 -> 합성도감 버튼 | `scene.launch` + `scene.sleep('GameScene')` | `scene.stop('MergeCodexScene')` + `scene.wake('GameScene')` -> Pause 오버레이 재표시 |
+| CollectionScene 합성도감 탭 | `scene.start('MergeCodexScene')` | `scene.start('CollectionScene')` |
 
-- i18n 키: `collection.codex.unknown`, `collection.codex.recipeHidden`
-- 재료명 표시: `_getDisplayNameById()`로 i18n 기반 조회 (한국어/영어 통일)
+- `init(data)`: `{ fromScene: 'GameScene' | 'CollectionScene' }` 수신 (미지정 시 CollectionScene 기본값)
 
-#### 드래그 스크롤
+### 레이아웃
 
-- `this.input.on('pointerdown/move/up')` 전역 이벤트 기반
-- 5px threshold: 이동량 5px 미만은 클릭, 이상은 드래그
-- `activeTab !== 'codex'` 가드로 메타탭에서 간섭 없음
-- `pointer.y < CODEX_GRID_Y` 가드로 서브탭 영역 드래그 차단
-- `_cleanupCodexDrag()`에서 3개 리스너 해제
+```
++-----------------------------------+  y=0
+| < BACK          합성도감           |  y=0~48  (TopBar, h=48)
++-----------------------------------+  y=48
+| [ T1 ][ T2 ][ T3 ][ T4 ][ T5 ]   |  y=48~76  (SubTab Bar, h=28)
++-----------------------------------+  y=76
+|    T{n}: {total}종                 |  y=82~100 (Progress)
++-----------------------------------+  y=104
+|       카드 그리드 (스크롤)          |  y=104~640
++-----------------------------------+
+```
+
+### TopBar (y=0~48)
+
+- 배경: COLORS.HUD_BG, h=48
+- BACK 버튼: x=38, y=24, 60x28px, "< BACK", 클릭 시 `_goBack()` 호출
+- 타이틀: x=180, y=24, i18n 키 `codex.title` (ko: "합성도감", en: "Merge Codex")
+
+### SubTab Bar (y=48~76)
+
+- T1~T5 서브탭 5개, 각 64px, 간격 4px
+- 선택 탭: COLORS.UI_PANEL 배경, COLORS.DIAMOND 테두리, bold
+- 비선택 탭: COLORS.BACKGROUND 배경, 0x636e72 테두리
+- 기본 선택: T2 (매 씬 진입 시 codexTier=2로 초기화)
+- 탭 전환 시 스크롤 위치 초기화 (codexScrollY=0)
+
+### Progress 표시
+
+- 위치: y = PROGRESS_Y + 8 = 90
+- 텍스트: i18n 키 `codex.progress` (ko: "T{n}: {total}종", en: "T{n}: {total} towers")
+- 발견 카운트 없이 총 개수만 표시
+- 색상: #b2bec3, 12px, 중앙 정렬
+
+### 카드 그리드
+
+- 카드 크기: 62x74px, 5열, 간격 6px
+- CODEX_GRID_X = (360 - (5*62 + 4*6)) / 2 = 16
+- CODEX_GRID_Y = 104
+- Geometry Mask로 CODEX_GRID_Y~GAME_HEIGHT 클리핑
+- 드래그 스크롤: `this.input.on()` 전역 이벤트 기반, 5px threshold로 클릭/드래그 구분
+
+### 카드 표시 (전부 공개)
+
+모든 카드를 발견된 것처럼 동일하게 표시. ??? 카드 없음.
+
+| 요소 | 스펙 |
+|---|---|
+| 배경 | COLORS.UI_PANEL, 티어별 테두리 색상, 62x74px |
+| 색상 원 | entry.color, 반지름 10px, y+18 위치 |
+| 이름 | 6자 초과 시 5자+.. truncate, 9px 흰색 |
+| attackType 뱃지 | Single/Splash/AoE/Chain/Beam/DoT, 8px #81ecec |
+| 티어 뱃지 | T{n}, 8px #ffd700 |
+
+- 티어별 테두리 색상: T1/T2=0xb2bec3, T3/T5=0xffd700, T4=0xa29bfe
+
+### 카드 클릭 상세 오버레이
+
+패널: 280x200px, 화면 중앙. X 버튼 또는 배경 탭으로 닫기.
+
+| 티어 | 표시 내용 |
+|---|---|
+| T1 | 타워 이름, 색상 원, attackType, DMG/SPD/RNG |
+| T2~T5 | 타워 이름, 재료A + 재료B -> 결과이름, attackType, Tier 뱃지 |
+
+- T4/T5도 레시피 전부 공개 (기존 레시피 비공개 처리 없음)
+- 재료명: `_getDisplayNameById()`로 i18n 기반 조회
 
 ### 데이터 소스
 
-- T1: `TOWER_STATS` 10종 (항상 발견)
+- T1: `TOWER_STATS` 10종 (TOWER_ORDER 순서)
 - T2~T5: `MERGE_RECIPES` 102종, `MERGED_TOWER_STATS`에서 attackType 참조
-- 발견 여부: `saveData.discoveredMerges` Set 기반 판정
 - `_buildTierData()`: 씬 생성 시 1회 캐시 빌드, 티어별 알파벳순 정렬
+- 타워 수: T1=10, T2=55, T3=30, T4=12, T5=5 (총 112종)
+
+### i18n 키
+
+| 키 | ko | en |
+|---|---|---|
+| `codex.title` | 합성도감 | Merge Codex |
+| `codex.progress` | T{n}: {total}종 | T{n}: {total} towers |
+| `ui.mergeCodex` | 합성도감 | Merge Codex |
 
 ## 타워 설명 팝업
 
@@ -307,11 +357,21 @@ T1~T5 전 타워 카탈로그. saveData.discoveredMerges 기반 발견/미발견
 
 - HUD 우측 상단 Pause 버튼 (||)
 - Pause 시 게임 루프 완전 중단 + 반투명 오버레이
-- 오버레이 내용:
-  - "PAUSED" 텍스트
-  - Resume 버튼 (이전 게임 속도 복원 후 재개)
-  - Main Menu 버튼 (MenuScene으로 즉시 이동)
-  - SFX/BGM 볼륨 조절 슬라이더
+- 오버레이 내용 (패널: 220x260, 중심 x=180, y=310):
+  - "PAUSED" 텍스트 (y=220)
+  - Resume 버튼 (y=252, 색상 0x00b894 초록, 이전 게임 속도 복원 후 재개)
+  - 합성도감 버튼 (y=288, 색상 0x6c5ce7 보라, MergeCodexScene 전환)
+  - Main Menu 버튼 (y=324, 색상 0xe94560 빨강, MenuScene으로 즉시 이동)
+  - SFX/BGM 볼륨 조절 슬라이더 (baseY=360)
+
+### 합성도감 버튼 동작
+
+- 클릭 시: `_hidePauseOverlay()` -> `scene.launch('MergeCodexScene', { fromScene: 'GameScene' })` -> `scene.sleep('GameScene')`
+- isPaused는 true 유지 (게임 시간 진행 없음)
+- MergeCodexScene에서 BACK 클릭 시: `scene.stop('MergeCodexScene')` -> `scene.wake('GameScene')` -> isPaused=true이므로 `_showPauseOverlay()` 자동 재표시
+- `_hidePauseOverlay()`: pauseOverlay 컨테이너 destroy만 수행 (isPaused 변경 없음)
+- `_onWake()`: wake 이벤트 핸들러에서 isPaused 상태 확인 후 Pause 오버레이 재표시
+- `_cleanup()`에서 wake 리스너 해제
 
 ## 게임 속도 제어
 

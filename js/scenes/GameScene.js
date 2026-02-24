@@ -124,6 +124,9 @@ export class GameScene extends Phaser.Scene {
     // Register shutdown handler for cleanup
     this.events.on('shutdown', this._cleanup, this);
 
+    // Wake handler: re-show pause overlay when returning from MergeCodexScene
+    this.events.on('wake', this._onWake, this);
+
     // Load meta upgrades from save data
     const saveData = this.registry.get('saveData');
     /** @type {object} Tower meta upgrade choices */
@@ -1504,6 +1507,16 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
+   * Handle scene wake event (e.g. returning from MergeCodexScene).
+   * @private
+   */
+  _onWake() {
+    if (this.isPaused) {
+      this._showPauseOverlay();
+    }
+  }
+
+  /**
    * Pause the game and show overlay.
    * @private
    */
@@ -1556,9 +1569,9 @@ export class GameScene extends Phaser.Scene {
     ).setAlpha(0.7).setInteractive();
     this.pauseOverlay.add(overlay);
 
-    // Panel (expanded for Phase 5 volume controls)
+    // Panel (expanded for codex button + Phase 5 volume controls)
     const panel = this.add.rectangle(
-      180, 300, 220, 220, 0x0f3460
+      180, 310, 220, 260, 0x0f3460
     ).setDepth(51);
     this.pauseOverlay.add(panel);
 
@@ -1589,13 +1602,34 @@ export class GameScene extends Phaser.Scene {
       this._resumeGame();
     });
 
+    // Merge Codex button
+    const codexBtn = this.add.rectangle(
+      180, 288, 180, 30, 0x6c5ce7
+    ).setInteractive({ useHandCursor: true }).setDepth(52);
+    this.pauseOverlay.add(codexBtn);
+
+    const codexText = this.add.text(180, 288, t('ui.mergeCodex'), {
+      fontSize: '14px',
+      fontFamily: 'Arial, sans-serif',
+      color: '#ffffff',
+      fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(52);
+    this.pauseOverlay.add(codexText);
+
+    codexBtn.on('pointerdown', () => {
+      this._hidePauseOverlay();
+      // isPaused remains true
+      this.scene.launch('MergeCodexScene', { fromScene: 'GameScene' });
+      this.scene.sleep('GameScene');
+    });
+
     // Main Menu button
     const menuBtn = this.add.rectangle(
-      180, 290, 180, 30, 0xe94560
+      180, 324, 180, 30, 0xe94560
     ).setInteractive({ useHandCursor: true }).setDepth(52);
     this.pauseOverlay.add(menuBtn);
 
-    const menuText = this.add.text(180, 290, 'Main Menu', {
+    const menuText = this.add.text(180, 324, 'Main Menu', {
       fontSize: '14px',
       fontFamily: 'Arial, sans-serif',
       color: '#ffffff',
@@ -1620,7 +1654,7 @@ export class GameScene extends Phaser.Scene {
    * @private
    */
   _createVolumeControls(sm) {
-    const baseY = 330;
+    const baseY = 360;
     const labelStyle = {
       fontSize: '12px',
       fontFamily: 'Arial, sans-serif',
@@ -2078,6 +2112,7 @@ export class GameScene extends Phaser.Scene {
 
     if (this.waveManager) this.waveManager.destroy();
 
+    this.events.off('wake', this._onWake, this);
     this.events.off('shutdown', this._cleanup, this);
   }
 

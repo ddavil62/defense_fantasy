@@ -4,6 +4,81 @@
 
 ---
 
+## 2026-02-24 -- 합성도감 전용 씬 (MergeCodexScene)
+
+### 배경
+
+기존 CollectionScene의 합성도감 탭은 saveData.discoveredMerges 기반으로 발견/미발견을 구분하여 표시했고, T4/T5 미발견 타워는 레시피가 비공개였다. 플레이어가 조합 전략을 세우려면 모든 레시피를 미리 볼 수 있어야 하며, 게임 중에도 전략 참고를 위해 도감에 접근할 수 있어야 한다.
+
+### 추가
+
+- **`js/scenes/MergeCodexScene.js`** -- 합성도감 전용 씬 신규 생성
+  - TopBar: BACK 버튼(x=38, y=24) + 타이틀(x=180, y=24, i18n `codex.title`)
+  - SubTab Bar: T1~T5 서브탭 5개 (각 64px, 간격 4px, y=48~76)
+  - 기본 선택 서브탭: T2 (매 진입 시 초기화)
+  - Progress 표시: "T{n}: {total}종" (y=90, 12px, #b2bec3, 중앙 정렬)
+  - 카드 그리드: 62x74px, 5열, 간격 6px, Geometry Mask 스크롤
+  - 카드 표시: 모든 타워 전부 공개 (발견 여부 무관, ??? 카드 없음)
+    - 색상 원(반지름 10px), 이름(6자 초과 5자+.. truncate, 9px), attackType 뱃지(8px, #81ecec), 티어 뱃지(8px, #ffd700)
+  - 티어별 테두리 색상: T1/T2=0xb2bec3, T3/T5=0xffd700, T4=0xa29bfe
+  - 카드 클릭 상세 오버레이(280x200px, 화면 중앙):
+    - T1: 이름, 색상 원, attackType, DMG/SPD/RNG
+    - T2~T5: 이름, 재료A + 재료B -> 결과이름, attackType, Tier
+    - T4/T5도 레시피 전부 공개 (기존 비공개 처리 없음)
+  - 드래그 스크롤: 5px threshold로 클릭/드래그 구분
+  - 씬 복귀(`_goBack()`): GameScene에서 진입 시 scene.stop + scene.wake, CollectionScene에서 진입 시 scene.start
+  - 타워 수: T1=10종, T2=55종, T3=30종, T4=12종, T5=5종 (총 112종)
+
+- **`js/main.js`** -- MergeCodexScene import 및 scene 배열 등록
+
+- **`js/i18n.js`** -- 신규 i18n 키 추가 (ko/en)
+  - `codex.title`: 합성도감 / Merge Codex
+  - `codex.progress`: T{n}: {total}종 / T{n}: {total} towers
+  - `ui.mergeCodex`: 합성도감 / Merge Codex
+
+### 변경
+
+- **`js/scenes/GameScene.js`** -- Pause 오버레이 확장 + wake 이벤트 처리
+  - Pause 패널 높이 220 -> 260, 중심 y=300 -> 310
+  - 합성도감 버튼 추가: y=288, 색상 0x6c5ce7(보라), i18n `ui.mergeCodex`
+  - Resume y=252(유지), 합성도감 y=288(신규), Main Menu y=324, Volume Controls baseY=360
+  - 합성도감 버튼 클릭: `_hidePauseOverlay()` -> `scene.launch('MergeCodexScene')` -> `scene.sleep('GameScene')` (isPaused=true 유지)
+  - `_hidePauseOverlay()` 메서드 신규 추가: pauseOverlay destroy만 수행 (isPaused 변경 없음)
+  - `_resumeGame()`: isPaused=false + `_hidePauseOverlay()` 호출로 리팩토링
+  - `_onWake()` 메서드 추가: isPaused=true이면 `_showPauseOverlay()` 재표시
+  - `_cleanup()`에서 wake 리스너 해제 추가
+
+- **`js/scenes/CollectionScene.js`** -- Codex 관련 코드 전체 제거
+  - 합성도감 탭 클릭 핸들러: `scene.start('MergeCodexScene', { fromScene: 'CollectionScene' })`로 교체
+  - 제거된 메서드 12개: `_buildCodexTab`, `_buildCodexSubTabs`, `_buildCodexContent`, `_createCodexCard`, `_showCodexCardOverlay`, `_setupCodexDrag`, `_cleanupCodexDrag`, `_applyCodexScroll`, `_buildTierData`, `_getTierBorderColor`, `_getAttackTypeBadge`, `_getDisplayNameById`
+  - 제거된 상태 변수 10개: `codexTier`, `codexScrollY`, `codexDragging`, `codexDragStartY`, `codexDragStartScroll`, `codexDragMoved`, `_tierDataCache`, `codexScrollContainer`, `_subTabContainer`, `_codexContentContainer`, `_maskShape`
+  - 미사용 import 제거: `MERGE_RECIPES`, `MERGED_TOWER_STATS`
+  - 메타업그레이드 탭 기능 영향 없음
+
+### 수정
+
+- **ISSUE-1 [HIGH]**: MergeCodexScene 서브탭 전환 시 Progress 텍스트 누적/겹침 -- progress 텍스트를 `_codexContentContainer`에 추가하여 탭 전환 시 컨테이너와 함께 정상 파괴되도록 수정
+
+### 알려진 제약
+
+- **LOW**: 오버레이 표시 중 backdrop 영역에서 드래그하면 뒤쪽 스크롤이 활성화될 수 있음. backdrop의 setInteractive()가 대부분 이벤트를 차단하므로 실제 문제 미확인
+
+### QA 결과
+
+- **R1 판정**: FAIL (ISSUE-1 HIGH 1건 -- Progress 텍스트 누적/겹침)
+- **R2 판정**: PASS -- ISSUE-1 수정 확인, 수용 기준 15/15 충족, 예외 시나리오 12/12 통과
+- Playwright 테스트 50개 전체 통과 (정상 36개 + 예외 14개)
+- 시각적 검증 스크린샷 13건 확인
+
+### 참고 문서
+
+- 스펙: `.claude/specs/2026-02-24-combination-collection.md`
+- 구현 리포트: `.claude/specs/2026-02-24-combination-collection-report.md`
+- QA 리포트: `.claude/specs/2026-02-24-combination-collection-qa.md`
+- 테스트: `tests/merge-codex-scene.spec.js`
+
+---
+
 ## 2026-02-24 -- 머지 프리뷰 UI (조합 목록 + 드래그 하이라이트)
 
 ### 배경

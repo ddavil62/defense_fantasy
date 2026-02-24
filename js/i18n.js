@@ -320,6 +320,10 @@ const STRINGS = {
     'collection.codex.progress': '{tier}: {count} / {total} 발견',
     'collection.codex.unknown': '???',
     'collection.codex.recipeHidden': '레시피 비공개',
+    // 합성도감 전용 씬
+    'codex.title': '합성도감',
+    'codex.progress': 'T{n}: {total}종',
+    'ui.mergeCodex': '합성도감',
   },
   en: {
     'tower.archer.name': 'Archer',
@@ -611,5 +615,9 @@ const STRINGS = {
     'collection.codex.progress': '{tier}: {count} / {total} discovered',
     'collection.codex.unknown': '???',
     'collection.codex.recipeHidden': 'Recipe Hidden',
+    // Merge Codex standalone scene
+    'codex.title': 'Merge Codex',
+    'codex.progress': 'T{n}: {total} towers',
+    'ui.mergeCodex': 'Merge Codex',
   },
 };

@@ -13,6 +13,7 @@ import { GameScene } from './scenes/GameScene.js';
 import { GameOverScene } from './scenes/GameOverScene.js';
 import { CollectionScene } from './scenes/CollectionScene.js';
 import { StatsScene } from './scenes/StatsScene.js';
+import { MergeCodexScene } from './scenes/MergeCodexScene.js';
 import { GAME_WIDTH, GAME_HEIGHT } from './config.js';
 
 /** @type {Phaser.Types.Core.GameConfig} */
@@ -26,7 +27,7 @@ const config = {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
-  scene: [BootScene, MenuScene, GameScene, GameOverScene, CollectionScene, StatsScene],
+  scene: [BootScene, MenuScene, GameScene, GameOverScene, CollectionScene, StatsScene, MergeCodexScene],
   input: {
     activePointers: 1,
   },
