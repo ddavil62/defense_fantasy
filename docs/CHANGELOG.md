@@ -4,6 +4,68 @@
 
 ---
 
+## 2026-02-24 -- 머지 프리뷰 UI (조합 목록 + 드래그 하이라이트)
+
+### 배경
+
+머지 시스템에서 드래그&드롭으로만 조합 결과를 확인할 수 있어, 102종 레시피 중 어떤 타워와 합성하면 무엇이 나오는지 미리 파악할 방법이 없었다. 타워 선택 시 조합 목록 표시(기능 A)와 드래그 시 시각적 유도(기능 B)를 추가하여 UX를 개선했다.
+
+### 추가
+
+- **`js/ui/TowerPanel.js`** -- 기능 A: 조합 목록 시스템
+  - `_buildMergeList(tower, startY)`: 선택 타워의 MERGE_RECIPES 매칭 항목을 infoContainer에 렌더링
+    - 섹션 헤더: "합성 가능" (9px, #b2bec3, x=10)
+    - 항목 형식: `+[파트너명] -> [결과명](T[티어])`, 결과 타워 color CSS, 9px
+    - MAX_SHOW 동적 계산: `Math.max(3, Math.min(5, Math.floor(available / 12)))` (패널 잔여 공간 기반)
+    - 5개 초과 시 "외 N개" 텍스트 (9px, #636e72)
+    - 각 항목 탭 시 `_flashMergeTargets(partnerType)` 호출
+  - `_flashMergeTargets(partnerType)`: 맵 위 해당 파트너 타입 타워에 노란 원(0xffd700, 반지름 20, depth 40) 깜빡임 애니메이션 (alpha 1->0, 300ms, yoyo, repeat 2, 총 ~1.8초)
+  - 생성자에 `_mergeHighlights`, `_mergePreviewBubble`, `_hoveredMergeTarget` 상태 변수 추가
+
+- **`js/ui/TowerPanel.js`** -- 기능 B: 드래그 하이라이트 + 호버 미리보기
+  - `_startMergeHighlights(dragTower)`: 드래그 시작 시 합성 가능한 타워에 펄스 하이라이트 (strokeCircle 반지름 22, lineWidth 3, 0xffd700, depth 40, alpha 1.0<->0.5, 600ms, yoyo, repeat -1)
+  - `_showMergePreviewBubble(tower, result)`: 호버 시 결과 미리보기 말풍선 (Container depth 41, 90x32px, fill 0x0a0e1a alpha 0.9, 결과 color 테두리 lineWidth 2, 결과명 10px bold, 티어 9px #aaaaaa)
+  - `_hideMergePreviewBubble()`: 말풍선 제거 + 상태 초기화
+  - `_clearMergeHighlights()`: tween.stop() + graphics.destroy() + 배열 초기화
+  - 말풍선 Y 클리핑: `Math.max(HUD_HEIGHT + 20, tower.y - 34)`
+
+- **`js/scenes/GameScene.js`** -- TowerPanel callbacks에 `getTowers: () => this.towers` 추가
+
+- **`js/i18n.js`** -- 머지 프리뷰 문자열 추가
+  - ko: `ui.mergeList.header` = "합성 가능", `ui.mergeList.more` = "외 {n}개"
+  - en: `ui.mergeList.header` = "Can merge", `ui.mergeList.more` = "+{n} more"
+
+### 변경
+
+- **`js/ui/TowerPanel.js`** -- 기존 메서드 수정
+  - `showTowerInfo()`: `hasRecipes && isMergeable && enhanceLevel === 0` 조건에서 `_buildMergeList()` 호출
+  - `startDrag()`: 기존 로직 뒤에 `_startMergeHighlights(tower)` 호출 추가
+  - `updateDrag()`: ghost 업데이트 후 `pixelToGrid`로 셀 계산, `_mergeHighlights`에서 hover 감지하여 말풍선 show/hide
+  - `endDrag()`: cleanup 직후 `_clearMergeHighlights()` + `_hideMergePreviewBubble()` 호출
+  - `destroy()`: `_clearMergeHighlights()` + `_hideMergePreviewBubble()` 호출 추가
+
+### 스펙 대비 변경
+
+| 항목 | 스펙 | 구현 | 사유 |
+|---|---|---|---|
+| 플래시 지속 시간 | 1.5초 | ~1.8초 (300ms x 2 yoyo x 3 repeat) | Phaser tween 구조상 `repeat:2`가 초기 1회 + 반복 2회 = 총 3회 x 600ms yoyo = 1.8초. 체감 차이 미미 |
+
+### QA 결과
+
+- **판정**: PASS
+- Playwright 테스트 49개 전체 통과 (정상 36개 + 예외/엣지케이스 13개)
+- 시각적 검증 스크린샷 2건 확인
+- 수용 기준 13/13 충족, 스펙 대비 구현 일치도 전항목 일치
+
+### 참고 문서
+
+- 스펙: `.claude/specs/2026-02-24-merge-preview-ui.md`
+- 구현 리포트: `.claude/specs/2026-02-24-merge-preview-ui-report.md`
+- QA 리포트: `.claude/specs/2026-02-24-merge-preview-ui-qa.md`
+- 테스트: `tests/merge-preview-ui.spec.js`
+
+---
+
 ## 2026-02-24 -- 머지 조합 타워 시스템 Phase 4-B (CollectionScene 합성도감)
 
 ### 배경

@@ -62,6 +62,16 @@ export class TowerPanel {
     /** @type {Phaser.GameObjects.Graphics|null} Ghost graphic following pointer */
     this._dragGhost = null;
 
+    // ── Merge preview state ──
+    /** @type {{ tower: object, graphics: Phaser.GameObjects.Graphics, tween: Phaser.Tweens.Tween, result: object }[]} */
+    this._mergeHighlights = [];
+
+    /** @type {Phaser.GameObjects.Container|null} */
+    this._mergePreviewBubble = null;
+
+    /** @type {object|null} */
+    this._hoveredMergeTarget = null;
+
     this._create();
   }
 
@@ -618,18 +628,12 @@ export class TowerPanel {
     );
     this.infoContainer.add(infoText);
 
-    // Merge hint and/or enhance button
+    // Merge list and/or enhance button
     let nextY = infoY + 18;
     const hasRecipes = Object.keys(MERGE_RECIPES).length > 0;
     if (hasRecipes && info.isMergeable && info.enhanceLevel === 0) {
-      // Show "drag to merge" hint
-      const hintText = this.scene.add.text(GAME_WIDTH / 2, nextY, t('ui.dragToMerge') || 'Drag to merge', {
-        fontSize: '10px',
-        fontFamily: 'Arial, sans-serif',
-        color: '#b2bec3',
-      }).setOrigin(0.5);
-      this.infoContainer.add(hintText);
-      nextY += 16;
+      const mergeListHeight = this._buildMergeList(tower, nextY);
+      nextY += mergeListHeight;
     }
     if (info.canEnhance) {
       // Enhancement button
@@ -690,6 +694,221 @@ export class TowerPanel {
     this.sellBg.setAlpha(1);
   }
 
+  // ── Merge List (Feature A) ───────────────────────────────────────
+
+  /**
+   * Build merge recipe list for the selected tower and add to infoContainer.
+   * @param {object} tower - Tower instance
+   * @param {number} startY - Y position to start rendering
+   * @returns {number} Total height used
+   * @private
+   */
+  _buildMergeList(tower, startY) {
+    const selfId = tower.mergeId || tower.type;
+
+    // Collect matching recipes
+    const matches = [];
+    for (const [key, result] of Object.entries(MERGE_RECIPES)) {
+      const parts = key.split('+');
+      if (parts.includes(selfId)) {
+        const partnerType = parts[0] === selfId ? parts[1] : parts[0];
+        matches.push({ partnerType, result });
+      }
+    }
+
+    if (matches.length === 0) return 0;
+
+    // Dynamic MAX_SHOW calculation
+    const available = (PANEL_Y + PANEL_HEIGHT) - startY - 30;
+    const maxShow = Math.max(3, Math.min(5, Math.floor(available / 12)));
+
+    let usedHeight = 0;
+
+    // Section header
+    const header = this.scene.add.text(10, startY, t('ui.mergeList.header'), {
+      fontSize: '9px',
+      fontFamily: 'Arial, sans-serif',
+      color: '#b2bec3',
+    });
+    this.infoContainer.add(header);
+    usedHeight += 13;
+
+    // Display items (up to maxShow)
+    const showCount = Math.min(matches.length, maxShow);
+    for (let i = 0; i < showCount; i++) {
+      const { partnerType, result } = matches[i];
+      const partnerName = t(`tower.${partnerType}.name`) || partnerType;
+      const resultName = t(`tower.${result.id}.name`) || result.displayName;
+      const colorCSS = '#' + result.color.toString(16).padStart(6, '0');
+      const itemY = startY + usedHeight;
+
+      const itemText = this.scene.add.text(10, itemY,
+        `+${partnerName} \u2192 ${resultName}(T${result.tier})`, {
+        fontSize: '9px',
+        fontFamily: 'Arial, sans-serif',
+        color: colorCSS,
+      }).setInteractive({ useHandCursor: true });
+
+      // Tap to flash partner towers on map
+      const pt = partnerType; // closure capture
+      itemText.on('pointerdown', () => {
+        this._flashMergeTargets(pt);
+      });
+
+      this.infoContainer.add(itemText);
+      usedHeight += 12;
+    }
+
+    // Overflow text
+    const overflow = matches.length - showCount;
+    if (overflow > 0) {
+      const moreText = this.scene.add.text(10, startY + usedHeight,
+        t('ui.mergeList.more').replace('{n}', overflow), {
+        fontSize: '9px',
+        fontFamily: 'Arial, sans-serif',
+        color: '#636e72',
+      });
+      this.infoContainer.add(moreText);
+      usedHeight += 12;
+    }
+
+    return usedHeight;
+  }
+
+  /**
+   * Flash yellow circles on map towers matching the partner type.
+   * @param {string} partnerType - Tower type/mergeId to highlight
+   * @private
+   */
+  _flashMergeTargets(partnerType) {
+    const getTowers = this.callbacks.getTowers;
+    if (!getTowers) return;
+
+    const towers = getTowers();
+    for (const t of towers) {
+      const tId = t.mergeId || t.type;
+      if (tId === partnerType) {
+        const g = this.scene.add.graphics().setDepth(40);
+        g.fillStyle(0xffd700, 1);
+        g.fillCircle(t.x, t.y, 20);
+        this.scene.tweens.add({
+          targets: g,
+          alpha: { from: 1, to: 0 },
+          duration: 300,
+          yoyo: true,
+          repeat: 2,
+          onComplete: () => { g.destroy(); },
+        });
+      }
+    }
+  }
+
+  // ── Merge Highlight (Feature B) ─────────────────────────────────
+
+  /**
+   * Start merge highlights on all compatible towers when drag begins.
+   * @param {object} dragTower - Tower being dragged
+   * @private
+   */
+  _startMergeHighlights(dragTower) {
+    this._clearMergeHighlights();
+
+    const getTowers = this.callbacks.getTowers;
+    if (!getTowers) return;
+
+    const selfId = dragTower.mergeId || dragTower.type;
+    const towers = getTowers();
+
+    for (const target of towers) {
+      if (target === dragTower) continue;
+      if (!isMergeable(target)) continue;
+
+      const targetId = target.mergeId || target.type;
+      const result = getMergeResult(selfId, targetId);
+      if (!result) continue;
+
+      const g = this.scene.add.graphics().setDepth(40);
+      g.lineStyle(3, 0xffd700, 1);
+      g.strokeCircle(target.x, target.y, 22);
+
+      const tween = this.scene.tweens.add({
+        targets: g,
+        alpha: { from: 1.0, to: 0.5 },
+        duration: 600,
+        yoyo: true,
+        repeat: -1,
+      });
+
+      this._mergeHighlights.push({ tower: target, graphics: g, tween, result });
+    }
+  }
+
+  /**
+   * Show merge result preview bubble above a tower.
+   * @param {object} tower - Target tower
+   * @param {object} result - Merge recipe result { id, tier, color, ... }
+   * @private
+   */
+  _showMergePreviewBubble(tower, result) {
+    if (this._hoveredMergeTarget === tower) return;
+    this._hideMergePreviewBubble();
+    this._hoveredMergeTarget = tower;
+
+    const resultName = t(`tower.${result.id}.name`) || result.displayName;
+    const colorCSS = '#' + result.color.toString(16).padStart(6, '0');
+    const by = Math.max(HUD_HEIGHT + 20, tower.y - 34);
+
+    const container = this.scene.add.container(tower.x, by).setDepth(41);
+
+    // Background rectangle
+    const bg = this.scene.add.rectangle(0, 0, 90, 32, 0x0a0e1a, 0.9)
+      .setStrokeStyle(2, result.color);
+    container.add(bg);
+
+    // Result name text
+    const nameText = this.scene.add.text(0, -5, `\u2192 ${resultName}`, {
+      fontSize: '10px',
+      fontFamily: 'Arial, sans-serif',
+      color: colorCSS,
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+    container.add(nameText);
+
+    // Tier text
+    const tierText = this.scene.add.text(0, 8, `(T${result.tier})`, {
+      fontSize: '9px',
+      fontFamily: 'Arial, sans-serif',
+      color: '#aaaaaa',
+    }).setOrigin(0.5);
+    container.add(tierText);
+
+    this._mergePreviewBubble = container;
+  }
+
+  /**
+   * Hide the merge preview bubble.
+   * @private
+   */
+  _hideMergePreviewBubble() {
+    if (this._mergePreviewBubble) {
+      this._mergePreviewBubble.destroy();
+      this._mergePreviewBubble = null;
+    }
+    this._hoveredMergeTarget = null;
+  }
+
+  /**
+   * Clear all merge highlights.
+   * @private
+   */
+  _clearMergeHighlights() {
+    for (const h of this._mergeHighlights) {
+      h.tween.stop();
+      h.graphics.destroy();
+    }
+    this._mergeHighlights = [];
+  }
+
   // ── Drag & Drop for Merge ────────────────────────────────────────
 
   /**
@@ -711,6 +930,9 @@ export class TowerPanel {
     // Create ghost graphic
     this._dragGhost = this.scene.add.graphics().setDepth(50);
     this._drawDragGhost(pointer.x, pointer.y, tower);
+
+    // Feature B: highlight mergeable towers
+    this._startMergeHighlights(tower);
   }
 
   /**
@@ -721,6 +943,17 @@ export class TowerPanel {
     if (!this._isDragging || !this._dragGhost) return;
     this._dragGhost.clear();
     this._drawDragGhost(pointer.x, pointer.y, this._dragTower);
+
+    // Feature B: show merge preview bubble on hover
+    const { col, row } = pixelToGrid(pointer.x, pointer.y);
+    const hovered = this._mergeHighlights.find(
+      h => h.tower.col === col && h.tower.row === row
+    );
+    if (hovered) {
+      this._showMergePreviewBubble(hovered.tower, hovered.result);
+    } else {
+      this._hideMergePreviewBubble();
+    }
   }
 
   /**
@@ -741,6 +974,10 @@ export class TowerPanel {
 
     this._isDragging = false;
     this._dragTower = null;
+
+    // Clean up merge highlights and preview bubble
+    this._clearMergeHighlights();
+    this._hideMergePreviewBubble();
 
     // Check if dropped on a valid tower
     const grid = pixelToGrid(pointer.x, pointer.y);
@@ -884,6 +1121,8 @@ export class TowerPanel {
     }
     this._isDragging = false;
     this._dragTower = null;
+    this._clearMergeHighlights();
+    this._hideMergePreviewBubble();
     if (this.container) {
       this.container.destroy();
     }

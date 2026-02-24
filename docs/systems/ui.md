@@ -25,6 +25,115 @@ HUD, TowerPanel, 일시정지, 게임속도, 통계, 골드 싱크 UI, 모바일
 - Lv.3 타워 선택 시 (강화 불가/기본): "MAX LEVEL" + 판매 버튼
 - 타워 이름에 강화 레벨 `+N` 표시 (예: "궁수 Lv.3AA +5")
 - 드래곤 잠금: 자물쇠 아이콘, "????G", alpha=0.4, 클릭 불가
+- 배치된 타워 선택 시 합성 가능 조합 목록 표시 (isMergeable && enhanceLevel === 0)
+- 드래그 시 합성 가능 타워 하이라이트 + 호버 미리보기 말풍선
+- 상세: 아래 "머지 프리뷰 UI" 섹션 참조
+
+## 머지 프리뷰 UI
+
+타워 선택 시 조합 목록 표시(기능 A)와 드래그 시 하이라이트 + 호버 미리보기(기능 B)를 제공한다.
+
+### 기능 A: 조합 목록 (infoContainer 내부)
+
+배치된 타워를 선택하면 하단 info 패널에 합성 가능한 레시피 목록을 표시한다.
+
+#### 표시 조건
+
+- `MERGE_RECIPES`가 비어있지 않고, 타워가 `isMergeable`이며 `enhanceLevel === 0`일 때만 표시
+- 매칭 레시피가 0건이면 섹션 자체를 표시하지 않음
+
+#### 레이아웃
+
+| 요소 | 위치 | 크기 | 색상 |
+|---|---|---|---|
+| 섹션 헤더 ("합성 가능") | nextY, x=10 | 9px | #b2bec3 |
+| 조합 항목 (최대 5줄) | 헤더+13px부터 12px 간격 | 9px | 결과 타워 color |
+| "외 N개" | 마지막 항목+12px | 9px | #636e72 |
+
+- 항목 형식: `+[파트너 타워 이름] -> [결과 타워 이름](T[티어])`
+- i18n 키: `ui.mergeList.header` (ko: "합성 가능", en: "Can merge"), `ui.mergeList.more` (ko: "외 {n}개", en: "+{n} more")
+
+#### MAX_SHOW 동적 계산
+
+```
+available = (PANEL_Y + PANEL_HEIGHT) - startY - 30
+maxShow = Math.max(3, Math.min(5, Math.floor(available / 12)))
+```
+
+패널 잔여 공간에 따라 3~5개 범위에서 자동 조절된다.
+
+#### 항목 탭 플래시
+
+조합 목록의 항목을 탭하면 맵 위 해당 파트너 타입 타워에 노란 원 깜빡임 애니메이션을 적용한다.
+
+| 속성 | 값 |
+|---|---|
+| 원 색상 | 0xffd700 (금색) |
+| 반지름 | 20px |
+| depth | 40 |
+| 애니메이션 | alpha 1->0, 300ms, yoyo, repeat 2 (총 ~1.8초) |
+
+- `getTowers` 콜백이 없으면 스킵
+- 애니메이션 완료 후 Graphics 자동 파괴
+
+### 기능 B: 드래그 하이라이트 + 호버 미리보기
+
+#### 드래그 시 하이라이트
+
+드래그 시작 시(`startDrag`) 합성 가능한 모든 타워에 펄스 하이라이트를 적용한다.
+
+| 속성 | 값 |
+|---|---|
+| 원 스타일 | strokeCircle, lineWidth 3, 0xffd700 |
+| 반지름 | 22px |
+| depth | 40 |
+| 펄스 | alpha 1.0 <-> 0.5, 600ms, yoyo, repeat -1 (무한) |
+
+- `isMergeable(target)` && `getMergeResult(selfId, targetId)` 조건 충족 타워만
+- 드래그 타워 자신은 제외
+- `_clearMergeHighlights()` 선행 호출로 이전 하이라이트 정리
+
+#### 호버 미리보기 말풍선
+
+드래그 중 포인터가 하이라이트된 타워 셀 위에 올라오면 결과 미리보기 말풍선을 표시한다.
+
+| 요소 | 크기/위치 | 스타일 |
+|---|---|---|
+| 배경 | 90x32px | fill 0x0a0e1a (alpha 0.9), 결과 color 테두리 (lineWidth 2) |
+| 결과 이름 | center y=-5 | 결과 color, 10px bold |
+| 티어 | center y=8 | #aaaaaa, 9px |
+
+- Container depth 41
+- Y 클리핑: `Math.max(HUD_HEIGHT + 20, tower.y - 34)` -- 맵 상단 침범 방지
+- 동일 타워 중복 호출 방지: `_hoveredMergeTarget === tower` 체크
+- 포인터가 셀을 벗어나면 즉시 제거
+
+#### 드래그 종료 정리
+
+`endDrag` 호출 시(합성 성공/실패 무관):
+- `_clearMergeHighlights()`: 모든 하이라이트 tween 정지 + Graphics 파괴
+- `_hideMergePreviewBubble()`: 말풍선 파괴 + 상태 초기화
+
+#### 상태 변수
+
+| 변수 | 타입 | 용도 |
+|---|---|---|
+| `_mergeHighlights` | `{ tower, graphics, tween, result }[]` | 활성 하이라이트 목록 |
+| `_mergePreviewBubble` | `Container\|null` | 현재 표시 중인 말풍선 |
+| `_hoveredMergeTarget` | `object\|null` | 현재 호버 중인 타워 (중복 방지) |
+
+### 예외 케이스
+
+| 케이스 | 처리 |
+|---|---|
+| 강화된 타워(enhanceLevel > 0) 선택 | 조합 목록 미표시 |
+| 강화된 타워 드래그 시도 | startDrag early return (기존), 하이라이트 없음 |
+| 맵에 합성 가능한 타워 없음 | 하이라이트 없음, 목록 없음 |
+| T5 타워 선택 | 레시피 없으므로 목록 미표시 |
+| 동종 합성(예: archer+archer) | partnerType = selfId로 정상 표시 |
+| 레시피 5개 초과 | MAX_SHOW개만 표시 + "외 N개" |
+| getTowers 콜백 미설정 | flash/highlight 스킵, 에러 없이 무시 |
+| 말풍선 Y가 HUD 위로 나감 | `Math.max(HUD_HEIGHT + 20, tower.y - 34)` 클리핑 |
 
 ## 업그레이드 분기 버튼 (A/B)
 

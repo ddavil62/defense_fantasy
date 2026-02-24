@@ -45,7 +45,7 @@ Phaser.js 3 기반 판타지 타워 디펜스 게임. 도형 기반 프로토타
 | `js/managers/SoundManager.js` | Web Audio API 프로시저럴 SFX/BGM |
 | `js/i18n.js` | 다국어 지원 (한국어/영어), 모든 UI 텍스트 번역 키 관리 |
 | `js/ui/HUD.js` | 상단 HUD (Wave/Gold/HP, HP 위험 깜빡임, 웨이브 카운트다운, 적 프리뷰) |
-| `js/ui/TowerPanel.js` | 하단 타워 선택(2줄 5열)/정보/판매/강화/드래그&드롭 머지 UI/3단 속도(1x/2x/3x) 패널 |
+| `js/ui/TowerPanel.js` | 하단 타워 선택(2줄 5열)/정보/판매/강화/드래그&드롭 머지 UI/머지 프리뷰(조합 목록+드래그 하이라이트+호버 말풍선)/3단 속도(1x/2x/3x) 패널 |
 
 **총 24개 파일**
 
@@ -159,6 +159,7 @@ npx cap open android  # 또는 npx cap open ios
 - 머지 타워 시스템 Phase 3: 정적 코드 분석 27건 (정상 19 + 예외 8), QA PASS
 - 머지 타워 시스템 Phase 4-A: 정적 코드 분석 24건 (수용 기준 4 + 데이터 6 + 레시피 4 + 스탯 7 + 핸들러 1 + 예외 6 = 24건 전수 검증 중 일부 카테고리별), QA PASS
 - 머지 타워 시스템 Phase 4-B: 정적 코드 분석 23건 (정상 15 + 예외 8) + Playwright 테스트 23개 작성, QA PASS (R2, 1차 FAIL BUG 4건 수정 후 PASS)
+- 머지 프리뷰 UI: Playwright 테스트 49개 (정상 36 + 예외/엣지케이스 13) + 시각적 검증 2건, QA PASS
 
 ## 시스템별 상세 문서
 
@@ -169,7 +170,7 @@ npx cap open android  # 또는 npx cap open ios
 | [systems/wave.md](systems/wave.md) | R1~R20 정의, R21+ 스케일링, 보스 라운드 |
 | [systems/economy.md](systems/economy.md) | Gold, Diamond, 메타 업그레이드, 컬렉션, 골드 싱크 |
 | [systems/sound.md](systems/sound.md) | SFX 8종, BGM 3종, Web Audio API |
-| [systems/ui.md](systems/ui.md) | HUD, TowerPanel, 일시정지, 게임속도, 골드 싱크 UI, 컬렉션(이중 탭: 메타업그레이드+합성도감), 모바일 |
+| [systems/ui.md](systems/ui.md) | HUD, TowerPanel, 머지 프리뷰(조합 목록+드래그 하이라이트+호버 말풍선), 일시정지, 게임속도, 골드 싱크 UI, 컬렉션(이중 탭: 메타업그레이드+합성도감), 모바일 |
 
 ## 향후 계획
 

@@ -173,6 +173,7 @@ export class GameScene extends Phaser.Scene {
       onSell: (tower) => this._onTowerSell(tower),
       onSpeedToggle: (speed) => this._onSpeedToggle(speed),
       onDeselect: () => this._onDeselect(),
+      getTowers: () => this.towers,
       unlockedTowers: this.unlockedTowers,
     });
     this.towerPanel.updateAffordability(this.goldManager.getGold());
