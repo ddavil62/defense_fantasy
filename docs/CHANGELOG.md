@@ -4,6 +4,26 @@
 
 ---
 
+## 2026-02-25 -- 문서 수치 정합성 교정
+
+### 배경
+
+tower.md의 T1 타워 스탯 표가 실제 코드(config.js)와 불일치하는 항목이 다수 발견되어 일괄 교정.
+
+### 수정
+
+- **tower.md T1 타워 스탯 6건 교정** (config.js 실제 값으로 통일)
+  - 번개: damage 20→18, fireRate 1.0→1.2, chainDecay/chainRadius 보충
+  - 불꽃: damage 12→5, fireRate 1.2→1.5, burn 5→4
+  - 바위: damage 40→45, fireRate 2.5→3.0
+  - 독안개: damage 5→3, poison 4→3, splashRadius:60·armorReduction:20%/4s 추가
+  - 바람: fireRate 1.0→2.5, range 100→120
+  - 빛: fireRate 1.5→1.8
+- **tower.md T3 공격 타입 분포 수량 3건 교정**
+  - chain 8→7, aoe_instant 13→12, splash 7→9 (실제 ID 리스트와 일치하도록)
+
+---
+
 ## 2026-02-24 -- 합성도감 전용 씬 (MergeCodexScene)
 
 ### 배경
