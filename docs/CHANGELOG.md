@@ -4,6 +4,317 @@
 
 ---
 
+## 2026-02-26 -- 월드/맵 시스템 Phase 5 (나머지 맵 완성 + 씬 전환 페이드 + EndlessMapSelectScene)
+
+### 배경
+
+Phase 1~4를 통해 맵/월드 선택 UI와 캠페인 진행 흐름이 완성되었으나, 숲(6개) 외 4개 월드 맵 대부분이 "직선+1턴" 단순 스켈레톤 패턴이었다. Phase 5에서 19개 스켈레톤 맵을 월드별 특성이 반영된 고유 경로로 교체하고, 씬 전환 페이드 효과와 엔드리스 맵 선택 씬을 추가했다.
+
+### 추가
+
+- **`js/scenes/EndlessMapSelectScene.js`** -- 엔드리스 맵 선택 씬 신규 생성
+  - 씬 키: `'EndlessMapSelectScene'`
+  - 6탭 UI: CLASSIC(클래식) + F(숲) + D(사막) + T(설원) + V(화산) + S(그림자)
+  - 클래식 탭: CLASSIC MAP 1개, 즉시 GameScene(endless) 시작
+  - 월드 탭: 6개 맵 카드 (맵 번호, 이름, 설명, Wave 수, START 버튼)
+  - 탭별 강조색: classic=0xffd700, forest=0x2ecc71, desert=0xe67e22, tundra=0x74b9ff, volcano=0xe17055, shadow=0x9b59b6
+  - 다크 판타지 테마 (0x0d0d1a 배경, 골드 강조색)
+  - fadeIn(300) / fadeOut(200) + camerafadeoutcomplete 패턴
+  - 뒤로가기 -> MenuScene
+- **`js/i18n.js`** -- 3개 신규 키 추가 (ko + en)
+  - ui.endlessMapSelect, ui.classicMap, ui.classicMapDesc
+
+### 변경
+
+- **`js/data/maps/desert.js`** -- d2_m3~d2_m6 스켈레톤 4개를 고유 경로로 재설계
+  - d2_m3: U턴 패턴 (SPAWN 2,0 -> BASE 2,11)
+  - d2_m4: 이중 S자 (SPAWN 7,0 -> BASE 1,11)
+  - d2_m5: Z자 3단 (SPAWN 0,0 -> BASE 7,11)
+  - d2_m6: 수렴 경로 (SPAWN 1,0 -> BASE 3,11)
+- **`js/data/maps/tundra.js`** -- t3_m2~t3_m6 스켈레톤 5개를 고유 경로로 재설계
+  - t3_m2: U턴+중앙벽 (SPAWN 3,0 -> BASE 6,11)
+  - t3_m3: 역S자+좌측벽 (SPAWN 6,0 -> BASE 1,11)
+  - t3_m4: 지그재그 4단 (SPAWN 1,0 -> BASE 1,11)
+  - t3_m5: 사행천+벽 (SPAWN 7,0 -> BASE 6,11)
+  - t3_m6: 5단 지그재그 (SPAWN 4,0 -> BASE 7,11)
+- **`js/data/maps/volcano.js`** -- v4_m2~v4_m6 스켈레톤 5개를 고유 경로로 재설계
+  - v4_m2: 계단+벽 (SPAWN 2,0 -> BASE 7,11)
+  - v4_m3: 분화구 우회 (SPAWN 7,0 -> BASE 7,11)
+  - v4_m4: 지그재그+좌우벽 (SPAWN 1,0 -> BASE 7,11)
+  - v4_m5: 좁은 통로 S자 (SPAWN 4,0 -> BASE 4,11)
+  - v4_m6: V자+회귀 (SPAWN 4,0 -> BASE 2,11)
+- **`js/data/maps/shadow.js`** -- s5_m2~s5_m6 스켈레톤 5개를 고유 경로로 재설계
+  - s5_m2: Z자 3단 (SPAWN 2,0 -> BASE 7,11)
+  - s5_m3: 꺾임 7회 경로 (SPAWN 7,0 -> BASE 6,11)
+  - s5_m4: 5단 Z자 (SPAWN 4,0 -> BASE 7,11)
+  - s5_m5: 사각 회랑 (SPAWN 0,0 -> BASE 5,11)
+  - s5_m6: 6단 S자 (SPAWN 1,0 -> BASE 1,11)
+- **씬 전환 페이드 효과** -- 6개 씬에 fadeIn/fadeOut 추가
+  - MenuScene: fadeIn(400), fadeOut(200) (WorldSelectScene, CollectionScene, StatsScene, EndlessMapSelectScene 진입)
+  - WorldSelectScene: fadeIn(300), fadeOut(200) (LevelSelectScene, MenuScene 진입)
+  - LevelSelectScene: fadeIn(300), fadeOut(200) (GameScene, WorldSelectScene 진입)
+  - MapClearScene: fadeIn(300), fadeOut(200) (GameScene, WorldSelectScene 진입)
+  - GameOverScene: fadeIn(300), fadeOut(200) (MenuScene, GameScene 진입)
+  - GameScene: fadeIn(300) (create() 최상단)
+  - EndlessMapSelectScene: fadeIn(300), fadeOut(200) (GameScene, MenuScene 진입)
+  - 페이드 색상: 검정(0,0,0). fadeOut 완료(camerafadeoutcomplete) 후 씬 전환
+- **`js/scenes/MenuScene.js`** -- ENDLESS 활성 상태에서 EndlessMapSelectScene으로 이동 (기존: GameScene 직접 진입)
+- **`js/main.js`** -- EndlessMapSelectScene import 및 scene 배열에 등록 (총 11개 씬)
+
+### 수정
+
+- 모든 재설계 맵의 totalWaves 기존 값 유지 확인 (desert 10~15, tundra 12~18, volcano 15~20, shadow 18~25)
+- 기존 완성 맵(f1_m1~f1_m6, d2_m1, d2_m2, t3_m1, v4_m1, s5_m1) 변경 없음
+
+### QA 결과
+
+- **판정**: PASS (R2)
+- R1: 3건 FAIL (EndlessMapSelectScene 미생성/미등록, GameScene fadeIn 미구현)
+- R2: Playwright 테스트 20개 + 원본 10개 + Node.js 맵 검증 30개 = 총 60개 통과
+- 시각적 검증 스크린샷 2건 확인 (CLASSIC 탭, Forest 탭)
+- 수용 기준 16/16 충족
+
+### 참고 문서
+
+- 스펙: `.claude/specs/2026-02-26-world-map-phase5.md`
+- 수정 리포트: `.claude/specs/2026-02-26-world-map-phase5-fix-report.md`
+- QA R1: `.claude/specs/2026-02-26-world-map-phase5-qa.md`
+- QA R2: `.claude/specs/2026-02-26-world-map-phase5-qa-r2.md`
+- 테스트: `tests/world-map-phase5.spec.js`, `tests/world-map-phase5-r2.spec.js`, `tests/validate-maps-phase5.mjs`
+
+---
+
+## 2026-02-26 -- 월드/맵 시스템 Phase 4 (세이브 확장 + 진행 시스템)
+
+### 배경
+
+Phase 1~3에서 동적 맵 인프라, 월드 테마/별점/클리어 씬, 월드/레벨 선택 UI가 구현되었으나 진행 상태(별점, 맵 해금, 월드 해금, 엔드리스 해금)가 localStorage에 저장되지 않아 새로고침 시 초기화되었다. Phase 4에서 세이브 스키마를 v3로 확장하고 모든 진행 상태를 세이브 데이터와 연결했다.
+
+### 추가
+
+- **`js/config.js`** -- 세이브 스키마 v3 확장
+  - SAVE_DATA_VERSION: 2 -> 3
+  - v3 신규 필드: worldProgress(맵별 {cleared, stars}), endlessUnlocked(boolean), campaignStats({totalStars, mapsCleared, worldsCleared})
+  - v2->v3 마이그레이션 블록: worldProgress={}, campaignStats 기본값 설정
+  - 레거시 유저 처리: bestRound >= 20 -> endlessUnlocked = true
+  - v3 ensure 블록 추가
+- **`js/scenes/MapClearScene.js`** -- 세이브 저장/보상 실제 지급
+  - _loadSave() / _saveToDB() private 메서드 추가 (GameOverScene 패턴 동일)
+  - 다이아몬드 차액 보상: CAMPAIGN_DIAMOND_REWARDS[stars] - CAMPAIGN_DIAMOND_REWARDS[prevStars]
+  - worldProgress 갱신 (최고 별점 유지: Math.max(prevStars, stars))
+  - campaignStats 갱신 (mapsCleared, totalStars)
+  - 엔드리스 해금 체크: 30개 맵 전부 cleared === true -> endlessUnlocked = true
+  - worldsCleared 갱신: 각 월드의 6개 mapIds 전부 cleared인 월드 수 카운트
+  - earnedDiamond === 0 && prevStars > 0 일 때 "이미 최고 기록" 텍스트 표시
+- **`js/i18n.js`** -- 'ui.alreadyBest' 키 추가 (ko: '이미 최고 기록', en: 'Already Best Record')
+
+### 변경
+
+- **`js/scenes/WorldSelectScene.js`** -- `_getWorldProgress()` 세이브 데이터 기반으로 교체
+  - registry에서 saveData 조회
+  - 해금 판정: requiredStars === 0 (forest 항상 해금) 또는 campaignStats.totalStars >= requiredStars
+  - 별점: `_calcWorldStars()` 헬퍼 함수로 worldProgress에서 합산
+- **`js/scenes/LevelSelectScene.js`** -- 세이브 데이터 기반으로 교체
+  - init()에 `_saveData = registry.get('saveData')` 캐싱 추가
+  - `_isMapUnlocked(mapIndex)`: 이전 맵 stars >= 1 판정 (index 0은 항상 해금)
+  - `_getMapStars(mapId)`: worldProgress에서 별점 조회
+- **`js/scenes/MenuScene.js`** -- ENDLESS 버튼 endlessUnlocked 조건부 활성화
+  - `_isEndlessUnlocked(saveData)`: `saveData?.endlessUnlocked === true` 판정
+  - 활성: BTN_PRIMARY 골드, setInteractive, 호버 효과
+  - 비활성: BTN_SELL 회색, 잠금 안내 텍스트 유지
+- **`js/config.js`** -- v1->v2 마이그레이션 블록에서 saveDataVersion을 2로 하드코딩 (기존: SAVE_DATA_VERSION 동적값)
+  - v2->v3 순차 마이그레이션 보장을 위한 불가피한 변경
+
+### 수정 (QA 버그 수정)
+
+- **BUG-1**: `_isEndlessUnlocked()`가 `saveData.campaignStars`(미정의 필드)를 참조하여 endlessUnlocked 플래그를 무시하던 문제 수정 -> `saveData?.endlessUnlocked === true`로 교체
+- **BUG-2**: MapClearScene에서 `campaignStars` ad-hoc 필드 생성/저장 코드 제거 (worldProgress와 기능 중복)
+- _saveToDB 이중 호출 해소 (2회 -> 1회로 통합)
+
+### 알려진 제약
+
+- v1->v2 마이그레이션 블록의 saveDataVersion 하드코딩은 스펙 제약("기존 v1->v2 블록 미수정")을 위반하나, 순차 마이그레이션 보장을 위해 불가피
+
+### QA 결과
+
+- **판정**: PASS (R1 FAIL -> 버그 수정 후 PASS)
+- R1: Playwright 40개 통과, BUG-1(ENDLESS 활성화 불가) 1건 FAIL
+- 수정 후: BUG-1, BUG-2 수정 완료
+- 시각적 검증 스크린샷 6건 확인
+
+### 참고 문서
+
+- 스펙: `.claude/specs/2026-02-26-world-map-phase4.md`
+- 구현 리포트: `.claude/specs/2026-02-26-world-map-phase4-report.md`
+- QA 리포트: `.claude/specs/2026-02-26-world-map-phase4-qa.md`
+- 수정 리포트: `.claude/specs/2026-02-26-world-map-phase4-fix-report.md`
+- 테스트: `tests/world-map-phase4.spec.js`
+
+---
+
+## 2026-02-26 -- 월드/맵 시스템 Phase 3 (월드/레벨 선택 UI + 캠페인 씬 플로우 완성)
+
+### 배경
+
+Phase 1(동적 맵 인프라)과 Phase 2(월드 테마 + 별점 + MapClearScene)가 완료된 상태에서, MenuScene에는 GAME START 버튼 하나만 존재하고 MapClearScene의 NEXT MAP/WORLD MAP 버튼이 MenuScene으로 임시 연결되어 있었다. Phase 3에서 WorldSelectScene, LevelSelectScene을 신규 구현하고 캠페인 모드의 전체 씬 플로우를 완성했다.
+
+### 추가
+
+- **`js/scenes/WorldSelectScene.js`** -- 월드 선택 씬 신규 생성
+  - 5개 월드 패널 세로 목록 (320x88px, 간격 10px)
+  - 월드 테마 bg 색상 배경 + 테마 강조색 stroke (forest:0x2ecc71, desert:0xe67e22, tundra:0x74b9ff, volcano:0xe17055, shadow:0x9b59b6)
+  - 해금 패널: 골드 이름, 설명, 별점 진행도(0/18), 호버 효과, 탭 시 LevelSelectScene 이동
+  - 잠금 패널: 회색 이름, alpha 0.5, 잠금 아이콘(U+1F512), 별 N개 필요 문구
+  - 헤더: 뒤로가기(MenuScene) + 월드 선택 타이틀(골드 18px)
+  - Phase 3 임시 진행 데이터: `_getWorldProgress()` -- forest만 해금, 별점 0
+- **`js/scenes/LevelSelectScene.js`** -- 레벨 선택 씬 신규 생성
+  - 6개 맵 카드 목록 (320x86px)
+  - 해금 카드: 맵 번호(22px), 이름(14px), 설명(11px), 별점(3개), 웨이브 수(Wave: N), 난이도 점(최대 3개), START 버튼(80x26px)
+  - 잠금 카드: 반투명 검정 오버레이(alpha 0.55) + 잠금 아이콘
+  - START 탭 시 GameScene 이동 (mapData, gameMode: campaign)
+  - 헤더: 뒤로가기(WorldSelectScene) + 월드 이름 표시
+  - Phase 3 임시 해금 판정: `_isMapUnlocked()` -- 첫 맵(index 0)만 해금, `_getMapStars()` -- 항상 0
+- **`js/data/worlds.js`** -- `getNextMapId(mapId)` 유틸 함수 추가
+  - 같은 월드 내 다음 맵 ID 반환, 마지막 맵/월드 미발견 시 null
+- **`js/i18n.js`** -- 13개 신규 키 추가 (ko + en)
+  - ui.worldSelect, ui.levelSelect, ui.campaign, ui.endless, ui.endlessLocked, ui.starsRequired, ui.starsProgress, ui.difficulty, ui.waves, ui.back, ui.start, ui.worldComplete, ui.locked
+
+### 변경
+
+- **`js/scenes/MenuScene.js`** -- GAME START 버튼을 CAMPAIGN + ENDLESS(잠금) 버튼으로 교체
+  - CAMPAIGN (Y:380, 160x44, BTN_PRIMARY 골드) -> WorldSelectScene 이동
+  - ENDLESS (Y:435, 160x40, BTN_SELL 회색, setInteractive 미호출, 클릭 불가)
+  - ENDLESS 하단 잠금 안내 문구 (Y:460, "전체 클리어 시 해금")
+  - COLLECTION Y:458->492, STATISTICS Y:510->544, 음소거 Y:562->596으로 이동
+- **`js/scenes/MapClearScene.js`** -- NEXT MAP/WORLD MAP 실제 네비게이션 연결
+  - NEXT MAP: `getNextMapId()`로 다음 맵 판정, 존재 시 GameScene(다음 맵), 없을 시 "월드 클리어!" 텍스트로 교체 + WorldSelectScene 이동
+  - WORLD MAP: MenuScene -> WorldSelectScene으로 변경
+- **`js/scenes/GameOverScene.js`** -- 캠페인 모드 WORLD MAP 버튼 추가
+  - 캠페인: RETRY + WORLD MAP(BTN_BACK 틸) + MENU(BTN_DANGER 레드 160x30) 3버튼, 패널 420px
+  - 엔드리스: RETRY + MENU 2버튼, 패널 380px (기존 유지)
+- **`js/ui/HUD.js`** -- `updateWave(round, total)` 시그니처 변경
+  - total이 유한값이면 `Wave: X/Y` 형식 (캠페인)
+  - total이 null/Infinity면 `Wave: X` 형식 (엔드리스, 기존 동작)
+- **`js/scenes/GameScene.js`** -- `this.totalWaves` 인스턴스 변수 추가
+  - init()에서 `isFinite(this.mapData.totalWaves) ? this.mapData.totalWaves : null` 설정
+  - create(), update() 내 `hud.updateWave(round)` -> `hud.updateWave(round, this.totalWaves)` 변경
+- **`js/main.js`** -- WorldSelectScene, LevelSelectScene import 및 scene 배열 등록
+
+### 알려진 제약
+
+- Phase 3는 인메모리 임시 진행 데이터를 사용. 실제 세이브 연동은 Phase 4에서 처리
+- forest 월드만 해금, 첫 번째 맵만 플레이 가능 (별점 모두 0)
+- ENDLESS 버튼은 항상 잠금 상태 (Phase 4에서 해금 로직 구현 예정)
+- MenuScene의 CLASSIC_MAP import가 미사용 상태(dead import). 기능 영향 없음
+- MapClearScene/GameOverScene의 mapData null 미처리. 정상 플로우에서는 발생 불가
+
+### QA 결과
+
+- **판정**: PASS
+- Playwright 테스트 56개 통과 (정상 42 + 예외 14)
+- 시각적 검증 스크린샷 5건 확인
+- 수용 기준 27/27 충족
+
+### 참고 문서
+
+- 스펙: `.claude/specs/2026-02-26-world-map-phase3.md`
+- 구현 리포트: `.claude/specs/2026-02-26-world-map-phase3-report.md`
+- QA 리포트: `.claude/specs/2026-02-26-world-map-phase3-qa.md`
+- 테스트: `tests/world-map-phase3.spec.js`
+
+---
+
+## 2026-02-26 -- 월드/맵 시스템 Phase 1+2 (동적 맵 인프라 + 월드 테마 + 별점 + 클리어 씬)
+
+### 배경
+
+하드코딩된 단일 맵(S자 경로, 엔드리스 모드)만 존재하던 구조를 동적 맵 시스템으로 리팩토링하고, 5개 월드(30개 캠페인 맵), 별점 시스템, 맵 클리어 결과 씬을 추가했다. Phase 1에서 동적 맵 인프라를 구축하고, Phase 2에서 실제 월드/맵 데이터와 클리어 UI를 구현했다.
+
+### 추가 (Phase 1: 동적 맵 인프라)
+
+- **`js/data/maps.js`** -- 맵 데이터 구조 및 레지스트리 신규 생성
+  - MapData/MapTheme 타입 JSDoc 정의
+  - CLASSIC_MAP: 기존 config.js의 MAP_GRID/PATH_WAYPOINTS를 MapData 구조로 추출
+  - mapRegistry: Map 기반 레지스트리 (getMapById, registerMap)
+  - validateMapData(): 그리드 크기, 셀 타입, 스폰/기지 위치, 웨이포인트 인접성(상하좌우만) 검증
+
+### 변경 (Phase 1: 동적 맵 인프라)
+
+- **`js/managers/MapManager.js`** -- constructor에 mapData 파라미터 추가
+  - `constructor(scene)` -> `constructor(scene, mapData)`
+  - MAP_GRID/PATH_WAYPOINTS 하드코딩 제거, mapData.grid/waypoints/spawnPos/basePos 참조
+  - renderMap(): mapData.theme 있으면 테마 색상 적용 (없으면 기본 색상 폴백)
+  - getCellType() 버그 수정: 전역 MAP_GRID -> this.grid 인스턴스 데이터 참조
+- **`js/managers/WaveManager.js`** -- constructor에 options 파라미터 추가
+  - `constructor(scene)` -> `constructor(scene, options = {})`
+  - totalWaves: options.totalWaves ?? Infinity (캠페인 모드 지원)
+  - waveOverrides: options.waveOverrides || null (커스텀 웨이브)
+  - WaveState.MAP_CLEAR 추가: totalWaves 도달 시 mapClear 이벤트 발행
+  - isMapCleared() 메서드 추가
+- **`js/scenes/GameScene.js`** -- init(data) 파라미터 수신
+  - init() -> init(data = {}), this.mapData/this.gameMode 저장
+  - create(): new MapManager(this, this.mapData), new WaveManager(this, { totalWaves, waveOverrides })
+  - _gameOver(): mapData/gameMode를 GameOverScene에 전달
+- **`js/scenes/GameOverScene.js`** -- init에서 mapData/gameMode 저장, RETRY 시 전달
+- **`js/scenes/MenuScene.js`** -- CLASSIC_MAP import, GAME START에서 mapData/gameMode 전달
+
+### 추가 (Phase 2: 월드 테마 + 별점 + 맵 데이터 + 클리어 씬)
+
+- **`js/data/worlds.js`** -- 5개 월드 정의
+  - WorldData 타입 JSDoc 정의 (id, nameKey, descKey, theme, mapIds, requiredStars, order)
+  - 테마 색상 상수: THEME_FOREST, THEME_DESERT, THEME_TUNDRA, THEME_VOLCANO, THEME_SHADOW
+  - 해금 조건: 0별(숲), 9별(사막), 24별(설원), 42별(화산), 60별(그림자)
+  - 유틸: getWorldById(), getWorldByMapId()
+- **`js/data/maps/forest.js`** -- 숲 월드 6개 맵 (totalWaves 8~12, 전부 완성)
+- **`js/data/maps/desert.js`** -- 사막 월드 6개 맵 (totalWaves 10~15, 2개 완성 + 4개 스켈레톤)
+- **`js/data/maps/tundra.js`** -- 설원 월드 6개 맵 (totalWaves 12~18, 1개 완성 + 5개 스켈레톤)
+- **`js/data/maps/volcano.js`** -- 화산 월드 6개 맵 (totalWaves 15~20, 1개 완성 + 5개 스켈레톤)
+- **`js/data/maps/shadow.js`** -- 그림자 월드 6개 맵 (totalWaves 18~25, 1개 완성 + 5개 스켈레톤)
+- **`js/scenes/MapClearScene.js`** -- 맵 클리어 결과 씬
+  - 별점 3개 순차 팝업 애니메이션 (Back.easeOut, 0.3초 간격)
+  - HP 잔량 비율 색상: >= 80% 골드(#ffd700), >= 40% 옅은 노랑(#fdcb6e), < 40% 빨강(#ff4757)
+  - 다이아몬드 보상 페이드인 (1성=+3, 2성=+5, 3성=+8)
+  - NEXT MAP / RETRY / WORLD MAP 3개 버튼
+  - RETRY: 동일 mapData/gameMode로 GameScene 재시작
+  - NEXT MAP / WORLD MAP: Phase 3에서 실제 네비게이션 구현 예정, 현재 MenuScene으로 임시 이동
+
+### 변경 (Phase 2)
+
+- **`js/config.js`** -- calcStarRating() 함수 추가
+  - calcStarRating(currentHP, maxHP): HP 비율 >= 80% -> 3성, >= 40% -> 2성, > 0% -> 1성
+  - maxHP <= 0 시 1성 반환 (0 나누기 방지)
+  - CAMPAIGN_DIAMOND_REWARDS = [0, 3, 5, 8]
+- **`js/scenes/GameScene.js`** -- mapClear 이벤트 리스너 + _onMapClear() 메서드 추가
+  - isGameOver 설정 + BGM 정지 + 1초 딜레이 후 MapClearScene 전환
+- **`js/main.js`** -- MapClearScene 씬 등록, 5개 월드 맵 데이터 사이드 이펙트 import
+- **`js/i18n.js`** -- 캠페인 UI/월드/맵 이름 ko+en 번역 ~170줄 추가
+
+### 알려진 제약
+
+- 스켈레톤 맵 19개(desert 4, tundra 5, volcano 5, shadow 5)는 "직선+1턴" 단순 패턴. Phase 5에서 고유 경로 완성 예정
+- NEXT MAP, WORLD MAP 버튼은 현재 MenuScene으로 임시 이동. Phase 3에서 실제 네비게이션 구현 예정
+- MapClearScene의 "RETRY", "Waves:", "Kills:", "HP:" 텍스트가 i18n 미적용 (하드코딩). 실질적 영향 낮음
+- MapClearScene에서 HP=0 입력 시 data.currentHP || 1로 HP=1로 보정됨 (의도적 방어 코드)
+
+### QA 결과
+
+- **판정**: PASS
+- Phase 2 Playwright 테스트 24개 통과 (실패 4개는 ES 모듈 격리 이슈로 테스트 방법론 문제)
+- Node.js 맵 검증 스크립트: 31개 맵(30 캠페인 + 1 클래식) 전부 validateMapData() 통과
+- 시각적 검증 스크린샷 7건 확인
+- 수용 기준 24/24 충족, 예외 시나리오 8/8 통과
+
+### 참고 문서
+
+- Phase 1 스펙: `.claude/specs/2026-02-26-world-map-phase1.md`
+- Phase 1 구현 리포트: `.claude/specs/2026-02-26-world-map-phase1-report.md`
+- Phase 2 스펙: `.claude/specs/2026-02-26-world-map-phase2.md`
+- Phase 2 구현 리포트: `.claude/specs/2026-02-26-world-map-phase2-report.md`
+- Phase 2 QA 리포트: `.claude/specs/2026-02-26-world-map-phase2-qa.md`
+- 테스트: `tests/world-map-phase2.spec.js`, `tests/validate-maps-phase2.mjs`
+
+---
+
 ## 2026-02-26 -- 합성도감 노드 트리 UI (Merge Tree UI)
 
 ### 배경

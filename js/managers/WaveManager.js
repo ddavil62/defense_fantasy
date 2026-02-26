@@ -20,16 +20,26 @@ const WaveState = {
   WAITING: 'waiting',       // 모든 적 스폰 완료, 적 제거/도달 대기
   CLEAR: 'clear',           // 웨이브 클리어 메시지 표시 중
   BREAK: 'break',           // 웨이브 간 휴식 시간
+  MAP_CLEAR: 'map_clear',   // 모든 웨이브 클리어 (캠페인 맵 완료)
 };
 
 export class WaveManager {
   /**
    * WaveManager를 생성한다.
    * @param {Phaser.Scene} scene - 게임 씬
+   * @param {object} [options={}] - 옵션
+   * @param {number} [options.totalWaves=Infinity] - 총 웨이브 수 (Infinity = 엔드리스)
+   * @param {object|null} [options.waveOverrides=null] - 커스텀 웨이브 정의 (라운드 번호 키)
    */
-  constructor(scene) {
+  constructor(scene, options = {}) {
     /** @type {Phaser.Scene} 게임 씬 참조 */
     this.scene = scene;
+
+    /** @type {number} 총 웨이브 수 (Infinity = 엔드리스 모드) */
+    this.totalWaves = options.totalWaves ?? Infinity;
+
+    /** @type {object|null} 커스텀 웨이브 정의 (null이면 기본 WAVE_DEFINITIONS 사용) */
+    this.waveOverrides = options.waveOverrides || null;
 
     /** @type {number} 현재 라운드 번호 */
     this.currentWave = 0;
@@ -197,6 +207,10 @@ export class WaveManager {
         }
         break;
 
+      case WaveState.MAP_CLEAR:
+        // 맵 클리어 상태: 더 이상 웨이브를 진행하지 않음 (씬에서 전환 처리)
+        break;
+
       case WaveState.BREAK:
         this.stateTimer -= delta;
         if (this.stateTimer <= 0) {
@@ -255,11 +269,14 @@ export class WaveManager {
    * @private
    */
   _onWaveClear(onWaveClear, currentHP, maxBaseHP) {
-    this.state = WaveState.CLEAR;
-    this.stateTimer = WAVE_CLEAR_DURATION / 1000;
-
     const bonusGold = calcWaveClearBonus(this.currentWave, currentHP, maxBaseHP);
     const awardedGold = onWaveClear(bonusGold) || bonusGold;
+
+    // 마지막 웨이브인지 확인 (캠페인 모드: totalWaves가 유한값)
+    const isMapClear = isFinite(this.totalWaves) && this.currentWave >= this.totalWaves;
+
+    this.state = isMapClear ? WaveState.MAP_CLEAR : WaveState.CLEAR;
+    this.stateTimer = WAVE_CLEAR_DURATION / 1000;
 
     if (this.announceText) {
       this.announceText.destroy();
@@ -285,6 +302,15 @@ export class WaveManager {
       duration: 300,
       ease: 'Power2',
     });
+
+    // 맵 클리어 이벤트 발행 (캠페인 모드에서 사용)
+    if (isMapClear) {
+      this.scene.events.emit('mapClear', {
+        currentHP,
+        maxBaseHP,
+        wavesCleared: this.currentWave,
+      });
+    }
   }
 
   // ── 웨이브 데이터 생성 ─────────────────────────────────────────
@@ -297,6 +323,10 @@ export class WaveManager {
    * @private
    */
   _getWaveData(round) {
+    // 커스텀 웨이브 정의가 있으면 우선 사용 (캠페인 맵별 웨이브)
+    if (this.waveOverrides && this.waveOverrides[round]) {
+      return this._expandWaveDefinition(round, this.waveOverrides[round]);
+    }
     if (round >= 1 && round <= 20 && WAVE_DEFINITIONS[round]) {
       return this._expandWaveDefinition(round, WAVE_DEFINITIONS[round]);
     }
@@ -454,6 +484,14 @@ export class WaveManager {
    */
   isWaveActive() {
     return this.state === WaveState.SPAWNING || this.state === WaveState.WAITING;
+  }
+
+  /**
+   * 맵의 모든 웨이브가 클리어되었는지 확인한다 (캠페인 모드 전용).
+   * @returns {boolean} 맵 클리어 여부
+   */
+  isMapCleared() {
+    return this.state === WaveState.MAP_CLEAR;
   }
 
   /**

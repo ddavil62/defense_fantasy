@@ -1,13 +1,15 @@
 /**
  * @fileoverview 메인 메뉴 씬(MenuScene).
  * 게임 타이틀, 최고 기록, 다이아몬드 보유량을 표시하고
- * GAME START / COLLECTION / STATISTICS 버튼과 음소거 토글을 제공한다.
+ * CAMPAIGN / ENDLESS(잠금) / COLLECTION / STATISTICS 버튼과 음소거 토글을 제공한다.
  *
  * 다크 판타지 테마: 골드 룬 라인, 별자리 장식, 타이틀 글로우,
  * 시맨틱 버튼 컬러, 퍼플 다이아몬드 표시.
  */
 
 import { GAME_WIDTH, GAME_HEIGHT, COLORS, BTN_PRIMARY, BTN_META, BTN_BACK, BTN_SELL, BTN_META_CSS, BTN_BACK_CSS, BTN_SELL_CSS } from '../config.js';
+import { CLASSIC_MAP } from '../data/maps.js';
+import { t } from '../i18n.js';
 
 /**
  * 타이틀 화면 씬.
@@ -28,6 +30,9 @@ export class MenuScene extends Phaser.Scene {
 
     // ── 배경 ──
     this.add.rectangle(centerX, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, COLORS.BACKGROUND);
+
+    // ── 씬 진입 페이드인 ──
+    this.cameras.main.fadeIn(400, 0, 0, 0);
 
     // ── 별자리 장식: 랜덤 위치에 흰색 점(별) 30~40개 ──
     const starGfx = this.add.graphics();
@@ -89,36 +94,78 @@ export class MenuScene extends Phaser.Scene {
       }).setOrigin(0.5);
     }
 
-    // ── GAME START 버튼 (골드 프라이머리, 대비를 위해 어두운 텍스트) ──
-    const startBg = this.add.rectangle(centerX, 400, 160, 44, BTN_PRIMARY)
+    // ── CAMPAIGN 버튼 (골드 프라이머리) ──
+    const campaignBg = this.add.rectangle(centerX, 380, 160, 44, BTN_PRIMARY)
       .setInteractive({ useHandCursor: true })
       .setStrokeStyle(2, 0xffd700);
 
-    this.add.text(centerX, 400, 'GAME START', {
+    this.add.text(centerX, 380, t('ui.campaign'), {
       fontSize: '16px',
       fontFamily: 'Arial, sans-serif',
       color: '#1a1a2e',
       fontStyle: 'bold',
     }).setOrigin(0.5);
 
-    startBg.on('pointerdown', () => {
-      // 게임 시작 전 메뉴 BGM 정지
-      const sm = this.registry.get('soundManager');
-      if (sm) {
-        sm.stopBgm(false);
-      }
-      this.scene.start('GameScene');
+    campaignBg.on('pointerdown', () => {
+      this.cameras.main.fadeOut(200, 0, 0, 0);
+      this.cameras.main.once('camerafadeoutcomplete', () => {
+        this.scene.start('WorldSelectScene');
+      });
     });
 
-    startBg.on('pointerover', () => startBg.setFillStyle(0xd4b440));
-    startBg.on('pointerout', () => startBg.setFillStyle(BTN_PRIMARY));
+    campaignBg.on('pointerover', () => campaignBg.setFillStyle(0xd4b440));
+    campaignBg.on('pointerout', () => campaignBg.setFillStyle(BTN_PRIMARY));
+
+    // ── ENDLESS 버튼 (캠페인 전체 클리어 시 해금) ──
+    const endlessUnlocked = this._isEndlessUnlocked(saveData);
+
+    if (endlessUnlocked) {
+      // 활성 상태: 골드 프라이머리 버튼
+      const endlessBg = this.add.rectangle(centerX, 435, 160, 40, BTN_PRIMARY)
+        .setInteractive({ useHandCursor: true })
+        .setStrokeStyle(2, 0xffd700);
+
+      this.add.text(centerX, 435, t('ui.endless'), {
+        fontSize: '15px',
+        fontFamily: 'Arial, sans-serif',
+        color: '#1a1a2e',
+        fontStyle: 'bold',
+      }).setOrigin(0.5);
+
+      endlessBg.on('pointerdown', () => {
+        this.cameras.main.fadeOut(200, 0, 0, 0);
+        this.cameras.main.once('camerafadeoutcomplete', () => {
+          this.scene.start('EndlessMapSelectScene');
+        });
+      });
+      endlessBg.on('pointerover', () => endlessBg.setFillStyle(0xd4b440));
+      endlessBg.on('pointerout', () => endlessBg.setFillStyle(BTN_PRIMARY));
+    } else {
+      // 비활성 상태: 회색 잠금 버튼
+      this.add.rectangle(centerX, 435, 160, 40, BTN_SELL)
+        .setStrokeStyle(1, 0x636e72);
+
+      this.add.text(centerX, 435, t('ui.endless'), {
+        fontSize: '15px',
+        fontFamily: 'Arial, sans-serif',
+        color: '#636e72',
+        fontStyle: 'bold',
+      }).setOrigin(0.5);
+
+      // ENDLESS 하단 잠금 안내 텍스트
+      this.add.text(centerX, 460, t('ui.endlessLocked'), {
+        fontSize: '12px',
+        fontFamily: 'Arial, sans-serif',
+        color: '#636e72',
+      }).setOrigin(0.5);
+    }
 
     // ── COLLECTION 버튼 (퍼플 메타) ──
-    const collBg = this.add.rectangle(centerX, 458, 160, 40, BTN_META)
+    const collBg = this.add.rectangle(centerX, 492, 160, 40, BTN_META)
       .setInteractive({ useHandCursor: true })
       .setStrokeStyle(2, COLORS.DIAMOND);
 
-    this.add.text(centerX, 458, 'COLLECTION', {
+    this.add.text(centerX, 492, 'COLLECTION', {
       fontSize: '15px',
       fontFamily: 'Arial, sans-serif',
       color: BTN_META_CSS,
@@ -126,18 +173,21 @@ export class MenuScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     collBg.on('pointerdown', () => {
-      this.scene.start('CollectionScene');
+      this.cameras.main.fadeOut(200, 0, 0, 0);
+      this.cameras.main.once('camerafadeoutcomplete', () => {
+        this.scene.start('CollectionScene');
+      });
     });
 
     collBg.on('pointerover', () => collBg.setFillStyle(0x7d3f96));
     collBg.on('pointerout', () => collBg.setFillStyle(BTN_META));
 
     // ── STATISTICS 버튼 (틸 백) ──
-    const statsBg = this.add.rectangle(centerX, 510, 160, 40, BTN_BACK)
+    const statsBg = this.add.rectangle(centerX, 544, 160, 40, BTN_BACK)
       .setInteractive({ useHandCursor: true })
       .setStrokeStyle(1, 0x1a9c7e);
 
-    this.add.text(centerX, 510, 'STATISTICS', {
+    this.add.text(centerX, 544, 'STATISTICS', {
       fontSize: '15px',
       fontFamily: 'Arial, sans-serif',
       color: '#ffffff',
@@ -145,7 +195,10 @@ export class MenuScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     statsBg.on('pointerdown', () => {
-      this.scene.start('StatsScene');
+      this.cameras.main.fadeOut(200, 0, 0, 0);
+      this.cameras.main.once('camerafadeoutcomplete', () => {
+        this.scene.start('StatsScene');
+      });
     });
 
     statsBg.on('pointerover', () => statsBg.setFillStyle(0x1f7d6e));
@@ -156,11 +209,11 @@ export class MenuScene extends Phaser.Scene {
     const sm = this.registry.get('soundManager');
     if (sm) {
       const isMuted = sm.muted;
-      const muteBg = this.add.rectangle(centerX, 562, 80, 28, isMuted ? BTN_SELL : BTN_BACK)
+      const muteBg = this.add.rectangle(centerX, 596, 80, 28, isMuted ? BTN_SELL : BTN_BACK)
         .setStrokeStyle(1, isMuted ? 0x636e72 : 0x1a9c7e)
         .setInteractive({ useHandCursor: true });
 
-      const muteLabel = this.add.text(centerX, 562,
+      const muteLabel = this.add.text(centerX, 596,
         isMuted ? '\u266A OFF' : '\u266A ON',
         {
           fontSize: '13px',
@@ -182,5 +235,19 @@ export class MenuScene extends Phaser.Scene {
       // 메뉴 BGM 재생
       sm.playBgm('menu');
     }
+  }
+
+  // ── 엔드리스 해금 판정 ────────────────────────────────────────
+
+  /**
+   * 엔드리스 모드 해금 여부를 판정한다.
+   * 세이브 데이터의 endlessUnlocked 플래그를 직접 확인한다.
+   * (MapClearScene에서 30개 맵 전부 클리어 시 endlessUnlocked = true로 저장)
+   * @param {object|null} saveData - 세이브 데이터
+   * @returns {boolean} 해금 여부
+   * @private
+   */
+  _isEndlessUnlocked(saveData) {
+    return saveData?.endlessUnlocked === true;
   }
 }

@@ -1709,6 +1709,24 @@ export function calcDiamondReward(round) {
   return Math.floor(round / 5) * 2 + Math.floor(round / 10) * 3;
 }
 
+// ── 별점 시스템 (캠페인 모드) ─────────────────────────────────
+/**
+ * 맵 클리어 시 HP 잔량 비율에 따라 별점(1~3)을 계산한다.
+ * @param {number} currentHP - 클리어 시점의 현재 HP
+ * @param {number} maxHP - 최대 HP
+ * @returns {number} 별점 (1, 2, 또는 3)
+ */
+export function calcStarRating(currentHP, maxHP) {
+  if (maxHP <= 0) return 1;
+  const ratio = currentHP / maxHP;
+  if (ratio >= 0.8) return 3;
+  if (ratio >= 0.4) return 2;
+  return 1;
+}
+
+/** @const {number[]} 별점별 캠페인 다이아몬드 보상 (인덱스 = 별점) */
+export const CAMPAIGN_DIAMOND_REWARDS = [0, 3, 5, 8];
+
 // (Dragon unlock cost is now in TOWER_STATS.dragon.unlockCost)
 
 // ── Meta Upgrade Tree (10 towers × 3 tiers × A/B) ─────────────
@@ -2096,15 +2114,16 @@ function createDefaultStats() {
   };
 }
 
-/** @const {number} Current save data schema version */
-export const SAVE_DATA_VERSION = 2;
+/** @const {number} 현재 세이브 데이터 스키마 버전 */
+export const SAVE_DATA_VERSION = 3;
 
 /**
- * Migrate save data to latest schema.
- * v1 → v2: Remove towerUpgrades, dragonUnlocked; add unlockedTowers, discoveredMerges.
- * Preserves diamond, stats, totalDiamondEarned.
- * @param {object|null} saveData - Existing save data (may be null or older format)
- * @returns {object} Migrated save data with all fields
+ * 세이브 데이터를 최신 스키마로 마이그레이션한다.
+ * v1 → v2: towerUpgrades/dragonUnlocked 제거, unlockedTowers/discoveredMerges 추가.
+ * v2 → v3: worldProgress/endlessUnlocked/campaignStats 추가.
+ * 기존 필드(diamond, stats, totalDiamondEarned 등)는 100% 보존한다.
+ * @param {object|null} saveData - 기존 세이브 데이터 (null이면 신규 생성)
+ * @returns {object} 마이그레이션된 세이브 데이터
  */
 export function migrateSaveData(saveData) {
   if (!saveData) {
@@ -2120,6 +2139,9 @@ export function migrateSaveData(saveData) {
       unlockedTowers: [],
       discoveredMerges: [],
       stats: createDefaultStats(),
+      worldProgress: {},
+      endlessUnlocked: false,
+      campaignStats: { totalStars: 0, mapsCleared: 0, worldsCleared: 0 },
     };
   }
 
@@ -2152,9 +2174,9 @@ export function migrateSaveData(saveData) {
     }
     if (!stats.gameHistory) stats.gameHistory = [];
 
-    // Build v2 save data
+    // Build v2 save data (버전은 2로 설정, v2→v3 마이그레이션이 이후 실행됨)
     saveData = {
-      saveDataVersion: SAVE_DATA_VERSION,
+      saveDataVersion: 2,
       bestRound: saveData.bestRound || 0,
       bestKills: saveData.bestKills || 0,
       totalGames: saveData.totalGames || 0,
@@ -2167,7 +2189,15 @@ export function migrateSaveData(saveData) {
       stats,
     };
 
-    return saveData;
+    // v1→v2 마이그레이션 완료 후 v2→v3으로 계속 진행
+  }
+
+  // ── v2 → v3 마이그레이션 ──
+  if (saveData.saveDataVersion < 3) {
+    saveData.worldProgress = {};
+    saveData.endlessUnlocked = (saveData.bestRound || 0) >= 20;
+    saveData.campaignStats = { totalStars: 0, mapsCleared: 0, worldsCleared: 0 };
+    saveData.saveDataVersion = 3;
   }
 
   // ── Ensure all v2 fields exist ──
@@ -2187,6 +2217,11 @@ export function migrateSaveData(saveData) {
     saveData.stats.bestKills = saveData.bestKills || 0;
   }
   if (!saveData.stats.gameHistory) saveData.stats.gameHistory = [];
+
+  // ── Ensure all v3 fields exist ──
+  if (!saveData.worldProgress) saveData.worldProgress = {};
+  if (saveData.endlessUnlocked === undefined) saveData.endlessUnlocked = false;
+  if (!saveData.campaignStats) saveData.campaignStats = { totalStars: 0, mapsCleared: 0, worldsCleared: 0 };
 
   return saveData;
 }

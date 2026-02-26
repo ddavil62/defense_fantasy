@@ -975,6 +975,7 @@ export class MergeCodexScene extends Phaser.Scene {
    */
   _onCodexPointerDown(pointer) {
     if (!this._inputReady) return;
+    if (this.overlay) return;
     if (pointer.y < CODEX_GRID_Y) return;
     this.codexDragging = true;
     this.codexDragStartY = pointer.y;

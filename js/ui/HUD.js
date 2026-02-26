@@ -112,10 +112,16 @@ export class HUD {
 
   /**
    * 웨이브 번호 텍스트를 갱신한다.
+   * total이 유한값이면 캠페인 모드 형식(X/Y), 아니면 엔드리스 형식(X)으로 표시한다.
    * @param {number} round - 현재 라운드(웨이브) 번호
+   * @param {number|null} [total=null] - 총 웨이브 수 (null 또는 Infinity면 엔드리스)
    */
-  updateWave(round) {
-    this.waveText.setText(`\u2694 Wave: ${round}`);
+  updateWave(round, total = null) {
+    if (total !== null && isFinite(total)) {
+      this.waveText.setText(`\u2694 Wave: ${round}/${total}`);
+    } else {
+      this.waveText.setText(`\u2694 Wave: ${round}`);
+    }
   }
 
   /**

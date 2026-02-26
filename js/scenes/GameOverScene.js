@@ -10,7 +10,7 @@
 import {
   GAME_WIDTH, GAME_HEIGHT, COLORS, VISUALS, SAVE_KEY,
   calcDiamondReward, migrateSaveData,
-  BTN_PRIMARY, BTN_DANGER, BTN_PRIMARY_CSS, BTN_DANGER_CSS,
+  BTN_PRIMARY, BTN_BACK, BTN_DANGER, BTN_PRIMARY_CSS, BTN_DANGER_CSS,
 } from '../config.js';
 
 /** @const {number} 보관하는 최대 게임 히스토리 수 */
@@ -33,6 +33,8 @@ export class GameOverScene extends Phaser.Scene {
    * @param {number} data.round - 도달한 라운드
    * @param {number} data.kills - 총 킬 수
    * @param {object} data.gameStats - 해당 판의 세부 통계
+   * @param {import('../data/maps.js').MapData} [data.mapData] - 맵 데이터
+   * @param {string} [data.gameMode] - 게임 모드
    */
   init(data) {
     /** @type {number} 도달한 라운드 */
@@ -43,6 +45,12 @@ export class GameOverScene extends Phaser.Scene {
 
     /** @type {object} 해당 판 세부 통계 */
     this.gameStats = data.gameStats || {};
+
+    /** @type {import('../data/maps.js').MapData|undefined} 맵 데이터 (RETRY 시 전달용) */
+    this.mapData = data.mapData;
+
+    /** @type {string|undefined} 게임 모드 (RETRY 시 전달용) */
+    this.gameMode = data.gameMode;
   }
 
   /**
@@ -56,6 +64,9 @@ export class GameOverScene extends Phaser.Scene {
     // 어두운 오버레이
     this.add.rectangle(centerX, centerY, GAME_WIDTH, GAME_HEIGHT, 0x000000)
       .setAlpha(VISUALS.OVERLAY_ALPHA);
+
+    // ── 씬 진입 페이드인 ──
+    this.cameras.main.fadeIn(300, 0, 0, 0);
 
     // ── 세이브 데이터 로드 및 기록 갱신 ──
     const saveData = this._loadSave();
@@ -83,8 +94,9 @@ export class GameOverScene extends Phaser.Scene {
     this.registry.set('saveData', saveData);
 
     // ── 결과 패널 (어두운 보라+검정 배경, 골드 테두리) ──
+    const isCampaign = this.gameMode === 'campaign';
     const panelW = 280;
-    const panelH = 380;
+    const panelH = isCampaign ? 420 : 380;
     this.add.rectangle(centerX, centerY, panelW, panelH, 0x0a0820)
       .setStrokeStyle(2, BTN_PRIMARY);
 
@@ -227,31 +239,88 @@ export class GameOverScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     restartBg.on('pointerdown', () => {
-      this.scene.start('GameScene');
+      this.cameras.main.fadeOut(200, 0, 0, 0);
+      this.cameras.main.once('camerafadeoutcomplete', () => {
+        this.scene.start('GameScene', {
+          mapData: this.mapData,
+          gameMode: this.gameMode,
+        });
+      });
     });
 
     restartBg.on('pointerover', () => restartBg.setFillStyle(0xd4b440));
     restartBg.on('pointerout', () => restartBg.setFillStyle(BTN_PRIMARY));
 
-    // ── MENU 버튼 (BTN_DANGER 레드) ──
-    const menuY = retryY + 50;
-    const menuBg = this.add.rectangle(centerX, menuY, 160, 36, BTN_DANGER)
-      .setInteractive({ useHandCursor: true })
-      .setStrokeStyle(1, 0x636e72);
+    if (isCampaign) {
+      // ── WORLD MAP 버튼 (BTN_BACK 틸, 캠페인 모드 전용) ──
+      const worldMapY = retryY + 50;
+      const worldMapBg = this.add.rectangle(centerX, worldMapY, 160, 36, BTN_BACK)
+        .setInteractive({ useHandCursor: true })
+        .setStrokeStyle(1, 0x1a9c7e);
 
-    this.add.text(centerX, menuY, 'MENU', {
-      fontSize: '16px',
-      fontFamily: 'Arial, sans-serif',
-      color: '#ffffff',
-      fontStyle: 'bold',
-    }).setOrigin(0.5);
+      this.add.text(centerX, worldMapY, 'WORLD MAP', {
+        fontSize: '15px',
+        fontFamily: 'Arial, sans-serif',
+        color: '#ffffff',
+        fontStyle: 'bold',
+      }).setOrigin(0.5);
 
-    menuBg.on('pointerdown', () => {
-      this.scene.start('MenuScene');
-    });
+      worldMapBg.on('pointerdown', () => {
+        this.cameras.main.fadeOut(200, 0, 0, 0);
+        this.cameras.main.once('camerafadeoutcomplete', () => {
+          this.scene.start('WorldSelectScene');
+        });
+      });
 
-    menuBg.on('pointerover', () => menuBg.setFillStyle(0xa52040));
-    menuBg.on('pointerout', () => menuBg.setFillStyle(BTN_DANGER));
+      worldMapBg.on('pointerover', () => worldMapBg.setFillStyle(0x1f7d6e));
+      worldMapBg.on('pointerout', () => worldMapBg.setFillStyle(BTN_BACK));
+
+      // ── MENU 버튼 (BTN_DANGER 레드, 작게) ──
+      const menuY = worldMapY + 44;
+      const menuBg = this.add.rectangle(centerX, menuY, 160, 30, BTN_DANGER)
+        .setInteractive({ useHandCursor: true })
+        .setStrokeStyle(1, 0x636e72);
+
+      this.add.text(centerX, menuY, 'MENU', {
+        fontSize: '14px',
+        fontFamily: 'Arial, sans-serif',
+        color: '#ffffff',
+        fontStyle: 'bold',
+      }).setOrigin(0.5);
+
+      menuBg.on('pointerdown', () => {
+        this.cameras.main.fadeOut(200, 0, 0, 0);
+        this.cameras.main.once('camerafadeoutcomplete', () => {
+          this.scene.start('MenuScene');
+        });
+      });
+
+      menuBg.on('pointerover', () => menuBg.setFillStyle(0xa52040));
+      menuBg.on('pointerout', () => menuBg.setFillStyle(BTN_DANGER));
+    } else {
+      // ── MENU 버튼 (BTN_DANGER 레드, 엔드리스 모드) ──
+      const menuY = retryY + 50;
+      const menuBg = this.add.rectangle(centerX, menuY, 160, 36, BTN_DANGER)
+        .setInteractive({ useHandCursor: true })
+        .setStrokeStyle(1, 0x636e72);
+
+      this.add.text(centerX, menuY, 'MENU', {
+        fontSize: '16px',
+        fontFamily: 'Arial, sans-serif',
+        color: '#ffffff',
+        fontStyle: 'bold',
+      }).setOrigin(0.5);
+
+      menuBg.on('pointerdown', () => {
+        this.cameras.main.fadeOut(200, 0, 0, 0);
+        this.cameras.main.once('camerafadeoutcomplete', () => {
+          this.scene.start('MenuScene');
+        });
+      });
+
+      menuBg.on('pointerover', () => menuBg.setFillStyle(0xa52040));
+      menuBg.on('pointerout', () => menuBg.setFillStyle(BTN_DANGER));
+    }
   }
 
   /**

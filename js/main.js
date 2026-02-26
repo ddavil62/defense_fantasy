@@ -7,12 +7,23 @@ import Phaser from 'phaser';
 
 import { BootScene } from './scenes/BootScene.js';
 import { MenuScene } from './scenes/MenuScene.js';
+import { WorldSelectScene } from './scenes/WorldSelectScene.js';
+import { LevelSelectScene } from './scenes/LevelSelectScene.js';
 import { GameScene } from './scenes/GameScene.js';
 import { GameOverScene } from './scenes/GameOverScene.js';
+import { MapClearScene } from './scenes/MapClearScene.js';
 import { CollectionScene } from './scenes/CollectionScene.js';
 import { StatsScene } from './scenes/StatsScene.js';
 import { MergeCodexScene } from './scenes/MergeCodexScene.js';
+import { EndlessMapSelectScene } from './scenes/EndlessMapSelectScene.js';
 import { GAME_WIDTH, GAME_HEIGHT } from './config.js';
+
+// 월드별 맵 데이터 일괄 로드 (사이드 이펙트 import: registerMap 호출로 레지스트리 등록)
+import './data/maps/forest.js';
+import './data/maps/desert.js';
+import './data/maps/tundra.js';
+import './data/maps/volcano.js';
+import './data/maps/shadow.js';
 
 /**
  * Phaser 게임 설정 객체.
@@ -31,7 +42,7 @@ const config = {
     mode: Phaser.Scale.FIT,
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
-  scene: [BootScene, MenuScene, GameScene, GameOverScene, CollectionScene, StatsScene, MergeCodexScene],
+  scene: [BootScene, MenuScene, WorldSelectScene, LevelSelectScene, GameScene, GameOverScene, MapClearScene, CollectionScene, StatsScene, MergeCodexScene, EndlessMapSelectScene],
   input: {
     activePointers: 1, // 모바일 싱글 터치만 허용
   },

@@ -35,6 +35,8 @@ import { Tower } from '../entities/Tower.js';
 import { Enemy } from '../entities/Enemy.js';
 // ── 유틸 ──
 import { t } from '../i18n.js';
+// ── 데이터 ──
+import { CLASSIC_MAP } from '../data/maps.js';
 
 /**
  * 타워 디펜스 핵심 게임플레이 씬.
@@ -49,8 +51,20 @@ export class GameScene extends Phaser.Scene {
   /**
    * 씬 상태 초기화. 매 게임 시작(scene.start)마다 호출되어
    * 모든 런타임 변수를 기본값으로 리셋한다.
+   * @param {object} [data={}] - 씬 전환 시 전달된 데이터
+   * @param {import('../data/maps.js').MapData} [data.mapData] - 맵 데이터 (기본: CLASSIC_MAP)
+   * @param {string} [data.gameMode='endless'] - 게임 모드 ('endless' | 'campaign')
    */
-  init() {
+  init(data = {}) {
+    /** @type {import('../data/maps.js').MapData} 현재 맵 데이터 */
+    this.mapData = data.mapData || CLASSIC_MAP;
+
+    /** @type {string} 게임 모드 ('endless' = 엔드리스, 'campaign' = 캠페인) */
+    this.gameMode = data.gameMode || 'endless';
+
+    /** @type {number|null} 총 웨이브 수 (캠페인: 유한값, 엔드리스: null) */
+    this.totalWaves = isFinite(this.mapData.totalWaves) ? this.mapData.totalWaves : null;
+
     /** @type {Tower[]} 현재 맵에 배치된 타워 목록 */
     this.towers = [];
 
@@ -133,6 +147,9 @@ export class GameScene extends Phaser.Scene {
    * 입력 핸들러를 등록한 뒤 첫 웨이브를 시작한다.
    */
   create() {
+    // ── 씬 진입 페이드인 ──
+    this.cameras.main.fadeIn(300, 0, 0, 0);
+
     // 씬 종료(shutdown) 시 리소스 정리 핸들러 등록
     this.events.on('shutdown', this._cleanup, this);
 
@@ -160,9 +177,12 @@ export class GameScene extends Phaser.Scene {
     const metaGold = getMetaInitialGold(this.utilityUpgrades);
 
     // ── 매니저 초기화 ──
-    this.mapManager = new MapManager(this);
+    this.mapManager = new MapManager(this, this.mapData);
     this.goldManager = new GoldManager(metaGold);
-    this.waveManager = new WaveManager(this);
+    this.waveManager = new WaveManager(this, {
+      totalWaves: this.mapData.totalWaves,
+      waveOverrides: this.mapData.waveOverrides,
+    });
 
     // 투사체 오브젝트 풀 (초기 용량 30, 부족 시 자동 확장)
     this.projectilePool = new ProjectilePool(this, 30);
@@ -174,7 +194,7 @@ export class GameScene extends Phaser.Scene {
     this.hud = new HUD(this);
     this.hud.updateGold(this.goldManager.getGold());
     this.hud.updateHP(this.baseHP, this.maxBaseHP);
-    this.hud.updateWave(1);
+    this.hud.updateWave(1, this.totalWaves);
 
     // 일시정지 버튼 및 HUD 음소거 버튼 생성
     this._createPauseButton();
@@ -216,6 +236,9 @@ export class GameScene extends Phaser.Scene {
     if (this.soundManager) {
       this.soundManager.playBgm('battle');
     }
+
+    // 캠페인 모드: 맵 클리어 이벤트 리스너 (WaveManager에서 발행)
+    this.events.on('mapClear', (clearData) => this._onMapClear(clearData));
 
     // 첫 번째 웨이브 시작
     this.waveManager.startFirstWave();
@@ -260,7 +283,7 @@ export class GameScene extends Phaser.Scene {
     // ── HUD 갱신 ──
     this.hud.updateGold(this.goldManager.getGold());
     this.hud.updateHP(this.baseHP, this.maxBaseHP);
-    this.hud.updateWave(this.waveManager.currentWave);
+    this.hud.updateWave(this.waveManager.currentWave, this.totalWaves);
     this.hud.updateBlink(delta);
 
     // 웨이브 간 휴식 시간 카운트다운 및 다음 웨이브 미리보기 표시
@@ -1431,6 +1454,40 @@ export class GameScene extends Phaser.Scene {
     return adjustedBonus;
   }
 
+  // ── 맵 클리어 (캠페인 모드) ──────────────────────────────────
+
+  /**
+   * 캠페인 모드에서 모든 웨이브 클리어 시 호출된다.
+   * BGM을 멈추고, 1초 후 MapClearScene으로 전환한다.
+   * @param {object} clearData - WaveManager에서 전달된 클리어 데이터
+   * @param {number} clearData.currentHP - 클리어 시점 HP
+   * @param {number} clearData.maxBaseHP - 최대 HP
+   * @param {number} clearData.wavesCleared - 클리어한 웨이브 수
+   * @private
+   */
+  _onMapClear(clearData) {
+    this.isGameOver = true;
+
+    if (this.soundManager) {
+      this.soundManager.playSfx('sfx_wave_clear', { bossRound: false });
+      this.soundManager.stopBgm(true);
+    }
+
+    this.waveManager.destroy();
+
+    this.time.delayedCall(1000, () => {
+      this.scene.start('MapClearScene', {
+        currentHP: clearData.currentHP,
+        maxHP: clearData.maxBaseHP,
+        wavesCleared: clearData.wavesCleared,
+        kills: this.totalKills,
+        gameStats: { ...this.gameStats },
+        mapData: this.mapData,
+        gameMode: this.gameMode,
+      });
+    });
+  }
+
   // ── 게임오버 ──────────────────────────────────────────────────
 
   /**
@@ -1459,6 +1516,8 @@ export class GameScene extends Phaser.Scene {
         round: finalRound,
         kills: finalKills,
         gameStats: { ...this.gameStats },
+        mapData: this.mapData,
+        gameMode: this.gameMode,
       });
     });
   }

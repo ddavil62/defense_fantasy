@@ -5,7 +5,7 @@
  */
 
 import {
-  MAP_GRID, PATH_WAYPOINTS, CELL_SIZE, GRID_COLS, GRID_ROWS,
+  CELL_SIZE, GRID_COLS, GRID_ROWS,
   HUD_HEIGHT, COLORS,
   CELL_EMPTY, CELL_PATH, CELL_BASE, CELL_SPAWN, CELL_WALL,
   gridToPixel, pixelToGrid,
@@ -15,13 +15,17 @@ export class MapManager {
   /**
    * MapManager를 생성한다.
    * @param {Phaser.Scene} scene - 게임 씬
+   * @param {import('../data/maps.js').MapData} mapData - 맵 데이터
    */
-  constructor(scene) {
+  constructor(scene, mapData) {
     /** @type {Phaser.Scene} 게임 씬 참조 */
     this.scene = scene;
 
+    /** @type {import('../data/maps.js').MapData} 원본 맵 데이터 참조 */
+    this.mapData = mapData;
+
     /** @type {number[][]} 그리드 데이터 사본 (타워 배치 추적용, 변경 가능) */
-    this.grid = MAP_GRID.map(row => [...row]);
+    this.grid = mapData.grid.map(row => [...row]);
 
     /** @type {Map<string, object>} "col,row" 키로 타워 배치를 추적하는 맵 */
     this.towerMap = new Map();
@@ -33,7 +37,7 @@ export class MapManager {
     this.highlightGraphics = null;
 
     /** @type {{ x: number, y: number }[]} 적 이동용 픽셀 웨이포인트 경로 */
-    this.pixelPath = PATH_WAYPOINTS.map(wp => gridToPixel(wp.col, wp.row));
+    this.pixelPath = mapData.waypoints.map(wp => gridToPixel(wp.col, wp.row));
   }
 
   // ── 맵 렌더링 ──────────────────────────────────────────────────
@@ -47,6 +51,9 @@ export class MapManager {
     this.highlightGraphics = this.scene.add.graphics();
     this.highlightGraphics.setDepth(5);
 
+    // 테마가 있으면 테마 색상, 없으면 기본 색상 사용
+    const theme = this.mapData.theme;
+
     for (let row = 0; row < GRID_ROWS; row++) {
       for (let col = 0; col < GRID_COLS; col++) {
         const cellType = this.grid[row][col];
@@ -57,10 +64,10 @@ export class MapManager {
         let fillColor;
         switch (cellType) {
           case CELL_EMPTY:
-            fillColor = 0x1a1a2e;   // 어두운 남색 (빈 타일)
+            fillColor = theme?.emptyTile ?? 0x1a1a2e;   // 어두운 남색 (빈 타일)
             break;
           case CELL_PATH:
-            fillColor = 0x1e1e38;   // 짙은 남색 (경로)
+            fillColor = theme?.path ?? 0x1e1e38;   // 짙은 남색 (경로)
             break;
           case CELL_BASE:
             fillColor = 0x2a1a00;   // 어두운 금색 (기지)
@@ -115,7 +122,7 @@ export class MapManager {
     }
 
     // 스폰 지점 인디케이터 - 아래 방향 화살표
-    const spawnPos = gridToPixel(4, 0);
+    const spawnPos = gridToPixel(this.mapData.spawnPos.col, this.mapData.spawnPos.row);
     this.scene.add.text(spawnPos.x, spawnPos.y, '\u2193', {
       fontSize: '20px',
       fontFamily: 'Arial, sans-serif',
@@ -124,7 +131,7 @@ export class MapManager {
     }).setOrigin(0.5).setDepth(2);
 
     // 기지 인디케이터 - 방패 기호 + 금색 테두리
-    const basePos = gridToPixel(5, 11);
+    const basePos = gridToPixel(this.mapData.basePos.col, this.mapData.basePos.row);
     this.scene.add.text(basePos.x, basePos.y, '\u26E8', {
       fontSize: '18px',
       fontFamily: 'Arial, sans-serif',
@@ -144,7 +151,7 @@ export class MapManager {
     if (col < 0 || col >= GRID_COLS || row < 0 || row >= GRID_ROWS) {
       return -1;
     }
-    return MAP_GRID[row][col];
+    return this.grid[row][col];
   }
 
   /**
