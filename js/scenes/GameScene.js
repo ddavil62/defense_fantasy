@@ -23,6 +23,7 @@ import {
   calcHpRecoverCost, HP_RECOVER_AMOUNT,
   CONSUMABLE_ABILITIES,
   getMergeResult, MERGE_RECIPES, SAVE_KEY,
+  BTN_SELL, BTN_META, BTN_DANGER, BTN_PRIMARY, BTN_BACK,
 } from '../config.js';
 
 import { MapManager } from '../managers/MapManager.js';
@@ -298,7 +299,10 @@ export class GameScene extends Phaser.Scene {
     // Check if clicking on an existing tower
     const existingTower = this.mapManager.getTowerAt(col, row);
     if (existingTower) {
-      this._selectPlacedTower(existingTower);
+      // Show range circle immediately, but defer modal to pointerup (to distinguish click vs drag)
+      this._deselectAllTowers();
+      existingTower.showRangeCircle();
+      this._pendingTowerClick = { tower: existingTower, startX: pointer.x, startY: pointer.y };
       // Prepare drag for merge — actual drag starts after movement threshold
       if (existingTower.enhanceLevel === 0 && Object.keys(MERGE_RECIPES).length > 0) {
         this._pendingDrag = { tower: existingTower, startX: pointer.x, startY: pointer.y };
@@ -1449,18 +1453,25 @@ export class GameScene extends Phaser.Scene {
    * @private
    */
   _createPauseButton() {
-    // Pause button
-    this.pauseBtn = this.add.rectangle(310, 20, 28, 24, 0x636e72)
-      .setStrokeStyle(2, 0xffffff)
+    // Pause button - circular background with icon
+    this.pauseBtnBg = this.add.graphics();
+    this.pauseBtnBg.setDepth(25);
+    this.pauseBtnBg.fillStyle(BTN_SELL, 0.9);
+    this.pauseBtnBg.fillCircle(310, 20, 12);
+    this.pauseBtnBg.lineStyle(1, 0xffffff, 0.5);
+    this.pauseBtnBg.strokeCircle(310, 20, 12);
+
+    this.pauseBtn = this.add.circle(310, 20, 12)
       .setInteractive({ useHandCursor: true })
-      .setDepth(25);
+      .setDepth(25)
+      .setAlpha(0.01);
 
     this.pauseBtnText = this.add.text(310, 20, '||', {
-      fontSize: '14px',
+      fontSize: '12px',
       fontFamily: 'Arial, sans-serif',
       color: '#ffffff',
       fontStyle: 'bold',
-    }).setOrigin(0.5).setDepth(25);
+    }).setOrigin(0.5).setDepth(26);
 
     this.pauseBtn.on('pointerdown', () => {
       if (!this.isPaused && !this.isGameOver) {
@@ -1561,32 +1572,39 @@ export class GameScene extends Phaser.Scene {
   _showPauseOverlay() {
     this.pauseOverlay = this.add.container(0, 0).setDepth(50);
 
-    // Full screen semi-transparent background
+    // Full screen dark background: 0x05050f alpha 0.97
     const overlay = this.add.rectangle(
       GAME_WIDTH / 2, GAME_HEIGHT / 2,
       GAME_WIDTH, GAME_HEIGHT,
-      0x000000
-    ).setAlpha(0.7).setInteractive();
+      0x05050f
+    ).setAlpha(0.97).setInteractive();
     this.pauseOverlay.add(overlay);
 
-    // Panel (expanded for codex button + Phase 5 volume controls)
+    // Panel with gold border
     const panel = this.add.rectangle(
-      180, 310, 220, 260, 0x0f3460
-    ).setDepth(51);
+      180, 310, 220, 260, 0x05050f
+    ).setStrokeStyle(2, BTN_PRIMARY).setDepth(51);
     this.pauseOverlay.add(panel);
 
-    // "PAUSED" text
+    // "PAUSED" text: gold with glow
     const pausedText = this.add.text(180, 220, 'PAUSED', {
       fontSize: '20px',
       fontFamily: 'Arial, sans-serif',
       color: '#ffd700',
       fontStyle: 'bold',
+      shadow: {
+        offsetX: 0,
+        offsetY: 0,
+        color: '#ffd700',
+        blur: 12,
+        fill: true,
+      },
     }).setOrigin(0.5).setDepth(52);
     this.pauseOverlay.add(pausedText);
 
-    // Resume button
+    // Resume button: BTN_BACK (teal)
     const resumeBtn = this.add.rectangle(
-      180, 252, 180, 30, 0x00b894
+      180, 252, 180, 30, BTN_BACK
     ).setInteractive({ useHandCursor: true }).setDepth(52);
     this.pauseOverlay.add(resumeBtn);
 
@@ -1602,9 +1620,9 @@ export class GameScene extends Phaser.Scene {
       this._resumeGame();
     });
 
-    // Merge Codex button
+    // Merge Codex button: BTN_META (purple)
     const codexBtn = this.add.rectangle(
-      180, 288, 180, 30, 0x6c5ce7
+      180, 288, 180, 30, BTN_META
     ).setInteractive({ useHandCursor: true }).setDepth(52);
     this.pauseOverlay.add(codexBtn);
 
@@ -1623,9 +1641,9 @@ export class GameScene extends Phaser.Scene {
       this.scene.sleep('GameScene');
     });
 
-    // Main Menu button
+    // Main Menu button: BTN_DANGER (red)
     const menuBtn = this.add.rectangle(
-      180, 324, 180, 30, 0xe94560
+      180, 324, 180, 30, BTN_DANGER
     ).setInteractive({ useHandCursor: true }).setDepth(52);
     this.pauseOverlay.add(menuBtn);
 
@@ -1666,7 +1684,7 @@ export class GameScene extends Phaser.Scene {
       color: '#ffd700',
     };
 
-    // ── SFX row ──
+    // ── SFX row ── (track: BTN_SELL grey, handle: BTN_PRIMARY gold)
     const sfxLabel = this.add.text(100, baseY, 'SFX', labelStyle).setOrigin(0, 0.5).setDepth(52);
     this.pauseOverlay.add(sfxLabel);
 
@@ -1674,14 +1692,14 @@ export class GameScene extends Phaser.Scene {
       .setOrigin(0.5, 0.5).setDepth(52);
     this.pauseOverlay.add(sfxValText);
 
-    const sfxDown = this.add.rectangle(150, baseY, 24, 20, 0x2d3436)
-      .setStrokeStyle(1, 0x636e72).setInteractive({ useHandCursor: true }).setDepth(52);
+    const sfxDown = this.add.rectangle(150, baseY, 24, 20, BTN_SELL)
+      .setStrokeStyle(1, BTN_PRIMARY).setInteractive({ useHandCursor: true }).setDepth(52);
     this.pauseOverlay.add(sfxDown);
     const sfxDownT = this.add.text(150, baseY, '-', labelStyle).setOrigin(0.5).setDepth(52);
     this.pauseOverlay.add(sfxDownT);
 
-    const sfxUp = this.add.rectangle(210, baseY, 24, 20, 0x2d3436)
-      .setStrokeStyle(1, 0x636e72).setInteractive({ useHandCursor: true }).setDepth(52);
+    const sfxUp = this.add.rectangle(210, baseY, 24, 20, BTN_SELL)
+      .setStrokeStyle(1, BTN_PRIMARY).setInteractive({ useHandCursor: true }).setDepth(52);
     this.pauseOverlay.add(sfxUp);
     const sfxUpT = this.add.text(210, baseY, '+', labelStyle).setOrigin(0.5).setDepth(52);
     this.pauseOverlay.add(sfxUpT);
@@ -1695,7 +1713,7 @@ export class GameScene extends Phaser.Scene {
       sfxValText.setText(`${Math.round(sm.sfxVolume * 100)}%`);
     });
 
-    // ── BGM row ──
+    // ── BGM row ── (track: BTN_SELL grey, handle: BTN_PRIMARY gold)
     const bgmY = baseY + 30;
     const bgmLabel = this.add.text(100, bgmY, 'BGM', labelStyle).setOrigin(0, 0.5).setDepth(52);
     this.pauseOverlay.add(bgmLabel);
@@ -1704,14 +1722,14 @@ export class GameScene extends Phaser.Scene {
       .setOrigin(0.5, 0.5).setDepth(52);
     this.pauseOverlay.add(bgmValText);
 
-    const bgmDown = this.add.rectangle(150, bgmY, 24, 20, 0x2d3436)
-      .setStrokeStyle(1, 0x636e72).setInteractive({ useHandCursor: true }).setDepth(52);
+    const bgmDown = this.add.rectangle(150, bgmY, 24, 20, BTN_SELL)
+      .setStrokeStyle(1, BTN_PRIMARY).setInteractive({ useHandCursor: true }).setDepth(52);
     this.pauseOverlay.add(bgmDown);
     const bgmDownT = this.add.text(150, bgmY, '-', labelStyle).setOrigin(0.5).setDepth(52);
     this.pauseOverlay.add(bgmDownT);
 
-    const bgmUp = this.add.rectangle(210, bgmY, 24, 20, 0x2d3436)
-      .setStrokeStyle(1, 0x636e72).setInteractive({ useHandCursor: true }).setDepth(52);
+    const bgmUp = this.add.rectangle(210, bgmY, 24, 20, BTN_SELL)
+      .setStrokeStyle(1, BTN_PRIMARY).setInteractive({ useHandCursor: true }).setDepth(52);
     this.pauseOverlay.add(bgmUp);
     const bgmUpT = this.add.text(210, bgmY, '+', labelStyle).setOrigin(0.5).setDepth(52);
     this.pauseOverlay.add(bgmUpT);
@@ -1727,8 +1745,8 @@ export class GameScene extends Phaser.Scene {
 
     // ── MUTE toggle ──
     const muteY = bgmY + 35;
-    const muteBtn = this.add.rectangle(180, muteY, 100, 24, sm.muted ? 0x636e72 : 0x2d3436)
-      .setStrokeStyle(1, sm.muted ? 0xe94560 : 0x636e72)
+    const muteBtn = this.add.rectangle(180, muteY, 100, 24, sm.muted ? BTN_SELL : BTN_SELL)
+      .setStrokeStyle(1, sm.muted ? BTN_DANGER : BTN_PRIMARY)
       .setInteractive({ useHandCursor: true }).setDepth(52);
     this.pauseOverlay.add(muteBtn);
 
@@ -1743,8 +1761,8 @@ export class GameScene extends Phaser.Scene {
     muteBtn.on('pointerdown', () => {
       sm.setMuted(!sm.muted);
       muteTxt.setText(sm.muted ? 'UNMUTE' : 'MUTE');
-      muteBtn.setFillStyle(sm.muted ? 0x636e72 : 0x2d3436);
-      muteBtn.setStrokeStyle(1, sm.muted ? 0xe94560 : 0x636e72);
+      muteBtn.setFillStyle(BTN_SELL);
+      muteBtn.setStrokeStyle(1, sm.muted ? BTN_DANGER : BTN_PRIMARY);
     });
   }
 
@@ -1771,7 +1789,7 @@ export class GameScene extends Phaser.Scene {
     const y = PANEL_Y + 68;
     const btnSize = VISUALS.ACTION_BUTTON_SIZE;
 
-    this.hpRecoverBg = this.add.rectangle(x, y, btnSize, btnSize, 0x00b894)
+    this.hpRecoverBg = this.add.rectangle(x, y, btnSize, btnSize, BTN_META)
       .setStrokeStyle(1, 0x636e72)
       .setInteractive({ useHandCursor: true })
       .setDepth(31);
@@ -1806,11 +1824,13 @@ export class GameScene extends Phaser.Scene {
     const isFull = this.baseHP >= this.maxBaseHP;
 
     if (isFull) {
+      this.hpRecoverBg.setFillStyle(BTN_SELL);
       this.hpRecoverBg.setAlpha(0.4);
       this.hpRecoverCostText.setText(t('ui.hpRecoverFull'));
       this.hpRecoverCostText.setColor('#636e72');
     } else {
       const canAfford = this.goldManager.canAfford(cost);
+      this.hpRecoverBg.setFillStyle(canAfford ? BTN_META : BTN_SELL);
       this.hpRecoverBg.setAlpha(canAfford ? 1 : 0.5);
       this.hpRecoverCostText.setText(`${cost}G`);
       this.hpRecoverCostText.setColor(canAfford ? '#ffd700' : '#ff4757');
@@ -1861,7 +1881,7 @@ export class GameScene extends Phaser.Scene {
       const def = CONSUMABLE_ABILITIES[key];
       const x = baseX + i * spacing;
 
-      const bg = this.add.rectangle(x, y, btnSize, btnSize, def.color)
+      const bg = this.add.rectangle(x, y, btnSize, btnSize, BTN_META)
         .setStrokeStyle(1, 0x636e72)
         .setInteractive({ useHandCursor: true })
         .setDepth(31);
@@ -1912,6 +1932,7 @@ export class GameScene extends Phaser.Scene {
       const onCooldown = state.cooldownTimer > 0;
 
       if (onCooldown) {
+        btn.bg.setFillStyle(BTN_SELL);
         btn.bg.setAlpha(0.3);
         btn.iconText.setAlpha(0.3);
         btn.costText.setText('');
@@ -1919,6 +1940,7 @@ export class GameScene extends Phaser.Scene {
         btn.cdText.setAlpha(1);
       } else {
         const canAfford = this.goldManager.canAfford(cost);
+        btn.bg.setFillStyle(canAfford ? BTN_META : BTN_SELL);
         btn.bg.setAlpha(canAfford ? 1 : 0.5);
         btn.iconText.setAlpha(1);
         btn.costText.setText(`${cost}G`);
@@ -2122,10 +2144,22 @@ export class GameScene extends Phaser.Scene {
    * @private
    */
   _onPointerUp(pointer) {
+    const wasDragging = this.towerPanel && this.towerPanel.isDragging();
     this._pendingDrag = null;
-    if (this.towerPanel && this.towerPanel.isDragging()) {
+    if (wasDragging) {
       this.towerPanel.endDrag(pointer, (col, row) => this.mapManager.getTowerAt(col, row));
     }
+
+    // Open tower modal only on clean click (no drag)
+    if (this._pendingTowerClick && !wasDragging) {
+      const { tower, startX, startY } = this._pendingTowerClick;
+      const dx = pointer.x - startX;
+      const dy = pointer.y - startY;
+      if (dx * dx + dy * dy <= 100) { // 10px threshold
+        this._selectPlacedTower(tower);
+      }
+    }
+    this._pendingTowerClick = null;
   }
 
   /**
@@ -2141,6 +2175,7 @@ export class GameScene extends Phaser.Scene {
       if (dx * dx + dy * dy > 100) { // 10px threshold
         this.towerPanel.startDrag(this._pendingDrag.tower, pointer);
         this._pendingDrag = null;
+        this._pendingTowerClick = null; // Cancel click — this is a drag
       }
     }
 

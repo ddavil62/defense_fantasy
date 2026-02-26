@@ -38,10 +38,10 @@ export const LONG_PRESS_MS = 400;
 
 // ── Colors ──────────────────────────────────────────────────────
 export const COLORS = {
-  BACKGROUND: 0x1a1a2e,
-  HUD_BG: 0x16213e,
-  EMPTY_TILE: 0x2d3436,
-  PATH: 0x636e72,
+  BACKGROUND: 0x0d0d1a,
+  HUD_BG: 0x12122a,
+  EMPTY_TILE: 0x1a1a2e,
+  PATH: 0x2a2a3e,
   PATH_BORDER: 0xb2bec3,
   BASE: 0xe17055,
   SPAWN: 0x00b894,
@@ -72,8 +72,8 @@ export const COLORS = {
   BOSS_BORDER: 0xffd700,
   GOLD_TEXT: 0xffd700,
   HP_DANGER: 0xff4757,
-  UI_PANEL: 0x0f3460,
-  BUTTON_ACTIVE: 0xe94560,
+  UI_PANEL: 0x1a1040,
+  BUTTON_ACTIVE: 0xc0a030,
   HP_BAR_GREEN: 0x00b894,
   HP_BAR_YELLOW: 0xfdcb6e,
   HP_BAR_RED: 0xd63031,
@@ -87,15 +87,67 @@ export const COLORS = {
   BUILDABLE_HIGHLIGHT: 0x00ff00,
   INVALID_PLACEMENT: 0xff0000,
   EXPLOSION: 0xff6348,
-  DIAMOND: 0x00b8d4,
-  DIAMOND_CSS: '#00b8d4',
+  DIAMOND: 0x9b59b6,
+  DIAMOND_CSS: '#9b59b6',
 };
+
+// ── Button Semantic Colors ──────────────────────────────────────
+/** @const {number} Primary action button (gold) */
+export const BTN_PRIMARY = 0xc0a030;
+/** @const {number} Meta/collection button (purple) */
+export const BTN_META    = 0x6c3483;
+/** @const {number} Back/auxiliary button (teal) */
+export const BTN_BACK    = 0x1a6b5e;
+/** @const {number} Inactive/sell button (grey) */
+export const BTN_SELL    = 0x4a4a5a;
+/** @const {number} Danger/exit button (red) */
+export const BTN_DANGER  = 0x8b1a2e;
+/** @const {string} Primary CSS hex */
+export const BTN_PRIMARY_CSS  = '#c0a030';
+/** @const {string} Meta CSS hex */
+export const BTN_META_CSS     = '#9b59b6';
+/** @const {string} Back CSS hex */
+export const BTN_BACK_CSS     = '#1a9c7e';
+/** @const {string} Sell CSS hex */
+export const BTN_SELL_CSS     = '#8a8a9a';
+/** @const {string} Danger CSS hex */
+export const BTN_DANGER_CSS   = '#c0392b';
 
 /** @const {string} Gold text color as CSS hex */
 export const GOLD_TEXT_CSS = '#ffd700';
 
 /** @const {string} HP danger text color as CSS hex */
 export const HP_DANGER_CSS = '#ff4757';
+
+// ── Codex Tier Background Colors ───────────────────────────────
+/** @const {Object<number, number>} Background colors for each tier in MergeCodexScene */
+export const CODEX_TIER_BG = {
+  1: 0x1a1a2e,   // T1: basic dark
+  2: 0x0d1a2e,   // T2: dark blue
+  3: 0x1a1500,   // T3: dark gold-brown
+  4: 0x130a2e,   // T4: deep purple
+  5: 0x1a0a0a,   // T5: deep red (legendary)
+};
+
+// ── Attack Type Colors ─────────────────────────────────────────
+/** @const {Object<string, number>} Attack type colors (hex) */
+export const ATTACK_TYPE_COLORS = {
+  single:        0xb2bec3,
+  splash:        0xe17055,
+  aoe_instant:   0xe17055,
+  chain:         0xfdcb6e,
+  piercing_beam: 0xffeaa7,
+  dot_single:    0xa8e063,
+};
+/** @const {Object<string, string>} Attack type colors (CSS hex) */
+export const ATTACK_TYPE_COLORS_CSS = {
+  single:        '#b2bec3',
+  splash:        '#e17055',
+  aoe_instant:   '#e17055',
+  chain:         '#fdcb6e',
+  piercing_beam: '#ffeaa7',
+  dot_single:    '#a8e063',
+};
 
 // ── Cell Types ──────────────────────────────────────────────────
 export const CELL_EMPTY = 0;

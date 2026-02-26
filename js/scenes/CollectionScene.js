@@ -7,6 +7,7 @@
 import {
   GAME_WIDTH, GAME_HEIGHT, COLORS, SAVE_KEY,
   TOWER_STATS, META_UPGRADE_TREE, UTILITY_UPGRADES,
+  BTN_PRIMARY, BTN_META,
 } from '../config.js';
 import { t } from '../i18n.js';
 
@@ -820,7 +821,7 @@ export class CollectionScene extends Phaser.Scene {
     }
 
     // Badge [A] or [B]
-    const badgeColor = optionKey === 'a' ? COLORS.DIAMOND : COLORS.BUTTON_ACTIVE;
+    const badgeColor = optionKey === 'a' ? BTN_PRIMARY : BTN_META;
     const badge = this.add.circle(x - w / 2 + 14, y, 9, badgeColor);
     this.overlay.add(badge);
 

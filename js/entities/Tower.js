@@ -571,12 +571,18 @@ export class Tower {
    */
   showRangeCircle() {
     this.hideRangeCircle();
+    const color = this._getColor();
     this.rangeGraphics = this.scene.add.graphics();
     this.rangeGraphics.setDepth(8);
-    this.rangeGraphics.fillStyle(COLORS.RANGE_FILL, VISUALS.RANGE_FILL_ALPHA);
+    // Fill with tower-specific color at reduced alpha
+    this.rangeGraphics.fillStyle(color, 0.12);
     this.rangeGraphics.fillCircle(this.x, this.y, this.stats.range);
-    this.rangeGraphics.lineStyle(VISUALS.RANGE_LINE_WIDTH, COLORS.RANGE_FILL, VISUALS.RANGE_STROKE_ALPHA);
+    // Inner stroke
+    this.rangeGraphics.lineStyle(VISUALS.RANGE_LINE_WIDTH, color, 0.3);
     this.rangeGraphics.strokeCircle(this.x, this.y, this.stats.range);
+    // Outer stroke (double border effect)
+    this.rangeGraphics.lineStyle(VISUALS.RANGE_LINE_WIDTH, color, 0.3);
+    this.rangeGraphics.strokeCircle(this.x, this.y, this.stats.range + 1);
   }
 
   /**

@@ -50,55 +50,79 @@ export class MapManager {
         let fillColor;
         switch (cellType) {
           case CELL_EMPTY:
-            fillColor = COLORS.EMPTY_TILE;
+            fillColor = 0x1a1a2e;
             break;
           case CELL_PATH:
-            fillColor = COLORS.PATH;
+            fillColor = 0x1e1e38;
             break;
           case CELL_BASE:
-            fillColor = COLORS.BASE;
+            fillColor = 0x2a1a00;
             break;
           case CELL_SPAWN:
-            fillColor = COLORS.SPAWN;
+            fillColor = 0x1a0000;
             break;
           case CELL_WALL:
-            fillColor = COLORS.WALL;
+            fillColor = 0x080810;
             break;
           default:
-            fillColor = COLORS.EMPTY_TILE;
+            fillColor = 0x1a1a2e;
         }
 
         // Fill cell
         this.graphics.fillStyle(fillColor, 1);
         this.graphics.fillRect(x, y, CELL_SIZE, CELL_SIZE);
 
-        // Draw subtle grid lines
-        this.graphics.lineStyle(1, 0x000000, 0.3);
-        this.graphics.strokeRect(x, y, CELL_SIZE, CELL_SIZE);
+        // Per-tile-type visual treatment
+        switch (cellType) {
+          case CELL_EMPTY:
+            // Subtle grid lines for empty tiles (stone floor feel)
+            this.graphics.lineStyle(1, 0x252535, 0.4);
+            this.graphics.strokeRect(x, y, CELL_SIZE, CELL_SIZE);
+            break;
 
-        // Draw path border highlight for path tiles
-        if (cellType === CELL_PATH) {
-          this.graphics.lineStyle(1, COLORS.PATH_BORDER, 0.3);
-          this.graphics.strokeRect(x + 1, y + 1, CELL_SIZE - 2, CELL_SIZE - 2);
+          case CELL_PATH:
+            // No border lines for path tiles - connected path feel
+            break;
+
+          case CELL_BASE:
+            // Gold border for base tile
+            this.graphics.lineStyle(2, 0xffd700, 1);
+            this.graphics.strokeRect(x, y, CELL_SIZE, CELL_SIZE);
+            break;
+
+          case CELL_SPAWN:
+            // Red warning border for spawn tile
+            this.graphics.lineStyle(2, 0x8b1a2e, 1);
+            this.graphics.strokeRect(x, y, CELL_SIZE, CELL_SIZE);
+            break;
+
+          case CELL_WALL:
+            // No special border for wall tiles
+            break;
+
+          default:
+            this.graphics.lineStyle(1, 0x252535, 0.4);
+            this.graphics.strokeRect(x, y, CELL_SIZE, CELL_SIZE);
         }
       }
     }
 
-    // Draw spawn indicator
+    // Draw spawn indicator - arrow pointing down
     const spawnPos = gridToPixel(4, 0);
-    this.graphics.fillStyle(COLORS.SPAWN, 1);
-    this.graphics.fillTriangle(
-      spawnPos.x, spawnPos.y - 12,
-      spawnPos.x - 10, spawnPos.y + 8,
-      spawnPos.x + 10, spawnPos.y + 8
-    );
+    this.scene.add.text(spawnPos.x, spawnPos.y, '\u2193', {
+      fontSize: '20px',
+      fontFamily: 'Arial, sans-serif',
+      color: '#8b1a2e',
+      fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(2);
 
-    // Draw base indicator
+    // Draw base indicator - shield symbol with gold border
     const basePos = gridToPixel(5, 11);
-    this.graphics.lineStyle(2, 0xffffff, 0.7);
-    this.graphics.strokeRect(
-      basePos.x - 14, basePos.y - 14, 28, 28
-    );
+    this.scene.add.text(basePos.x, basePos.y, '\u26E8', {
+      fontSize: '18px',
+      fontFamily: 'Arial, sans-serif',
+      color: '#ffd700',
+    }).setOrigin(0.5).setDepth(2);
   }
 
   /**

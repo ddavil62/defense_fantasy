@@ -4,10 +4,11 @@
  */
 
 import {
-  GAME_WIDTH, PANEL_Y, PANEL_HEIGHT, COLORS, VISUALS,
+  GAME_WIDTH, GAME_HEIGHT, PANEL_Y, PANEL_HEIGHT, COLORS, VISUALS,
   TOWER_STATS, TOWER_SHAPE_SIZE, GOLD_TEXT_CSS, CELL_SIZE,
   SPEED_NORMAL, SPEED_FAST, SPEED_TURBO, LONG_PRESS_MS,
   MAX_ENHANCE_LEVEL,
+  BTN_PRIMARY, BTN_DANGER, BTN_SELL,
   isMergeable, getMergeResult, MERGE_RECIPES, pixelToGrid, GRID_COLS, GRID_ROWS, HUD_HEIGHT,
 } from '../config.js';
 import { t } from '../i18n.js';
@@ -51,6 +52,9 @@ export class TowerPanel {
 
     /** @type {Phaser.GameObjects.Container|null} Tower info container */
     this.infoContainer = null;
+
+    /** @type {Phaser.GameObjects.Container|null} Tower detail modal container */
+    this.modalContainer = null;
 
     // ── Drag & Drop state ──
     /** @type {boolean} Whether a drag is in progress */
@@ -331,7 +335,7 @@ export class TowerPanel {
     const x = GAME_WIDTH - 75;
     const y = PANEL_Y + 28;
 
-    this.sellBg = this.scene.add.rectangle(x, y, btnSize, btnSize, 0xd63031)
+    this.sellBg = this.scene.add.rectangle(x, y, btnSize, btnSize, BTN_DANGER)
       .setStrokeStyle(1, 0x636e72)
       .setInteractive({ useHandCursor: true })
       .setAlpha(0.5);
@@ -361,10 +365,18 @@ export class TowerPanel {
     const x = GAME_WIDTH - 38;
     const y = PANEL_Y + 28;
 
-    this.speedBg = this.scene.add.rectangle(x, y, btnSize, btnSize, 0x2d3436)
+    this.speedBg = this.scene.add.rectangle(x, y, btnSize, btnSize, BTN_SELL)
       .setStrokeStyle(1, 0x636e72)
       .setInteractive({ useHandCursor: true });
     this.container.add(this.speedBg);
+
+    // Circular highlight behind speed text (visible when speed > 1x)
+    this.speedCircle = this.scene.add.graphics();
+    this.container.add(this.speedCircle);
+    /** @type {number} Speed button center X */
+    this._speedX = x;
+    /** @type {number} Speed button center Y */
+    this._speedY = y;
 
     this.speedText = this.scene.add.text(x, y, 'x1', {
       fontSize: '12px',
@@ -389,13 +401,26 @@ export class TowerPanel {
         : this.gameSpeed === SPEED_FAST ? '#fdcb6e' : '#e94560';
       this.speedText.setText(label);
       this.speedText.setColor(color);
-      this.speedBg.setFillStyle(
-        this.gameSpeed === SPEED_NORMAL ? 0x2d3436 : COLORS.BUTTON_ACTIVE
-      );
+      this._updateSpeedHighlight();
       if (this.callbacks.onSpeedToggle) {
         this.callbacks.onSpeedToggle(this.gameSpeed);
       }
     });
+  }
+
+  /**
+   * Update the circular highlight on the speed button.
+   * Shows a filled circle behind the text when speed > 1x.
+   * @private
+   */
+  _updateSpeedHighlight() {
+    if (!this.speedCircle) return;
+    this.speedCircle.clear();
+    if (this.gameSpeed !== SPEED_NORMAL) {
+      const highlightColor = this.gameSpeed === SPEED_FAST ? BTN_PRIMARY : BTN_DANGER;
+      this.speedCircle.fillStyle(highlightColor, 0.4);
+      this.speedCircle.fillCircle(this._speedX, this._speedY, 14);
+    }
   }
 
   // ── Long-press & Description Popup ─────────────────────────────
@@ -562,9 +587,11 @@ export class TowerPanel {
     for (const btn of this.towerButtons) {
       if (btn.isLocked) continue;
       if (btn.type === this.selectedTowerType) {
-        btn.bg.setStrokeStyle(3, COLORS.BOSS_BORDER);
+        btn.bg.setStrokeStyle(2, BTN_PRIMARY);
+        btn.bg.setFillStyle(0x2a2a3e);
       } else {
         btn.bg.setStrokeStyle(2, 0x636e72);
+        btn.bg.setFillStyle(0x1a1a2e);
       }
     }
   }
@@ -598,21 +625,11 @@ export class TowerPanel {
     this._hideInfo();
 
     const info = tower.getInfo();
-    const infoY = PANEL_Y + 80;
 
+    // Show simple one-line info at the bottom of the panel
     this.infoContainer = this.scene.add.container(0, 0).setDepth(31);
 
-    // Info background
-    const infoBg = this.scene.add.rectangle(
-      GAME_WIDTH / 2,
-      infoY + 28,
-      GAME_WIDTH,
-      72,
-      0x16213e
-    ).setAlpha(0.92);
-    this.infoContainer.add(infoBg);
-
-    // Tower info text
+    const infoY = PANEL_Y + PANEL_HEIGHT - 18;
     const rangeInTiles = (info.range / CELL_SIZE).toFixed(1);
     const tierStr = info.tier > 1 ? ` T${info.tier}` : '';
     const enhStr = info.enhanceLevel > 0 ? `+${info.enhanceLevel}` : '';
@@ -628,70 +645,268 @@ export class TowerPanel {
     );
     this.infoContainer.add(infoText);
 
-    // Merge list and/or enhance button
-    let nextY = infoY + 18;
+    // Update sell button state
+    this.sellBg.setAlpha(1);
+
+    // Open the detail modal
+    this._showTowerModal(tower);
+  }
+
+  // ── Tower Detail Modal ───────────────────────────────────────────
+
+  /**
+   * Show tower detail modal overlay in the center of the screen.
+   * @param {object} tower - Tower instance
+   * @private
+   */
+  _showTowerModal(tower) {
+    this._hideTowerModal();
+
+    const info = tower.getInfo();
+    const modalW = 300;
+    const modalH = 350;
+    const cx = GAME_WIDTH / 2;
+    const cy = GAME_HEIGHT / 2;
+
+    this.modalContainer = this.scene.add.container(0, 0).setDepth(100);
+
+    // ── Overlay background (semi-transparent black) ──
+    const overlay = this.scene.add.rectangle(
+      GAME_WIDTH / 2, GAME_HEIGHT / 2,
+      GAME_WIDTH, GAME_HEIGHT,
+      0x000000
+    ).setAlpha(0.7).setInteractive();
+    this.modalContainer.add(overlay);
+
+    // Click overlay to close
+    overlay.on('pointerdown', (pointer) => {
+      // Only close if click is outside modal area
+      const dx = Math.abs(pointer.x - cx);
+      const dy = Math.abs(pointer.y - cy);
+      if (dx > modalW / 2 || dy > modalH / 2) {
+        this._hideTowerModal();
+        this.clearSelection();
+      }
+    });
+
+    // ── Modal panel ──
+    const panel = this.scene.add.rectangle(cx, cy, modalW, modalH, 0x0a0820)
+      .setStrokeStyle(2, BTN_PRIMARY);
+    this.modalContainer.add(panel);
+
+    // ── Close button (X) ──
+    const closeX = cx + modalW / 2 - 18;
+    const closeY = cy - modalH / 2 + 18;
+    const closeBg = this.scene.add.rectangle(closeX, closeY, 24, 24, 0x0a0820)
+      .setStrokeStyle(1, 0x636e72)
+      .setInteractive({ useHandCursor: true });
+    this.modalContainer.add(closeBg);
+    const closeText = this.scene.add.text(closeX, closeY, 'X', {
+      fontSize: '14px',
+      fontFamily: 'Arial, sans-serif',
+      color: '#ffffff',
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+    this.modalContainer.add(closeText);
+    closeBg.on('pointerdown', () => {
+      this._hideTowerModal();
+      this.clearSelection();
+    });
+
+    // ── Tower name ──
+    const rangeInTiles = (info.range / CELL_SIZE).toFixed(1);
+    const tierStr = info.tier > 1 ? ` T${info.tier}` : '';
+    const enhStr = info.enhanceLevel > 0 ? `+${info.enhanceLevel}` : '';
+    const nameStr = `${info.name}${tierStr}${enhStr}`;
+
+    const towerColor = TOWER_STATS[info.type] ? TOWER_STATS[info.type].color : BTN_PRIMARY;
+    const towerColorCSS = '#' + towerColor.toString(16).padStart(6, '0');
+
+    let curY = cy - modalH / 2 + 30;
+
+    const nameText = this.scene.add.text(cx, curY, nameStr, {
+      fontSize: '18px',
+      fontFamily: 'Arial, sans-serif',
+      color: '#ffd700',
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+    this.modalContainer.add(nameText);
+    curY += 30;
+
+    // ── Stats ──
+    const statLabels = [
+      { label: 'ATK', value: `${info.damage}` },
+      { label: 'SPD', value: `${info.fireRate}s` },
+      { label: 'RNG', value: `${rangeInTiles}` },
+    ];
+
+    for (const stat of statLabels) {
+      const labelText = this.scene.add.text(cx - 60, curY, stat.label, {
+        fontSize: '13px',
+        fontFamily: 'Arial, sans-serif',
+        color: '#a0a0a0',
+      }).setOrigin(0, 0.5);
+      this.modalContainer.add(labelText);
+
+      const valueText = this.scene.add.text(cx + 60, curY, stat.value, {
+        fontSize: '13px',
+        fontFamily: 'Arial, sans-serif',
+        color: '#ffffff',
+        fontStyle: 'bold',
+      }).setOrigin(1, 0.5);
+      this.modalContainer.add(valueText);
+      curY += 22;
+    }
+
+    curY += 6;
+
+    // ── Merge recipes ──
     const hasRecipes = Object.keys(MERGE_RECIPES).length > 0;
     if (hasRecipes && info.isMergeable && info.enhanceLevel === 0) {
-      const mergeListHeight = this._buildMergeList(tower, nextY);
-      nextY += mergeListHeight;
+      curY = this._buildModalMergeList(tower, cx, curY, modalW);
     }
+
+    // ── Enhance button(s) ──
     if (info.canEnhance) {
-      // Enhancement button
-      const enhBtn = this.scene.add.rectangle(
-        GAME_WIDTH / 2, nextY, 200, 20, 0x8854d0
-      ).setInteractive({ useHandCursor: true });
-      this.infoContainer.add(enhBtn);
+      const enhBtnW = 200;
+      const enhBtnH = 32;
+      const enhBtn = this.scene.add.rectangle(cx, curY, enhBtnW, enhBtnH, BTN_PRIMARY)
+        .setStrokeStyle(1, 0xffd700)
+        .setInteractive({ useHandCursor: true });
+      this.modalContainer.add(enhBtn);
 
       const enhLabel = t('ui.enhance').replace('{level}', info.enhanceLevel + 1).replace('{cost}', info.enhanceCost);
-      const enhText = this.scene.add.text(GAME_WIDTH / 2, nextY,
-        `\u2B06 ${enhLabel}`, {
-        fontSize: '10px',
+      const enhText = this.scene.add.text(cx, curY, `\u2B06 ${enhLabel}`, {
+        fontSize: '12px',
         fontFamily: 'Arial, sans-serif',
         color: '#ffffff',
         fontStyle: 'bold',
       }).setOrigin(0.5);
-      this.infoContainer.add(enhText);
-      nextY += 18;
+      this.modalContainer.add(enhText);
 
       enhBtn.on('pointerdown', () => {
         if (this.callbacks.onEnhance) {
           this.callbacks.onEnhance(tower);
+          // onEnhance calls _selectPlacedTower which re-opens the modal with updated info
         }
       });
+
+      curY += enhBtnH + 8;
     }
+
     if (!info.canEnhance && info.enhanceLevel >= MAX_ENHANCE_LEVEL) {
-      // Max enhancement reached
-      const maxText = this.scene.add.text(GAME_WIDTH / 2, nextY, `\u2B50 ${t('ui.maxEnhance')}`, {
-        fontSize: '10px',
+      const maxText = this.scene.add.text(cx, curY, `\u2B50 ${t('ui.maxEnhance')}`, {
+        fontSize: '12px',
         fontFamily: 'Arial, sans-serif',
         color: '#ffd700',
         fontStyle: 'bold',
       }).setOrigin(0.5);
-      this.infoContainer.add(maxText);
+      this.modalContainer.add(maxText);
+      curY += 24;
     }
 
-    // Sell button
-    const sellY = nextY + 4;
-    const sellBtn = this.scene.add.rectangle(
-      GAME_WIDTH / 2, sellY, 120, 18, 0xd63031
-    ).setInteractive({ useHandCursor: true });
-    this.infoContainer.add(sellBtn);
+    // ── Sell button ──
+    const sellBtnW = 200;
+    const sellBtnH = 32;
+    const sellBtn = this.scene.add.rectangle(cx, curY, sellBtnW, sellBtnH, BTN_DANGER)
+      .setStrokeStyle(1, 0x636e72)
+      .setInteractive({ useHandCursor: true });
+    this.modalContainer.add(sellBtn);
 
-    const sellText = this.scene.add.text(GAME_WIDTH / 2, sellY, `Sell ${info.sellPrice}G`, {
-      fontSize: '10px',
+    const sellText = this.scene.add.text(cx, curY, `Sell ${info.sellPrice}G`, {
+      fontSize: '12px',
       fontFamily: 'Arial, sans-serif',
       color: '#ffffff',
+      fontStyle: 'bold',
     }).setOrigin(0.5);
-    this.infoContainer.add(sellText);
+    this.modalContainer.add(sellText);
 
     sellBtn.on('pointerdown', () => {
       if (this.callbacks.onSell) {
         this.callbacks.onSell(tower);
       }
+      this._hideTowerModal();
     });
+  }
 
-    // Update sell button state
-    this.sellBg.setAlpha(1);
+  /**
+   * Build merge recipe list inside the modal.
+   * @param {object} tower - Tower instance
+   * @param {number} cx - Modal center X
+   * @param {number} startY - Starting Y position
+   * @param {number} modalW - Modal width
+   * @returns {number} Updated Y position after the list
+   * @private
+   */
+  _buildModalMergeList(tower, cx, startY, modalW) {
+    const selfId = tower.mergeId || tower.type;
+    let curY = startY;
+
+    // Collect matching recipes
+    const matches = [];
+    for (const [key, result] of Object.entries(MERGE_RECIPES)) {
+      const parts = key.split('+');
+      if (parts.includes(selfId)) {
+        const partnerType = parts[0] === selfId ? parts[1] : parts[0];
+        matches.push({ partnerType, result });
+      }
+    }
+
+    if (matches.length === 0) return curY;
+
+    // Header
+    const header = this.scene.add.text(cx - modalW / 2 + 20, curY, t('ui.mergeList.header'), {
+      fontSize: '10px',
+      fontFamily: 'Arial, sans-serif',
+      color: '#b2bec3',
+    });
+    this.modalContainer.add(header);
+    curY += 16;
+
+    // Show up to 5 recipes
+    const maxShow = Math.min(matches.length, 5);
+    for (let i = 0; i < maxShow; i++) {
+      const { partnerType, result } = matches[i];
+      const partnerName = t(`tower.${partnerType}.name`) || partnerType;
+      const resultName = t(`tower.${result.id}.name`) || result.displayName;
+      const colorCSS = '#' + result.color.toString(16).padStart(6, '0');
+
+      const itemText = this.scene.add.text(cx - modalW / 2 + 20, curY,
+        `+${partnerName} \u2192 ${resultName}(T${result.tier})`, {
+        fontSize: '10px',
+        fontFamily: 'Arial, sans-serif',
+        color: colorCSS,
+      });
+      this.modalContainer.add(itemText);
+      curY += 14;
+    }
+
+    // Overflow
+    const overflow = matches.length - maxShow;
+    if (overflow > 0) {
+      const moreText = this.scene.add.text(cx - modalW / 2 + 20, curY,
+        t('ui.mergeList.more').replace('{n}', overflow), {
+        fontSize: '10px',
+        fontFamily: 'Arial, sans-serif',
+        color: '#636e72',
+      });
+      this.modalContainer.add(moreText);
+      curY += 14;
+    }
+
+    curY += 6;
+    return curY;
+  }
+
+  /**
+   * Hide (destroy) the tower detail modal.
+   * @private
+   */
+  _hideTowerModal() {
+    if (this.modalContainer) {
+      this.modalContainer.destroy();
+      this.modalContainer = null;
+    }
   }
 
   // ── Merge List (Feature A) ───────────────────────────────────────
@@ -1073,6 +1288,7 @@ export class TowerPanel {
       this.infoContainer.destroy();
       this.infoContainer = null;
     }
+    this._hideTowerModal();
     if (this.sellBg) {
       this.sellBg.setAlpha(0.5);
     }
@@ -1115,6 +1331,7 @@ export class TowerPanel {
     this._hideDescription();
     this._cancelLongPress();
     this._hideInfo();
+    this._hideTowerModal();
     if (this._dragGhost) {
       this._dragGhost.destroy();
       this._dragGhost = null;

@@ -7,6 +7,7 @@
 import {
   GAME_WIDTH, GAME_HEIGHT, COLORS,
   TOWER_STATS, MERGE_RECIPES, MERGED_TOWER_STATS,
+  CODEX_TIER_BG, ATTACK_TYPE_COLORS_CSS, BTN_PRIMARY,
 } from '../config.js';
 import { t } from '../i18n.js';
 
@@ -317,34 +318,36 @@ export class MergeCodexScene extends Phaser.Scene {
     const cy = y + CODEX_CARD_H / 2;
 
     const borderColor = this._getTierBorderColor(entry.tier);
-    const bg = this.add.rectangle(cx, cy, CODEX_CARD_W, CODEX_CARD_H, COLORS.UI_PANEL)
+    const cardBgColor = CODEX_TIER_BG[entry.tier] || COLORS.UI_PANEL;
+    const bg = this.add.rectangle(cx, cy, CODEX_CARD_W, CODEX_CARD_H, cardBgColor)
       .setStrokeStyle(2, borderColor)
       .setInteractive({ useHandCursor: true });
     this.codexScrollContainer.add(bg);
 
-    // Color circle
+    // Color circle (radius 14)
     const circleG = this.add.graphics();
     circleG.fillStyle(entry.color, 1);
-    circleG.fillCircle(cx, y + 18, 10);
+    circleG.fillCircle(cx, y + 20, 14);
     this.codexScrollContainer.add(circleG);
 
     // Tower name (truncated)
     const displayName = entry.displayName.length > 6
       ? entry.displayName.substring(0, 5) + '..'
       : entry.displayName;
-    const nameText = this.add.text(cx, y + 38, displayName, {
+    const nameText = this.add.text(cx, y + 40, displayName, {
       fontSize: '9px',
       fontFamily: 'Arial, sans-serif',
       color: '#ffffff',
     }).setOrigin(0.5);
     this.codexScrollContainer.add(nameText);
 
-    // attackType badge
+    // attackType badge with type-specific colors
     const badgeStr = this._getAttackTypeBadge(entry.attackType);
+    const badgeColor = ATTACK_TYPE_COLORS_CSS[entry.attackType] || '#81ecec';
     const badgeText = this.add.text(cx, y + 54, badgeStr, {
       fontSize: '8px',
       fontFamily: 'Arial, sans-serif',
-      color: '#81ecec',
+      color: badgeColor,
       backgroundColor: '#0d1117',
       padding: { x: 2, y: 1 },
     }).setOrigin(0.5);
@@ -377,23 +380,22 @@ export class MergeCodexScene extends Phaser.Scene {
     if (this.overlay) this.overlay.destroy();
     this.overlay = this.add.container(0, 0).setDepth(50);
 
-    // Backdrop
-    const backdrop = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000)
-      .setAlpha(0.7)
+    // Backdrop (darker, near-opaque)
+    const backdrop = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x050510)
+      .setAlpha(0.96)
       .setInteractive();
     this.overlay.add(backdrop);
     backdrop.on('pointerdown', () => this._closeOverlay());
 
-    // Panel
+    // Panel with gold border
     const panelW = 280;
     const panelH = 200;
     const panelX = GAME_WIDTH / 2;
     const panelY = GAME_HEIGHT / 2;
     const panelTop = panelY - panelH / 2;
 
-    const borderColor = this._getTierBorderColor(entry.tier);
     const panelBg = this.add.rectangle(panelX, panelY, panelW, panelH, COLORS.UI_PANEL)
-      .setStrokeStyle(2, borderColor);
+      .setStrokeStyle(2, BTN_PRIMARY);
     this.overlay.add(panelBg);
 
     // Close button
@@ -421,9 +423,10 @@ export class MergeCodexScene extends Phaser.Scene {
       circleG.fillCircle(panelX, panelTop + 70, 14);
       this.overlay.add(circleG);
 
-      // Attack type
+      // Attack type (with type-specific color)
+      const atkColor1 = ATTACK_TYPE_COLORS_CSS[entry.attackType] || '#b2bec3';
       const atkText = this.add.text(panelX, panelTop + 95, `Type: ${this._getAttackTypeBadge(entry.attackType)}`, {
-        fontSize: '13px', fontFamily: 'Arial, sans-serif', color: '#b2bec3',
+        fontSize: '13px', fontFamily: 'Arial, sans-serif', color: atkColor1,
       }).setOrigin(0.5);
       this.overlay.add(atkText);
 
@@ -467,9 +470,10 @@ export class MergeCodexScene extends Phaser.Scene {
       }).setOrigin(0.5);
       this.overlay.add(arrowText);
 
-      // Attack type
+      // Attack type (with type-specific color)
+      const atkColor2 = ATTACK_TYPE_COLORS_CSS[entry.attackType] || '#b2bec3';
       const atkText = this.add.text(panelX, panelTop + 110, `Type: ${this._getAttackTypeBadge(entry.attackType)}`, {
-        fontSize: '12px', fontFamily: 'Arial, sans-serif', color: '#b2bec3',
+        fontSize: '12px', fontFamily: 'Arial, sans-serif', color: atkColor2,
       }).setOrigin(0.5);
       this.overlay.add(atkText);
 

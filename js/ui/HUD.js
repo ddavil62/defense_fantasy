@@ -9,6 +9,7 @@ import {
   GAME_WIDTH, HUD_HEIGHT, COLORS,
   HP_DANGER_THRESHOLD, HP_BLINK_INTERVAL,
   GOLD_TEXT_CSS, HP_DANGER_CSS, ENEMY_STATS,
+  BTN_SELL,
 } from '../config.js';
 
 /** @const {Object<string, number>} Enemy type to color mapping for preview dots */
@@ -48,29 +49,39 @@ export class HUD {
    * @private
    */
   _create() {
-    // Background bar
-    this.bg = this.scene.add.rectangle(
-      GAME_WIDTH / 2, HUD_HEIGHT / 2,
-      GAME_WIDTH, HUD_HEIGHT,
-      COLORS.HUD_BG
-    ).setDepth(30).setAlpha(0.9);
+    // Background bar - gradient effect (dark at top, fading toward map)
+    this.bgGraphics = this.scene.add.graphics();
+    this.bgGraphics.setDepth(30);
+    const gradientSteps = 4;
+    const stepH = HUD_HEIGHT / gradientSteps;
+    for (let i = 0; i < gradientSteps; i++) {
+      // Top is opaque, bottom fades
+      const alpha = 0.95 - (i * 0.12);
+      this.bgGraphics.fillStyle(COLORS.HUD_BG, alpha);
+      this.bgGraphics.fillRect(0, i * stepH, GAME_WIDTH, stepH);
+    }
 
-    // Wave text (left)
-    this.waveText = this.scene.add.text(10, HUD_HEIGHT / 2, 'Wave: 1', {
+    // HUD danger border graphics (initially hidden)
+    this.dangerBorderGraphics = this.scene.add.graphics();
+    this.dangerBorderGraphics.setDepth(32);
+    this.dangerBorderGraphics.setAlpha(0);
+
+    // Wave text (left) - with sword icon
+    this.waveText = this.scene.add.text(10, HUD_HEIGHT / 2, '\u2694 Wave: 1', {
       fontSize: '16px',
       fontFamily: 'Arial, sans-serif',
       color: '#ffffff',
     }).setOrigin(0, 0.5).setDepth(31);
 
-    // Gold text (center)
-    this.goldText = this.scene.add.text(150, HUD_HEIGHT / 2, 'Gold: 200', {
+    // Gold text (center) - with diamond icon
+    this.goldText = this.scene.add.text(150, HUD_HEIGHT / 2, '\u25C6 200', {
       fontSize: '16px',
       fontFamily: 'Arial, sans-serif',
       color: GOLD_TEXT_CSS,
     }).setOrigin(0.5, 0.5).setDepth(31);
 
-    // HP text (right)
-    this.hpText = this.scene.add.text(235, HUD_HEIGHT / 2, 'HP: 20', {
+    // HP text (right) - with heart icon
+    this.hpText = this.scene.add.text(235, HUD_HEIGHT / 2, '\u2665 20', {
       fontSize: '16px',
       fontFamily: 'Arial, sans-serif',
       color: '#ffffff',
@@ -93,7 +104,7 @@ export class HUD {
    * @param {number} round - Current round number
    */
   updateWave(round) {
-    this.waveText.setText(`Wave: ${round}`);
+    this.waveText.setText(`\u2694 Wave: ${round}`);
   }
 
   /**
@@ -101,7 +112,7 @@ export class HUD {
    * @param {number} amount - Current gold amount
    */
   updateGold(amount) {
-    this.goldText.setText(`Gold: ${amount}`);
+    this.goldText.setText(`\u25C6 ${amount}`);
   }
 
   /**
@@ -111,11 +122,30 @@ export class HUD {
    */
   updateHP(current, max) {
     this._currentHP = current;
-    this.hpText.setText(`HP: ${current}`);
+    this.hpText.setText(`\u2665 ${current}`);
 
     if (current > HP_DANGER_THRESHOLD) {
       this.hpText.setColor('#ffffff');
+      // Hide danger border when HP is safe
+      if (this.dangerBorderGraphics) {
+        this.dangerBorderGraphics.setAlpha(0);
+      }
+    } else if (current > 0) {
+      // Show danger border when HP is low
+      this._drawDangerBorder();
     }
+  }
+
+  /**
+   * Draw red glow border on HUD for danger state.
+   * @private
+   */
+  _drawDangerBorder() {
+    if (!this.dangerBorderGraphics) return;
+    this.dangerBorderGraphics.clear();
+    this.dangerBorderGraphics.lineStyle(2, 0xff4757, 0.8);
+    this.dangerBorderGraphics.strokeRect(0, 0, GAME_WIDTH, HUD_HEIGHT);
+    this.dangerBorderGraphics.setAlpha(1);
   }
 
   /**
@@ -129,6 +159,10 @@ export class HUD {
         this._hpBlinkTimer = 0;
         this._hpBlinkVisible = !this._hpBlinkVisible;
         this.hpText.setColor(this._hpBlinkVisible ? HP_DANGER_CSS : '#ffffff');
+        // Pulse danger border alpha
+        if (this.dangerBorderGraphics) {
+          this.dangerBorderGraphics.setAlpha(this._hpBlinkVisible ? 1 : 0.4);
+        }
       }
     }
   }
@@ -174,7 +208,8 @@ export class HUD {
    * Clean up HUD elements.
    */
   destroy() {
-    if (this.bg) this.bg.destroy();
+    if (this.bgGraphics) this.bgGraphics.destroy();
+    if (this.dangerBorderGraphics) this.dangerBorderGraphics.destroy();
     if (this.waveText) this.waveText.destroy();
     if (this.goldText) this.goldText.destroy();
     if (this.hpText) this.hpText.destroy();

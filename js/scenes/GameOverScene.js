@@ -2,11 +2,14 @@
  * @fileoverview GameOverScene - Displays game results, Diamond reward, saves records, and offers restart/menu.
  *
  * Phase 6: Added gameStats saving to persistent stats, game history, and summary display.
+ * Phase 7: UI redesign - dark panel with gold border, colored text/buttons,
+ *          GAME OVER glow, gold-highlighted values, semantic button colors.
  */
 
 import {
   GAME_WIDTH, GAME_HEIGHT, COLORS, VISUALS, SAVE_KEY,
   calcDiamondReward, migrateSaveData,
+  BTN_PRIMARY, BTN_DANGER, BTN_PRIMARY_CSS, BTN_DANGER_CSS,
 } from '../config.js';
 
 /** @const {number} Max game history entries to keep */
@@ -68,36 +71,58 @@ export class GameOverScene extends Phaser.Scene {
     // Update registry for MenuScene
     this.registry.set('saveData', saveData);
 
-    // Result panel background (expanded for stats summary)
+    // Result panel background: dark purple-black + gold border
     const panelW = 280;
     const panelH = 380;
-    this.add.rectangle(centerX, centerY, panelW, panelH, COLORS.UI_PANEL)
-      .setStrokeStyle(2, COLORS.BUTTON_ACTIVE);
+    this.add.rectangle(centerX, centerY, panelW, panelH, 0x0a0820)
+      .setStrokeStyle(2, BTN_PRIMARY);
 
-    // GAME OVER title
+    // GAME OVER title with dark red + shadow glow
     this.add.text(centerX, centerY - 165, 'GAME OVER', {
       fontSize: '28px',
       fontFamily: 'Arial, sans-serif',
-      color: '#e94560',
+      color: '#c0392b',
       fontStyle: 'bold',
+      shadow: {
+        offsetX: 0,
+        offsetY: 0,
+        color: '#c0392b',
+        blur: 12,
+        fill: true,
+      },
     }).setOrigin(0.5);
 
-    // Divider
-    this.add.rectangle(centerX, centerY - 138, panelW - 40, 1, 0x636e72);
+    // Divider (gold tint)
+    this.add.rectangle(centerX, centerY - 138, panelW - 40, 1, BTN_PRIMARY)
+      .setAlpha(0.4);
 
-    // Round reached
-    this.add.text(centerX, centerY - 115, `Round: ${this.round}`, {
-      fontSize: '20px',
-      fontFamily: 'Arial, sans-serif',
-      color: '#ffffff',
-    }).setOrigin(0.5);
-
-    // Kill count
-    this.add.text(centerX, centerY - 88, `Kills: ${this.kills}`, {
+    // Round reached (gold-highlighted value)
+    this.add.text(centerX - 40, centerY - 115, 'Round:', {
       fontSize: '18px',
       fontFamily: 'Arial, sans-serif',
-      color: '#ffffff',
-    }).setOrigin(0.5);
+      color: '#b2bec3',
+    }).setOrigin(1, 0.5);
+
+    this.add.text(centerX - 34, centerY - 115, `${this.round}`, {
+      fontSize: '22px',
+      fontFamily: 'Arial, sans-serif',
+      color: '#ffd700',
+      fontStyle: 'bold',
+    }).setOrigin(0, 0.5);
+
+    // Kill count (gold-highlighted value)
+    this.add.text(centerX - 40, centerY - 88, 'Kills:', {
+      fontSize: '16px',
+      fontFamily: 'Arial, sans-serif',
+      color: '#b2bec3',
+    }).setOrigin(1, 0.5);
+
+    this.add.text(centerX - 34, centerY - 88, `${this.kills}`, {
+      fontSize: '20px',
+      fontFamily: 'Arial, sans-serif',
+      color: '#ffd700',
+      fontStyle: 'bold',
+    }).setOrigin(0, 0.5);
 
     // Best record
     this.add.text(centerX, centerY - 60, `Best: Round ${saveData.bestRound}`, {
@@ -106,13 +131,20 @@ export class GameOverScene extends Phaser.Scene {
       color: '#ffd700',
     }).setOrigin(0.5);
 
-    // NEW BEST indicator
+    // NEW BEST indicator with gold glow
     if (isNewBest) {
       const newBestText = this.add.text(centerX, centerY - 38, 'NEW BEST!', {
         fontSize: '18px',
         fontFamily: 'Arial, sans-serif',
         color: '#ffd700',
         fontStyle: 'bold',
+        shadow: {
+          offsetX: 0,
+          offsetY: 0,
+          color: '#ffd700',
+          blur: 16,
+          fill: true,
+        },
       }).setOrigin(0.5);
 
       this.tweens.add({
@@ -145,7 +177,7 @@ export class GameOverScene extends Phaser.Scene {
         }).setOrigin(0.5);
     }
 
-    // Diamond display
+    // Diamond display with purple highlight
     const diamondY = centerY + 20;
     if (diamondEarned > 0) {
       this.add.text(centerX, diamondY, `\u25C6 +${diamondEarned} Diamond`, {
@@ -168,16 +200,16 @@ export class GameOverScene extends Phaser.Scene {
       }).setOrigin(0.5);
     }
 
-    // RETRY button
+    // RETRY button: BTN_PRIMARY (gold)
     const retryY = centerY + 75;
-    const restartBg = this.add.rectangle(centerX, retryY, 160, 40, COLORS.BUTTON_ACTIVE)
+    const restartBg = this.add.rectangle(centerX, retryY, 160, 40, BTN_PRIMARY)
       .setInteractive({ useHandCursor: true })
       .setStrokeStyle(2, 0xffffff);
 
     this.add.text(centerX, retryY, 'RETRY', {
       fontSize: '18px',
       fontFamily: 'Arial, sans-serif',
-      color: '#ffffff',
+      color: '#1a1a2e',
       fontStyle: 'bold',
     }).setOrigin(0.5);
 
@@ -185,19 +217,19 @@ export class GameOverScene extends Phaser.Scene {
       this.scene.start('GameScene');
     });
 
-    restartBg.on('pointerover', () => restartBg.setFillStyle(0xff6b6b));
-    restartBg.on('pointerout', () => restartBg.setFillStyle(COLORS.BUTTON_ACTIVE));
+    restartBg.on('pointerover', () => restartBg.setFillStyle(0xd4b440));
+    restartBg.on('pointerout', () => restartBg.setFillStyle(BTN_PRIMARY));
 
-    // MENU button
+    // MENU button: BTN_DANGER (red)
     const menuY = retryY + 50;
-    const menuBg = this.add.rectangle(centerX, menuY, 160, 36, COLORS.UI_PANEL)
+    const menuBg = this.add.rectangle(centerX, menuY, 160, 36, BTN_DANGER)
       .setInteractive({ useHandCursor: true })
       .setStrokeStyle(1, 0x636e72);
 
     this.add.text(centerX, menuY, 'MENU', {
       fontSize: '16px',
       fontFamily: 'Arial, sans-serif',
-      color: '#b2bec3',
+      color: '#ffffff',
       fontStyle: 'bold',
     }).setOrigin(0.5);
 
@@ -205,8 +237,8 @@ export class GameOverScene extends Phaser.Scene {
       this.scene.start('MenuScene');
     });
 
-    menuBg.on('pointerover', () => menuBg.setStrokeStyle(2, 0xb2bec3));
-    menuBg.on('pointerout', () => menuBg.setStrokeStyle(1, 0x636e72));
+    menuBg.on('pointerover', () => menuBg.setFillStyle(0xa52040));
+    menuBg.on('pointerout', () => menuBg.setFillStyle(BTN_DANGER));
   }
 
   /**
