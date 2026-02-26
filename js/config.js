@@ -1,42 +1,42 @@
 /**
- * @fileoverview Game configuration constants for Fantasy Tower Defense.
- * All balance values, layout dimensions, map data, tower/enemy stats are centralized here.
- * No magic numbers should exist outside this file.
+ * @fileoverview Fantasy Tower Defense 게임 설정 상수 파일.
+ * 밸런스 수치, 레이아웃 치수, 맵 데이터, 타워/적 스탯 등 모든 설정값을 여기에 집중 관리한다.
+ * 이 파일 외부에 매직 넘버가 존재하면 안 된다.
  */
 
-// ── Layout ──────────────────────────────────────────────────────
-/** @const {number} Game logical width in pixels */
+// ── 레이아웃 ────────────────────────────────────────────────────
+/** @const {number} 게임 논리 가로 크기 (px) */
 export const GAME_WIDTH = 360;
 
-/** @const {number} Game logical height in pixels */
+/** @const {number} 게임 논리 세로 크기 (px) */
 export const GAME_HEIGHT = 640;
 
-/** @const {number} Grid cell size in pixels */
+/** @const {number} 그리드 셀 크기 (px) */
 export const CELL_SIZE = 40;
 
-/** @const {number} Number of grid columns */
+/** @const {number} 그리드 열 수 */
 export const GRID_COLS = 9;
 
-/** @const {number} Number of grid rows */
+/** @const {number} 그리드 행 수 */
 export const GRID_ROWS = 12;
 
-/** @const {number} Top HUD height in pixels */
+/** @const {number} 상단 HUD 영역 높이 (px) */
 export const HUD_HEIGHT = 40;
 
-/** @const {number} Bottom UI panel height in pixels */
+/** @const {number} 하단 UI 패널 높이 (px) */
 export const PANEL_HEIGHT = 120;
 
-/** @const {number} Map area height in pixels */
+/** @const {number} 맵 영역 높이 (px) */
 export const MAP_HEIGHT = 480;
 
-/** @const {number} Panel Y start position */
+/** @const {number} 패널 시작 Y 좌표 */
 export const PANEL_Y = 520;
 
-// ── Long Press ──────────────────────────────────────────────────
-/** @const {number} Long press threshold in milliseconds */
+// ── 롱프레스 ────────────────────────────────────────────────────
+/** @const {number} 롱프레스 판정 기준 시간 (ms) */
 export const LONG_PRESS_MS = 400;
 
-// ── Colors ──────────────────────────────────────────────────────
+// ── 색상 ────────────────────────────────────────────────────────
 export const COLORS = {
   BACKGROUND: 0x0d0d1a,
   HUD_BG: 0x12122a,
@@ -91,36 +91,36 @@ export const COLORS = {
   DIAMOND_CSS: '#9b59b6',
 };
 
-// ── Button Semantic Colors ──────────────────────────────────────
-/** @const {number} Primary action button (gold) */
+// ── 버튼 시맨틱 색상 ───────────────────────────────────────────
+/** @const {number} 주요 액션 버튼 (골드) */
 export const BTN_PRIMARY = 0xc0a030;
-/** @const {number} Meta/collection button (purple) */
+/** @const {number} 메타/컬렉션 버튼 (퍼플) */
 export const BTN_META    = 0x6c3483;
-/** @const {number} Back/auxiliary button (teal) */
+/** @const {number} 뒤로가기/보조 버튼 (틸) */
 export const BTN_BACK    = 0x1a6b5e;
-/** @const {number} Inactive/sell button (grey) */
+/** @const {number} 비활성/판매 버튼 (그레이) */
 export const BTN_SELL    = 0x4a4a5a;
-/** @const {number} Danger/exit button (red) */
+/** @const {number} 위험/종료 버튼 (레드) */
 export const BTN_DANGER  = 0x8b1a2e;
-/** @const {string} Primary CSS hex */
+/** @const {string} 프라이머리 CSS 헥스값 */
 export const BTN_PRIMARY_CSS  = '#c0a030';
-/** @const {string} Meta CSS hex */
+/** @const {string} 메타 CSS 헥스값 */
 export const BTN_META_CSS     = '#9b59b6';
-/** @const {string} Back CSS hex */
+/** @const {string} 백 CSS 헥스값 */
 export const BTN_BACK_CSS     = '#1a9c7e';
-/** @const {string} Sell CSS hex */
+/** @const {string} 판매 CSS 헥스값 */
 export const BTN_SELL_CSS     = '#8a8a9a';
-/** @const {string} Danger CSS hex */
+/** @const {string} 위험 CSS 헥스값 */
 export const BTN_DANGER_CSS   = '#c0392b';
 
-/** @const {string} Gold text color as CSS hex */
+/** @const {string} 골드 텍스트 CSS 헥스 색상 */
 export const GOLD_TEXT_CSS = '#ffd700';
 
-/** @const {string} HP danger text color as CSS hex */
+/** @const {string} HP 위험 경고 텍스트 CSS 헥스 색상 */
 export const HP_DANGER_CSS = '#ff4757';
 
-// ── Codex Tier Background Colors ───────────────────────────────
-/** @const {Object<number, number>} Background colors for each tier in MergeCodexScene */
+// ── 도감 티어별 배경 색상 ───────────────────────────────────────
+/** @const {Object<number, number>} 합성도감(MergeCodexScene)에서 각 티어의 배경 색상 */
 export const CODEX_TIER_BG = {
   1: 0x1a1a2e,   // T1: basic dark
   2: 0x0d1a2e,   // T2: dark blue
@@ -129,8 +129,8 @@ export const CODEX_TIER_BG = {
   5: 0x1a0a0a,   // T5: deep red (legendary)
 };
 
-// ── Attack Type Colors ─────────────────────────────────────────
-/** @const {Object<string, number>} Attack type colors (hex) */
+// ── 공격 타입별 색상 ────────────────────────────────────────────
+/** @const {Object<string, number>} 공격 타입별 색상 (hex) */
 export const ATTACK_TYPE_COLORS = {
   single:        0xb2bec3,
   splash:        0xe17055,
@@ -139,7 +139,7 @@ export const ATTACK_TYPE_COLORS = {
   piercing_beam: 0xffeaa7,
   dot_single:    0xa8e063,
 };
-/** @const {Object<string, string>} Attack type colors (CSS hex) */
+/** @const {Object<string, string>} 공격 타입별 색상 (CSS hex) */
 export const ATTACK_TYPE_COLORS_CSS = {
   single:        '#b2bec3',
   splash:        '#e17055',
@@ -149,17 +149,22 @@ export const ATTACK_TYPE_COLORS_CSS = {
   dot_single:    '#a8e063',
 };
 
-// ── Cell Types ──────────────────────────────────────────────────
+// ── 셀 타입 ────────────────────────────────────────────────────
+/** @const {number} 빈 셀 (타워 설치 가능) */
 export const CELL_EMPTY = 0;
+/** @const {number} 경로 셀 (적 이동 경로) */
 export const CELL_PATH = 1;
+/** @const {number} 기지 셀 (방어 대상) */
 export const CELL_BASE = 2;
+/** @const {number} 스폰 셀 (적 출현 지점) */
 export const CELL_SPAWN = 3;
+/** @const {number} 벽 셀 (설치/이동 불가) */
 export const CELL_WALL = 4;
 
-// ── Map Grid (9 cols x 12 rows) ─────────────────────────────────
+// ── 맵 그리드 (9열 x 12행) ──────────────────────────────────────
 /**
- * 2D array representing the tile map.
- * 0=empty, 1=path, 2=base, 3=spawn, 4=wall
+ * 타일 맵을 나타내는 2차원 배열.
+ * 0=빈칸, 1=경로, 2=기지, 3=스폰, 4=벽
  */
 export const MAP_GRID = [
   [4, 4, 4, 4, 3, 4, 4, 4, 4],  // row 0: spawn (col 4)
@@ -176,10 +181,10 @@ export const MAP_GRID = [
   [4, 4, 4, 4, 4, 2, 4, 4, 4],  // row 11: base (col 5)
 ];
 
-// ── Path Waypoints (grid coordinates) ───────────────────────────
+// ── 경로 웨이포인트 (그리드 좌표) ───────────────────────────────
 /**
- * Ordered waypoints for enemy path from spawn to base.
- * Each entry is { col, row } in grid coordinates.
+ * 스폰에서 기지까지의 적 이동 경로 웨이포인트 (순서대로).
+ * 각 항목은 그리드 좌표 { col, row } 형식이다.
  */
 export const PATH_WAYPOINTS = [
   { col: 4, row: 0 },   // spawn
@@ -215,35 +220,35 @@ export const PATH_WAYPOINTS = [
   { col: 5, row: 11 },  // base reached
 ];
 
-// ── Economy ─────────────────────────────────────────────────────
-/** @const {number} Starting gold amount */
+// ── 경제 ────────────────────────────────────────────────────────
+/** @const {number} 시작 골드량 */
 export const INITIAL_GOLD = 250;
 
-/** @const {number} Starting base hit points */
+/** @const {number} 시작 기지 체력 */
 export const BASE_HP = 20;
 
-/** @const {number} Maximum base hit points */
+/** @const {number} 최대 기지 체력 */
 export const MAX_BASE_HP = 20;
 
-/** @const {number} Sell refund ratio (60%) */
+/** @const {number} 판매 환급 비율 (60%) */
 export const SELL_RATIO = 0.6;
 
-/** @const {number} HP threshold for danger warning */
+/** @const {number} HP 위험 경고 임계값 */
 export const HP_DANGER_THRESHOLD = 5;
 
-/** @const {number} HP blink interval in ms */
+/** @const {number} HP 깜빡임 간격 (ms) */
 export const HP_BLINK_INTERVAL = 500;
 
-// (Dragon tower lock is now managed via TOWER_STATS[type].locked field)
+// (드래곤 타워 잠금은 TOWER_STATS[type].locked 필드로 관리)
 
-// ── Tower Stats ─────────────────────────────────────────────────
+// ── 타워 스탯 ───────────────────────────────────────────────────
 /**
- * Tower statistics indexed by type.
- * levels: { 1: Lv.1 stats }
- * locked: true = needs Diamond to unlock, false/undefined = available
- * unlockCost: Diamond cost to unlock (only when locked=true)
- * cost = installation cost (Lv.1).
- * sellPrice = floor(totalInvested * 0.6)
+ * 타워 유형별 기본 스탯.
+ * - levels: { 1: Lv.1 스탯 }
+ * - locked: true = 다이아몬드 해금 필요, false/undefined = 사용 가능
+ * - unlockCost: 해금에 필요한 다이아몬드 비용 (locked=true일 때만)
+ * - cost: 설치 비용 (Lv.1)
+ * - sellPrice: floor(총 투자금 * 0.6)
  */
 export const TOWER_STATS = {
   archer: {
@@ -440,14 +445,14 @@ export const TOWER_STATS = {
   },
 };
 
-// ── Merge System ─────────────────────────────────────────────────
+// ── 합성 시스템 ─────────────────────────────────────────────────
 /**
- * Merge recipes: key = typeA+typeB (alphabetically sorted), value = merge result.
- * 102 recipes: 55 T2 (10 same-type + 45 cross-type) + 30 T3 (12 T2+T2 + 18 T2+T1) + 12 T4 + 5 T5.
+ * 합성 레시피: 키 = typeA+typeB (알파벳순 정렬), 값 = 합성 결과.
+ * 총 102개: T2 55개(동종 10 + 이종 45) + T3 30개(T2+T2 12 + T2+T1 18) + T4 12개 + T5 5개.
  * @type {Object<string, { id: string, tier: number, displayName: string, color: number }>}
  */
 export const MERGE_RECIPES = {
-  // ── Same-type merges (10) ──
+  // ── 동종 합성 (10종) ──
   'archer+archer':       { id: 'rapid_archer',   tier: 2, displayName: '연속 사격수',   color: 0x00d6a4 },
   'mage+mage':           { id: 'overload_mage',  tier: 2, displayName: '과충전 술사',   color: 0x8b7cf7 },
   'ice+ice':             { id: 'zero_field',     tier: 2, displayName: '절대 영역',     color: 0x5fa8ff },
@@ -459,7 +464,7 @@ export const MERGE_RECIPES = {
   'light+light':         { id: 'solar_burst',    tier: 2, displayName: '태양 폭발',    color: 0xffe066 },
   'dragon+dragon':       { id: 'ancient_dragon', tier: 2, displayName: '고대 용왕',    color: 0xb71c1c },
 
-  // ── Cross-type merges: archer combos (8) ──
+  // ── 이종 합성: 궁수 조합 (8종) ──
   'archer+mage':         { id: 'arcane_archer',  tier: 2, displayName: '마법 화살사',   color: 0x368bbd },
   'archer+ice':          { id: 'cryo_sniper',    tier: 2, displayName: '냉동 저격수',   color: 0x3ab8ca },
   'archer+lightning':    { id: 'shock_arrow',    tier: 2, displayName: '전격 화살',     color: 0x7ec281 },
@@ -469,7 +474,7 @@ export const MERGE_RECIPES = {
   'archer+wind':         { id: 'gale_arrow',     tier: 2, displayName: '폭풍 화살',     color: 0x40d2c0 },
   'archer+light':        { id: 'holy_arrow',     tier: 2, displayName: '신성 화살',     color: 0x7fd19e },
 
-  // ── Cross-type merges: mage combos (7) ──
+  // ── 이종 합성: 마법사 조합 (7종) ──
   'ice+mage':            { id: 'frost_mage',     tier: 2, displayName: '서리 술사',     color: 0x7080f3 },
   'lightning+mage':      { id: 'storm_mage',     tier: 2, displayName: '폭풍 마법사',   color: 0xb494aa },
   'flame+mage':          { id: 'pyromancer',     tier: 2, displayName: '화염 술사',     color: 0xa7666e },
@@ -478,7 +483,7 @@ export const MERGE_RECIPES = {
   'mage+wind':           { id: 'vacuum_mage',    tier: 2, displayName: '진공 마법사',   color: 0x76a4ea },
   'light+mage':          { id: 'radiant_mage',   tier: 2, displayName: '성광 마법사',   color: 0xb5a3c7 },
 
-  // ── Cross-type merges: ice combos (6) ──
+  // ── 이종 합성: 얼음 조합 (6종) ──
   'ice+lightning':       { id: 'thunder_frost',  tier: 2, displayName: '전격 빙결',     color: 0xb8d2b7 },
   'flame+ice':           { id: 'cryo_flame',     tier: 2, displayName: '냉열 교차',     color: 0xabc4aa },
   'ice+rock':            { id: 'glacier',        tier: 2, displayName: '빙산',         color: 0x6b9eb9 },
@@ -486,32 +491,32 @@ export const MERGE_RECIPES = {
   'ice+wind':            { id: 'blizzard',       tier: 2, displayName: '빙풍',         color: 0x7bd4f6 },
   'ice+light':           { id: 'holy_ice',       tier: 2, displayName: '성빙',         color: 0xb9d2d3 },
 
-  // ── Cross-type merges: lightning combos (5) ──
+  // ── 이종 합성: 번개 조합 (5종) ──
   'flame+lightning':     { id: 'thunder_fire',   tier: 2, displayName: '벼락불',       color: 0xf09e62 },
   'lightning+rock':      { id: 'thunder_strike', tier: 2, displayName: '천둥 강타',     color: 0xb09d70 },
   'lightning+poison':    { id: 'toxic_shock',    tier: 2, displayName: '독전기',       color: 0xd3d069 },
   'lightning+wind':      { id: 'storm_bolt',     tier: 2, displayName: '폭풍 전격',     color: 0xbfdbad },
   'light+lightning':     { id: 'holy_thunder',   tier: 2, displayName: '신성 번개',     color: 0xfde08b },
 
-  // ── Cross-type merges: flame combos (4) ──
+  // ── 이종 합성: 불꽃 조합 (4종) ──
   'flame+rock':          { id: 'magma_shot',     tier: 2, displayName: '용암탄',       color: 0xa26f64 },
   'flame+poison':        { id: 'venom_fire',     tier: 2, displayName: '맹독 화염',     color: 0xc4a85c },
   'flame+wind':          { id: 'fire_storm',     tier: 2, displayName: '화염 폭풍',     color: 0xb12e71 },
   'flame+light':         { id: 'solar_flame',    tier: 2, displayName: '태양광 화염',   color: 0xf0c57e },
 
-  // ── Cross-type merges: rock combos (3) ──
+  // ── 이종 합성: 바위 조합 (3종) ──
   'poison+rock':         { id: 'toxic_boulder',  tier: 2, displayName: '독암',         color: 0x86a76b },
   'rock+wind':           { id: 'stone_gale',     tier: 2, displayName: '바위 폭풍',     color: 0x72adaf },
   'light+rock':          { id: 'holy_stone',     tier: 2, displayName: '성광 바위',     color: 0xb1ac8d },
 
-  // ── Cross-type merges: poison combos (2) ──
+  // ── 이종 합성: 독 조합 (2종) ──
   'poison+wind':         { id: 'toxic_gale',     tier: 2, displayName: '독풍',         color: 0x94e6a6 },
   'light+poison':        { id: 'purge_venom',    tier: 2, displayName: '정화의 독',     color: 0xd3e285 },
 
-  // ── Cross-type merges: wind combos (1) ──
+  // ── 이종 합성: 바람 조합 (1종) ──
   'light+wind':          { id: 'radiant_gale',   tier: 2, displayName: '성광 폭풍',     color: 0xc0e7ca },
 
-  // ── Cross-type merges: dragon combos (9) ──
+  // ── 이종 합성: 드래곤 조합 (9종) ──
   'archer+dragon':       { id: 'dragon_rider',   tier: 2, displayName: '용기병',       color: 0x6b9463 },
   'dragon+mage':         { id: 'dragon_mage',    tier: 2, displayName: '용마법사',     color: 0xa1468c },
   'dragon+ice':          { id: 'frost_dragon',   tier: 2, displayName: '빙룡',         color: 0xa37498 },
@@ -587,8 +592,8 @@ export const MERGE_RECIPES = {
 };
 
 /**
- * Stats for merged towers, keyed by merge result ID.
- * 102 stat blocks: 55 T2 + 30 T3 + 12 T4 + 5 T5.
+ * 합성 타워 스탯. 합성 결과 ID를 키로 사용.
+ * 총 102개 스탯 블록: T2 55개 + T3 30개 + T4 12개 + T5 5개.
  * @type {Object<string, object>}
  */
 export const MERGED_TOWER_STATS = {
@@ -1302,21 +1307,21 @@ export const MERGED_TOWER_STATS = {
 };
 
 /**
- * Get a canonical merge key from two tower type/merge IDs.
- * Sorts alphabetically and joins with '+'.
- * @param {string} typeA - Tower type or merge ID
- * @param {string} typeB - Tower type or merge ID
- * @returns {string} Sorted merge key (e.g. 'archer+mage')
+ * 두 타워 유형/합성 ID로 정규화된 합성 키를 생성한다.
+ * 알파벳순으로 정렬 후 '+'로 결합한다.
+ * @param {string} typeA - 타워 유형 또는 합성 ID
+ * @param {string} typeB - 타워 유형 또는 합성 ID
+ * @returns {string} 정렬된 합성 키 (예: 'archer+mage')
  */
 export function getMergeKey(typeA, typeB) {
   return [typeA, typeB].sort().join('+');
 }
 
 /**
- * Look up a merge recipe result for two tower type/merge IDs.
- * @param {string} typeA - Tower type or merge ID
- * @param {string} typeB - Tower type or merge ID
- * @returns {object|null} Merge recipe result or null if not found
+ * 두 타워 유형/합성 ID의 합성 레시피 결과를 조회한다.
+ * @param {string} typeA - 타워 유형 또는 합성 ID
+ * @param {string} typeB - 타워 유형 또는 합성 ID
+ * @returns {object|null} 합성 결과 객체 또는 레시피 미존재 시 null
  */
 export function getMergeResult(typeA, typeB) {
   const key = getMergeKey(typeA, typeB);
@@ -1324,18 +1329,18 @@ export function getMergeResult(typeA, typeB) {
 }
 
 /**
- * Check if a tower is mergeable (enhanceLevel must be 0).
- * @param {{ enhanceLevel: number }} tower - Tower instance
- * @returns {boolean}
+ * 타워가 합성 가능한지 확인한다 (강화 레벨이 0이어야 합성 가능).
+ * @param {{ enhanceLevel: number }} tower - 타워 인스턴스
+ * @returns {boolean} 합성 가능 여부
  */
 export function isMergeable(tower) {
   return tower.enhanceLevel === 0;
 }
 
 /**
- * Check if a tower type or merge ID is used as a merge ingredient in any recipe.
- * @param {string} id - Tower type or merge ID
- * @returns {boolean}
+ * 특정 타워 유형 또는 합성 ID가 다른 레시피의 재료로 사용되는지 확인한다.
+ * @param {string} id - 타워 유형 또는 합성 ID
+ * @returns {boolean} 재료로 사용되는지 여부
  */
 export function isUsedAsMergeIngredient(id) {
   for (const key of Object.keys(MERGE_RECIPES)) {
@@ -1345,9 +1350,11 @@ export function isUsedAsMergeIngredient(id) {
   return false;
 }
 
-// ── Enemy Base Stats ────────────────────────────────────────────
+// ── 적 기본 스탯 ────────────────────────────────────────────────
 /**
- * Base enemy statistics by type.
+ * 적 유형별 기본 스탯.
+ * hp: 체력, speed: 이동 속도, gold: 처치 보상, damage: 기지 피해,
+ * color: 표시 색상, radius/size: 크기, shape: 도형, immunities: 면역 목록
  */
 export const ENEMY_STATS = {
   normal: {
@@ -1430,11 +1437,11 @@ export const ENEMY_STATS = {
   },
 };
 
-// ── Wave Definitions (R1~R20) ───────────────────────────────────
+// ── 웨이브 정의 (R1~R20) ────────────────────────────────────────
 /**
- * Predefined wave compositions for rounds 1-20.
- * Each entry: { enemies: [{type, count}], spawnInterval: seconds }
- * Enemies spawn in order listed.
+ * 라운드 1~20의 미리 정의된 웨이브 구성.
+ * 각 항목: { enemies: [{type, count}], spawnInterval: 초 }
+ * 적은 나열 순서대로 스폰된다.
  */
 export const WAVE_DEFINITIONS = [
   null, // index 0 unused (rounds are 1-based)
@@ -1480,7 +1487,7 @@ export const WAVE_DEFINITIONS = [
   { enemies: [{ type: 'boss_armored', count: 1 }, { type: 'tank', count: 5 }, { type: 'normal', count: 15 }], spawnInterval: 1.0, bossRound: true, bossDelay: 5.0 },
 ];
 
-// ── Scaling Constants (R21+) ────────────────────────────────────
+// ── 스케일링 상수 (R21 이후) ─────────────────────────────────────
 export const SCALING = {
   BASE_COUNT_ADD: 8,
   COUNT_PER_ROUND: 1.2,
@@ -1504,29 +1511,30 @@ export const SCALING = {
   ARMORED_SPAWN_CHANCE: 0.12,
 };
 
-// ── Wave Flow ───────────────────────────────────────────────────
-/** @const {number} Duration to display wave start text (ms) */
+// ── 웨이브 흐름 ─────────────────────────────────────────────────
+/** @const {number} 웨이브 시작 텍스트 표시 시간 (ms) */
 export const WAVE_ANNOUNCE_DURATION = 1500;
 
-/** @const {number} Duration to display wave clear text (ms) */
+/** @const {number} 웨이브 클리어 텍스트 표시 시간 (ms) */
 export const WAVE_CLEAR_DURATION = 1500;
 
-/** @const {number} Delay between waves in seconds */
+/** @const {number} 웨이브 간 대기 시간 (초) */
 export const WAVE_BREAK_DURATION = 3.0;
 
-// ── Bonus Gold Formula ──────────────────────────────────────────
+// ── 보너스 골드 공식 ────────────────────────────────────────────
 /**
- * Calculate wave clear bonus gold.
- * @param {number} round - Current round number
- * @param {number} currentHP - Current base HP
- * @param {number} maxHP - Maximum base HP
- * @returns {number} Bonus gold amount
+ * 웨이브 클리어 보너스 골드를 계산한다.
+ * 공식: round * 4 + floor(currentHP / maxHP * 15)
+ * @param {number} round - 현재 라운드 번호
+ * @param {number} currentHP - 현재 기지 체력
+ * @param {number} maxHP - 최대 기지 체력
+ * @returns {number} 보너스 골드량
  */
 export function calcWaveClearBonus(round, currentHP, maxHP) {
   return round * 4 + Math.floor(currentHP / maxHP * 15);
 }
 
-// ── Visual Constants ────────────────────────────────────────────
+// ── 시각 효과 상수 ──────────────────────────────────────────────
 export const VISUALS = {
   RANGE_FILL_ALPHA: 0.15,
   RANGE_STROKE_ALPHA: 0.4,
@@ -1546,7 +1554,7 @@ export const VISUALS = {
   BOSS_ARMORED_HP_BAR_HEIGHT: 8,
 };
 
-// ── Projectile Sizes ────────────────────────────────────────────
+// ── 투사체 크기 ─────────────────────────────────────────────────
 export const PROJECTILE_SIZE = {
   archer: 3,
   mage: 5,
@@ -1560,7 +1568,7 @@ export const PROJECTILE_SIZE = {
   dragon: 8,
 };
 
-// ── Tower Shape Sizes ───────────────────────────────────────────
+// ── 타워 도형 크기 ──────────────────────────────────────────────
 export const TOWER_SHAPE_SIZE = {
   archer: 28,
   mage: 14,  // radius
@@ -1574,23 +1582,25 @@ export const TOWER_SHAPE_SIZE = {
   dragon: 40,
 };
 
-// ── localStorage Key ────────────────────────────────────────────
+// ── localStorage 키 ─────────────────────────────────────────────
+/** @const {string} 게임 세이브 데이터 localStorage 키 */
 export const SAVE_KEY = 'fantasy-td-save';
 
-/** @const {string} Sound settings localStorage key */
+/** @const {string} 사운드 설정 localStorage 키 */
 export const SOUND_SAVE_KEY = 'fantasy-td-sound';
 
-// ── Speed Settings ──────────────────────────────────────────────
+// ── 게임 속도 설정 ──────────────────────────────────────────────
 export const SPEED_NORMAL = 1.0;
 export const SPEED_FAST = 2.0;
 export const SPEED_TURBO = 3.0;
 
-// ── Coordinate Helpers ──────────────────────────────────────────
+// ── 좌표 변환 헬퍼 ──────────────────────────────────────────────
 /**
- * Convert grid coordinates to pixel center coordinates.
- * @param {number} col - Grid column (0-indexed)
- * @param {number} row - Grid row (0-indexed)
- * @returns {{ x: number, y: number }} Pixel center coordinates
+ * 그리드 좌표를 픽셀 중심 좌표로 변환한다.
+ * HUD 높이를 Y 오프셋으로 반영한다.
+ * @param {number} col - 그리드 열 (0부터 시작)
+ * @param {number} row - 그리드 행 (0부터 시작)
+ * @returns {{ x: number, y: number }} 픽셀 중심 좌표
  */
 export function gridToPixel(col, row) {
   return {
@@ -1600,10 +1610,11 @@ export function gridToPixel(col, row) {
 }
 
 /**
- * Convert pixel coordinates to grid coordinates.
- * @param {number} x - Pixel X coordinate
- * @param {number} y - Pixel Y coordinate
- * @returns {{ col: number, row: number }} Grid coordinates
+ * 픽셀 좌표를 그리드 좌표로 변환한다.
+ * HUD 높이를 Y 오프셋에서 차감한다.
+ * @param {number} x - 픽셀 X 좌표
+ * @param {number} y - 픽셀 Y 좌표
+ * @returns {{ col: number, row: number }} 그리드 좌표
  */
 export function pixelToGrid(x, y) {
   return {
@@ -1612,54 +1623,56 @@ export function pixelToGrid(x, y) {
   };
 }
 
-// ── Tower Enhancement (Lv.3+ Gold Sink) ──────────────────────
-/** @const {number} Maximum enhancement level for Lv.3 towers */
+// ── 타워 강화 (골드 소비처) ──────────────────────────────────────
+/** @const {number} 최대 강화 레벨 */
 export const MAX_ENHANCE_LEVEL = 10;
 
-/** @const {number} Base cost for first enhancement */
+/** @const {number} 첫 번째 강화 기본 비용 */
 export const ENHANCE_BASE_COST = 200;
 
-/** @const {number} Cost increment per enhancement level */
+/** @const {number} 강화 레벨당 비용 증가분 */
 export const ENHANCE_COST_INCREMENT = 100;
 
-/** @const {number} Stat bonus per enhancement level (5% compound) */
+/** @const {number} 강화 레벨당 스탯 보너스 (5% 복리) */
 export const ENHANCE_STAT_BONUS = 0.05;
 
 /**
- * Calculate enhancement cost for a given level.
- * @param {number} level - Enhancement level (1-based, the level being purchased)
- * @returns {number} Gold cost
+ * 특정 레벨의 강화 비용을 계산한다.
+ * 공식: ENHANCE_BASE_COST + (level - 1) * ENHANCE_COST_INCREMENT
+ * @param {number} level - 강화 레벨 (1부터 시작, 구매하려는 레벨)
+ * @returns {number} 골드 비용
  */
 export function calcEnhanceCost(level) {
   return ENHANCE_BASE_COST + (level - 1) * ENHANCE_COST_INCREMENT;
 }
 
-// ── HP Recovery (Gold Sink) ──────────────────────────────────
-/** @const {number} Base cost for first HP recovery */
+// ── HP 회복 (골드 소비처) ────────────────────────────────────────
+/** @const {number} 첫 HP 회복 기본 비용 */
 export const HP_RECOVER_BASE_COST = 100;
 
-/** @const {number} Cost increment per use */
+/** @const {number} 사용 횟수당 비용 증가분 */
 export const HP_RECOVER_COST_INCREMENT = 50;
 
-/** @const {number} HP recovered per use */
+/** @const {number} 1회 사용당 HP 회복량 */
 export const HP_RECOVER_AMOUNT = 5;
 
 /**
- * Calculate HP recovery cost based on use count.
- * @param {number} useCount - Number of times already used (0-based)
- * @returns {number} Gold cost
+ * 사용 횟수에 따른 HP 회복 비용을 계산한다.
+ * 공식: HP_RECOVER_BASE_COST + useCount * HP_RECOVER_COST_INCREMENT
+ * @param {number} useCount - 이미 사용한 횟수 (0부터 시작)
+ * @returns {number} 골드 비용
  */
 export function calcHpRecoverCost(useCount) {
   return HP_RECOVER_BASE_COST + useCount * HP_RECOVER_COST_INCREMENT;
 }
 
-// ── Consumable Abilities (Gold Sink) ─────────────────────────
+// ── 소모품 능력 (골드 소비처) ────────────────────────────────────
 /**
- * Consumable ability definitions.
- * baseCost: initial gold cost
- * costIncrement: cost increase per use
- * cooldown: cooldown in seconds
- * duration: effect duration in seconds (0 = instant)
+ * 소모품 능력 정의.
+ * - baseCost: 최초 골드 비용
+ * - costIncrement: 사용당 비용 증가분
+ * - cooldown: 쿨다운 (초)
+ * - duration: 효과 지속 시간 (초, 0 = 즉발)
  */
 export const CONSUMABLE_ABILITIES = {
   slowAll: {

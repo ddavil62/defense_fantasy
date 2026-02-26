@@ -1,46 +1,51 @@
 /**
- * @fileoverview MenuScene - Title screen with game name, best record, Diamond display,
- * GAME START, COLLECTION, and STATISTICS buttons.
+ * @fileoverview 메인 메뉴 씬(MenuScene).
+ * 게임 타이틀, 최고 기록, 다이아몬드 보유량을 표시하고
+ * GAME START / COLLECTION / STATISTICS 버튼과 음소거 토글을 제공한다.
  *
- * Phase 5: Added menu BGM playback and mute toggle button.
- * Phase 6: Added STATISTICS button.
- * UI Redesign Phase 1: Dark fantasy theme - gold rune lines, constellation decoration,
- * gold title glow, semantic button colors, purple diamond display.
+ * 다크 판타지 테마: 골드 룬 라인, 별자리 장식, 타이틀 글로우,
+ * 시맨틱 버튼 컬러, 퍼플 다이아몬드 표시.
  */
 
 import { GAME_WIDTH, GAME_HEIGHT, COLORS, BTN_PRIMARY, BTN_META, BTN_BACK, BTN_SELL, BTN_META_CSS, BTN_BACK_CSS, BTN_SELL_CSS } from '../config.js';
 
+/**
+ * 타이틀 화면 씬.
+ * 게임 시작, 컬렉션, 통계 진입, BGM 재생 및 음소거 토글을 담당한다.
+ * @extends Phaser.Scene
+ */
 export class MenuScene extends Phaser.Scene {
   constructor() {
     super({ key: 'MenuScene' });
   }
 
   /**
-   * Create the menu UI elements.
+   * 메뉴 UI 요소를 생성한다.
+   * 배경, 별자리 장식, 타이틀, 다이아몬드/기록 표시, 버튼, 음소거 토글 순서로 배치한다.
    */
   create() {
     const centerX = GAME_WIDTH / 2;
 
-    // Background
+    // ── 배경 ──
     this.add.rectangle(centerX, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, COLORS.BACKGROUND);
 
-    // Constellation decoration: random white dots (stars)
+    // ── 별자리 장식: 랜덤 위치에 흰색 점(별) 30~40개 ──
     const starGfx = this.add.graphics();
-    const starCount = 30 + Math.floor(Math.random() * 11); // 30~40
+    const starCount = 30 + Math.floor(Math.random() * 11);
     for (let i = 0; i < starCount; i++) {
       const sx = Math.random() * GAME_WIDTH;
       const sy = Math.random() * GAME_HEIGHT;
-      const sa = 0.2 + Math.random() * 0.3; // alpha 0.2~0.5
-      const sr = 0.5 + Math.random() * 1.0; // radius 0.5~1.5
+      const sa = 0.2 + Math.random() * 0.3;   // 투명도 0.2~0.5
+      const sr = 0.5 + Math.random() * 1.0;   // 반지름 0.5~1.5px
       starGfx.fillStyle(0xffffff, sa);
       starGfx.fillCircle(sx, sy, sr);
     }
 
-    // Decorative top/bottom rune lines (gold, alpha 0.6)
+    // ── 상/하단 장식용 골드 룬 라인 (alpha 0.6) ──
     this.add.rectangle(centerX, 30, GAME_WIDTH - 40, 2, 0xc0a030).setAlpha(0.6);
     this.add.rectangle(centerX, GAME_HEIGHT - 30, GAME_WIDTH - 40, 2, 0xc0a030).setAlpha(0.6);
 
-    // Title text with gold color and glow effect
+    // ── 타이틀 텍스트 (골드 + 그림자 글로우) ──
     this.add.text(centerX, 190, 'Fantasy\nTower Defense', {
       fontSize: '28px',
       fontFamily: 'Arial, sans-serif',
@@ -57,7 +62,7 @@ export class MenuScene extends Phaser.Scene {
       },
     }).setOrigin(0.5);
 
-    // Diamond display (purple)
+    // ── 다이아몬드 보유량 (퍼플) ──
     const saveData = this.registry.get('saveData');
     const diamond = saveData?.diamond || 0;
     this.add.text(centerX, 280, `\u25C6 ${diamond}`, {
@@ -67,7 +72,7 @@ export class MenuScene extends Phaser.Scene {
       align: 'center',
     }).setOrigin(0.5);
 
-    // Best record display
+    // ── 최고 기록 표시 ──
     if (saveData && saveData.bestRound > 0) {
       this.add.text(centerX, 315, `Best: Round ${saveData.bestRound}`, {
         fontSize: '18px',
@@ -84,7 +89,7 @@ export class MenuScene extends Phaser.Scene {
       }).setOrigin(0.5);
     }
 
-    // GAME START button (gold primary, dark text for contrast)
+    // ── GAME START 버튼 (골드 프라이머리, 대비를 위해 어두운 텍스트) ──
     const startBg = this.add.rectangle(centerX, 400, 160, 44, BTN_PRIMARY)
       .setInteractive({ useHandCursor: true })
       .setStrokeStyle(2, 0xffd700);
@@ -97,7 +102,7 @@ export class MenuScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     startBg.on('pointerdown', () => {
-      // Phase 5: Stop menu BGM before starting game
+      // 게임 시작 전 메뉴 BGM 정지
       const sm = this.registry.get('soundManager');
       if (sm) {
         sm.stopBgm(false);
@@ -108,7 +113,7 @@ export class MenuScene extends Phaser.Scene {
     startBg.on('pointerover', () => startBg.setFillStyle(0xd4b440));
     startBg.on('pointerout', () => startBg.setFillStyle(BTN_PRIMARY));
 
-    // COLLECTION button (purple meta)
+    // ── COLLECTION 버튼 (퍼플 메타) ──
     const collBg = this.add.rectangle(centerX, 458, 160, 40, BTN_META)
       .setInteractive({ useHandCursor: true })
       .setStrokeStyle(2, COLORS.DIAMOND);
@@ -127,7 +132,7 @@ export class MenuScene extends Phaser.Scene {
     collBg.on('pointerover', () => collBg.setFillStyle(0x7d3f96));
     collBg.on('pointerout', () => collBg.setFillStyle(BTN_META));
 
-    // STATISTICS button (teal back)
+    // ── STATISTICS 버튼 (틸 백) ──
     const statsBg = this.add.rectangle(centerX, 510, 160, 40, BTN_BACK)
       .setInteractive({ useHandCursor: true })
       .setStrokeStyle(1, 0x1a9c7e);
@@ -146,7 +151,7 @@ export class MenuScene extends Phaser.Scene {
     statsBg.on('pointerover', () => statsBg.setFillStyle(0x1f7d6e));
     statsBg.on('pointerout', () => statsBg.setFillStyle(BTN_BACK));
 
-    // Phase 5: Mute toggle button (unified style: active=BTN_BACK, inactive=BTN_SELL)
+    // ── 음소거 토글 버튼 (활성: BTN_BACK 틸, 비활성: BTN_SELL 그레이) ──
     /** @type {import('../managers/SoundManager.js').SoundManager|null} */
     const sm = this.registry.get('soundManager');
     if (sm) {
@@ -174,7 +179,7 @@ export class MenuScene extends Phaser.Scene {
         muteBg.setStrokeStyle(1, m ? 0x636e72 : 0x1a9c7e);
       });
 
-      // Play menu BGM
+      // 메뉴 BGM 재생
       sm.playBgm('menu');
     }
   }

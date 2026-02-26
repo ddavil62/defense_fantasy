@@ -1,7 +1,8 @@
 /**
- * @fileoverview CollectionScene - Tower meta-upgrade collection mode.
- * Two-tab layout: (1) Meta Upgrades, (2) Merge Codex (navigates to MergeCodexScene).
- * Provides detail overlay views for purchasing permanent upgrades with Diamond currency.
+ * @fileoverview CollectionScene - 타워 메타 업그레이드 컬렉션 씬.
+ * 두 개의 탭으로 구성된다: (1) 메타 업그레이드 - 다이아몬드로 영구 업그레이드 구매,
+ * (2) 합성 도감 - MergeCodexScene으로 이동하여 합성 레시피를 열람한다.
+ * 타워 카드 그리드, 유틸리티 업그레이드, 잠금 해제 팝업, 상세 오버레이를 제공한다.
  */
 
 import {
@@ -11,73 +12,88 @@ import {
 } from '../config.js';
 import { t } from '../i18n.js';
 
-/** @const {string[]} Tower type order for the card grid */
+// ── 타워 카드 그리드 상수 ─────────────────────────────────────
+
+/** @const {string[]} 타워 카드 표시 순서 */
 const TOWER_ORDER = [
   'archer', 'mage', 'ice', 'lightning',
   'flame', 'rock', 'poison', 'wind',
   'light', 'dragon',
 ];
 
-/** @const {string[]} Utility upgrade keys in display order */
+/** @const {string[]} 유틸리티 업그레이드 표시 순서 */
 const UTILITY_ORDER = ['baseHp', 'goldBoost', 'waveBonus'];
 
-// ── Meta Upgrade Tab Constants ──────────────────────────────────
-/** @const {number} Tower card width */
+/** @const {number} 타워 카드 너비 (px) */
 const CARD_W = 76;
-/** @const {number} Tower card height */
+/** @const {number} 타워 카드 높이 (px) */
 const CARD_H = 90;
-/** @const {number} Card grid gap */
+/** @const {number} 카드 간 간격 (px) */
 const CARD_GAP = 8;
-/** @const {number} Grid columns */
+/** @const {number} 그리드 열 수 */
 const META_GRID_COLS = 4;
-/** @const {number} Grid start X */
+/** @const {number} 그리드 시작 X 좌표 */
 const META_GRID_X = 16;
-/** @const {number} Grid start Y (below tab bar) */
+/** @const {number} 그리드 시작 Y 좌표 (탭 바 아래) */
 const META_GRID_Y = 96;
 
-/** @const {number} Utility card width */
+/** @const {number} 유틸리티 카드 너비 (px) */
 const UTIL_W = 104;
-/** @const {number} Utility card height */
+/** @const {number} 유틸리티 카드 높이 (px) */
 const UTIL_H = 80;
 
-// ── Tab Bar Constants ───────────────────────────────────────────
+// ── 탭 바 상수 ────────────────────────────────────────────────
+
+/** @const {number} 탭 바 Y 좌표 */
 const TAB_Y = 48;
+/** @const {number} 탭 바 높이 */
 const TAB_H = 36;
+/** @const {number} 탭 버튼 너비 */
 const TAB_W = 165;
 
 
+/**
+ * 컬렉션(메타 업그레이드) 씬 클래스.
+ * 다이아몬드 재화를 사용하여 타워별 영구 강화와 유틸리티 업그레이드를 구매하는 화면이다.
+ * @extends Phaser.Scene
+ */
 export class CollectionScene extends Phaser.Scene {
+  /**
+   * CollectionScene 인스턴스를 생성한다.
+   */
   constructor() {
     super({ key: 'CollectionScene' });
   }
 
   /**
-   * Initialize scene state.
+   * 씬 초기 상태를 설정한다.
+   * 매 씬 시작 시 호출되어 상태 변수를 초기화한다.
    */
   init() {
-    /** @type {object} Current save data reference */
+    /** @type {object} 현재 세이브 데이터 참조 */
     this.saveData = null;
 
-    /** @type {Phaser.GameObjects.Text|null} Diamond display text */
+    /** @type {Phaser.GameObjects.Text|null} 다이아몬드 보유량 텍스트 */
     this.diamondText = null;
 
-    /** @type {Phaser.GameObjects.Container|null} Active overlay container */
+    /** @type {Phaser.GameObjects.Container|null} 현재 활성 오버레이 컨테이너 */
     this.overlay = null;
 
-    /** @type {'meta'|'codex'} Currently active main tab */
+    /** @type {'meta'|'codex'} 현재 활성 메인 탭 */
     this.activeTab = 'meta';
 
-    /** @type {Phaser.GameObjects.Container|null} Tab content container */
+    /** @type {Phaser.GameObjects.Container|null} 탭 콘텐츠 컨테이너 */
     this.tabContent = null;
   }
 
   /**
-   * Create the collection UI.
+   * 컬렉션 UI를 생성한다.
+   * 배경, 상단 바, 탭 바를 구성하고 기본 탭(메타 업그레이드)을 표시한다.
    */
   create() {
     this.saveData = this.registry.get('saveData') || {};
 
-    // Background
+    // 배경
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, COLORS.BACKGROUND);
 
     this._createTopBar();
@@ -85,17 +101,18 @@ export class CollectionScene extends Phaser.Scene {
     this._showTab(this.activeTab);
   }
 
-  // ── Top Bar ──────────────────────────────────────────────────
+  // ── 상단 바 ─────────────────────────────────────────────────
 
   /**
-   * Create the top navigation bar with BACK button, title, and Diamond display.
+   * 상단 내비게이션 바를 생성한다.
+   * BACK 버튼(MenuScene 복귀), COLLECTION 타이틀, 다이아몬드 보유량을 포함한다.
    * @private
    */
   _createTopBar() {
-    // Background
+    // 배경
     this.add.rectangle(GAME_WIDTH / 2, 24, GAME_WIDTH, 48, COLORS.HUD_BG);
 
-    // BACK button
+    // BACK 버튼 - 메인 메뉴로 복귀
     const backBg = this.add.rectangle(38, 24, 60, 28, 0x000000, 0)
       .setStrokeStyle(1, 0x636e72)
       .setInteractive({ useHandCursor: true });
@@ -110,7 +127,7 @@ export class CollectionScene extends Phaser.Scene {
       this.scene.start('MenuScene');
     });
 
-    // Title
+    // 타이틀
     this.add.text(180, 24, 'COLLECTION', {
       fontSize: '18px',
       fontFamily: 'Arial, sans-serif',
@@ -118,7 +135,7 @@ export class CollectionScene extends Phaser.Scene {
       fontStyle: 'bold',
     }).setOrigin(0.5);
 
-    // Diamond display
+    // 다이아몬드 보유량 표시
     const diamond = this.saveData.diamond || 0;
     this.diamondText = this.add.text(352, 24, `\u25C6 ${diamond}`, {
       fontSize: '16px',
@@ -128,7 +145,7 @@ export class CollectionScene extends Phaser.Scene {
   }
 
   /**
-   * Refresh the Diamond display text.
+   * 다이아몬드 보유량 텍스트를 현재 세이브 데이터 기준으로 갱신한다.
    * @private
    */
   _refreshDiamondDisplay() {
@@ -137,10 +154,10 @@ export class CollectionScene extends Phaser.Scene {
     }
   }
 
-  // ── Tab Bar ──────────────────────────────────────────────────
+  // ── 탭 바 ──────────────────────────────────────────────────
 
   /**
-   * Create the main tab bar with "Meta Upgrade" and "Merge Codex" tabs.
+   * "메타 업그레이드"와 "합성 도감" 두 개의 메인 탭 바를 생성한다.
    * @private
    */
   _createTabBar() {
@@ -149,7 +166,8 @@ export class CollectionScene extends Phaser.Scene {
   }
 
   /**
-   * Render tab bar buttons reflecting current active tab.
+   * 현재 활성 탭 상태를 반영하여 탭 바 버튼을 (재)렌더링한다.
+   * 활성 탭은 하단 강조선과 볼드 텍스트로 표시한다.
    * @private
    */
   _renderTabBar() {
@@ -159,7 +177,7 @@ export class CollectionScene extends Phaser.Scene {
     const leftX = GAME_WIDTH / 2 - TAB_W / 2 - 2;
     const rightX = GAME_WIDTH / 2 + TAB_W / 2 + 2;
 
-    // Meta Upgrade tab
+    // 메타 업그레이드 탭
     const metaActive = this.activeTab === 'meta';
     const metaBg = this.add.rectangle(leftX, tabCenterY, TAB_W, TAB_H,
       metaActive ? COLORS.UI_PANEL : COLORS.BACKGROUND);
@@ -187,7 +205,7 @@ export class CollectionScene extends Phaser.Scene {
       }
     });
 
-    // Codex tab
+    // 합성 도감 탭
     const codexActive = this.activeTab === 'codex';
     const codexBg = this.add.rectangle(rightX, tabCenterY, TAB_W, TAB_H,
       codexActive ? COLORS.UI_PANEL : COLORS.BACKGROUND);
@@ -208,13 +226,15 @@ export class CollectionScene extends Phaser.Scene {
 
     codexBg.setInteractive({ useHandCursor: true });
     codexBg.on('pointerdown', () => {
+      // 합성 도감은 별도 씬(MergeCodexScene)으로 전환
       this.scene.start('MergeCodexScene', { fromScene: 'CollectionScene' });
     });
   }
 
   /**
-   * Switch tab content.
-   * @param {'meta'|'codex'} tab
+   * 탭 콘텐츠를 전환한다.
+   * 기존 콘텐츠를 파괴하고 선택된 탭에 맞는 콘텐츠를 새로 구성한다.
+   * @param {'meta'|'codex'} tab - 표시할 탭 식별자
    * @private
    */
   _showTab(tab) {
@@ -231,11 +251,12 @@ export class CollectionScene extends Phaser.Scene {
   }
 
   // ══════════════════════════════════════════════════════════════
-  // TAB 1: META UPGRADES
+  // 탭 1: 메타 업그레이드
   // ══════════════════════════════════════════════════════════════
 
   /**
-   * Build the meta upgrade tab content.
+   * 메타 업그레이드 탭의 콘텐츠를 구성한다.
+   * 타워 카드 그리드와 유틸리티 업그레이드 섹션으로 구성된다.
    * @private
    */
   _buildMetaTab() {
@@ -243,10 +264,11 @@ export class CollectionScene extends Phaser.Scene {
     this._createUtilitySection();
   }
 
-  // ── Tower Cards ──────────────────────────────────────────────
+  // ── 타워 카드 그리드 ────────────────────────────────────────
 
   /**
-   * Create the tower card grid (4-4-2 layout).
+   * 타워 카드 그리드를 4-4-2 레이아웃으로 생성한다.
+   * 총 10종의 타워를 4열로 배치한다.
    * @private
    */
   _createTowerCards() {
@@ -261,10 +283,12 @@ export class CollectionScene extends Phaser.Scene {
   }
 
   /**
-   * Create a single tower card.
-   * @param {string} type - Tower type key
-   * @param {number} x - Top-left X position
-   * @param {number} y - Top-left Y position
+   * 개별 타워 카드를 생성한다.
+   * 잠금된 타워는 자물쇠 아이콘과 해제 비용을 표시하고,
+   * 잠금 해제된 타워는 아이콘, 이름, 현재 메타 티어를 표시한다.
+   * @param {string} type - 타워 타입 키
+   * @param {number} x - 카드 좌상단 X 좌표
+   * @param {number} y - 카드 좌상단 Y 좌표
    * @private
    */
   _createTowerCard(type, x, y) {
@@ -276,14 +300,14 @@ export class CollectionScene extends Phaser.Scene {
     const cy = y + CARD_H / 2;
 
     if (!isUnlocked) {
-      // Locked tower card
+      // ── 잠금된 타워 카드 ──
       const bg = this.add.rectangle(cx, cy, CARD_W, CARD_H, COLORS.BACKGROUND)
         .setAlpha(0.6)
         .setStrokeStyle(2, 0x636e72)
         .setInteractive({ useHandCursor: true });
       this.tabContent.add(bg);
 
-      // Lock icon
+      // 자물쇠 아이콘
       const lockG = this.add.graphics();
       lockG.fillStyle(0x636e72, 0.8);
       lockG.fillRect(cx - 7, y + 20 - 2, 14, 10);
@@ -295,7 +319,7 @@ export class CollectionScene extends Phaser.Scene {
       lockG.fillCircle(cx, y + 20 + 2, 2);
       this.tabContent.add(lockG);
 
-      // Name
+      // 타워 이름
       const nameText = this.add.text(cx, y + 52, stats.displayName, {
         fontSize: '12px',
         fontFamily: 'Arial, sans-serif',
@@ -303,7 +327,7 @@ export class CollectionScene extends Phaser.Scene {
       }).setOrigin(0.5);
       this.tabContent.add(nameText);
 
-      // Cost
+      // 잠금 해제 비용 (다이아몬드)
       const unlockCost = stats.unlockCost || 0;
       const costText = this.add.text(cx, y + 68, `\u25C6${unlockCost}`, {
         fontSize: '11px',
@@ -316,19 +340,19 @@ export class CollectionScene extends Phaser.Scene {
         this._showTowerUnlockPopup(type);
       });
     } else {
-      // Normal / unlocked tower card
+      // ── 잠금 해제된 타워 카드 ──
       const borderColor = stats.color;
       const bg = this.add.rectangle(cx, cy, CARD_W, CARD_H, COLORS.UI_PANEL)
         .setStrokeStyle(2, borderColor)
         .setInteractive({ useHandCursor: true });
       this.tabContent.add(bg);
 
-      // Tower icon (scaled 0.6x)
+      // 타워 아이콘 (0.6배 축소)
       const iconG = this.add.graphics();
       this._drawTowerIcon(iconG, type, cx, y + 20, 0.6);
       this.tabContent.add(iconG);
 
-      // Name
+      // 타워 이름
       const nameText = this.add.text(cx, y + 52, stats.displayName, {
         fontSize: '12px',
         fontFamily: 'Arial, sans-serif',
@@ -336,7 +360,7 @@ export class CollectionScene extends Phaser.Scene {
       }).setOrigin(0.5);
       this.tabContent.add(nameText);
 
-      // Current meta tier
+      // 현재 메타 업그레이드 티어
       const maxTier = this._getMaxMetaTier(type);
       const tierStr = maxTier > 0 ? `Lv.${maxTier}` : 'Lv.0';
       const tierText = this.add.text(cx, y + 68, tierStr, {
@@ -353,9 +377,9 @@ export class CollectionScene extends Phaser.Scene {
   }
 
   /**
-   * Get the highest completed meta tier for a tower type.
-   * @param {string} type - Tower type key
-   * @returns {number} Highest tier (0-3)
+   * 해당 타워의 최고 완료 메타 업그레이드 티어를 반환한다.
+   * @param {string} type - 타워 타입 키
+   * @returns {number} 최고 티어 (0~3)
    * @private
    */
   _getMaxMetaTier(type) {
@@ -367,13 +391,16 @@ export class CollectionScene extends Phaser.Scene {
     return 0;
   }
 
+  // ── 타워 아이콘 그리기 ──────────────────────────────────────
+
   /**
-   * Draw a scaled tower icon on a graphics object.
-   * @param {Phaser.GameObjects.Graphics} g - Graphics object
-   * @param {string} type - Tower type
-   * @param {number} x - Center X
-   * @param {number} y - Center Y
-   * @param {number} scale - Scale factor
+   * 타워 타입에 맞는 아이콘을 지정된 크기로 그래픽 오브젝트에 그린다.
+   * 각 타워별 고유 도형을 scale 배율로 축소/확대하여 렌더링한다.
+   * @param {Phaser.GameObjects.Graphics} g - 그래픽 오브젝트
+   * @param {string} type - 타워 타입 키
+   * @param {number} x - 중심 X 좌표
+   * @param {number} y - 중심 Y 좌표
+   * @param {number} scale - 크기 배율
    * @private
    */
   _drawTowerIcon(g, type, x, y, scale) {
@@ -472,6 +499,7 @@ export class CollectionScene extends Phaser.Scene {
         break;
       }
       case 'dragon': {
+        // 원형 몸체 + 금색 테두리 + X자 교차선
         const r = 10 * scale;
         g.fillStyle(color, 1);
         g.fillCircle(x, y, r);
@@ -485,14 +513,15 @@ export class CollectionScene extends Phaser.Scene {
     }
   }
 
-  // ── Utility Section ──────────────────────────────────────────
+  // ── 유틸리티 업그레이드 섹션 ────────────────────────────────
 
   /**
-   * Create the utility upgrade card section with header and cards.
+   * 유틸리티 업그레이드 섹션(헤더 + 카드 3장)을 생성한다.
+   * baseHp(기지 체력), goldBoost(초기 골드), waveBonus(웨이브 보너스) 3종을 표시한다.
    * @private
    */
   _createUtilitySection() {
-    // Section header (adjusted for tab bar offset)
+    // 섹션 헤더
     const headerY = 390;
     const headerText = this.add.text(GAME_WIDTH / 2, headerY, '── UTILITY ──', {
       fontSize: '13px',
@@ -501,13 +530,13 @@ export class CollectionScene extends Phaser.Scene {
     }).setOrigin(0.5);
     this.tabContent.add(headerText);
 
-    // Left/right decorative lines
+    // 좌우 장식 선
     const lineL = this.add.rectangle(60, headerY, 80, 1, 0x636e72).setAlpha(0.3);
     const lineR = this.add.rectangle(300, headerY, 80, 1, 0x636e72).setAlpha(0.3);
     this.tabContent.add(lineL);
     this.tabContent.add(lineR);
 
-    // Utility cards
+    // 유틸리티 카드 생성
     const utilStartX = 16;
     const utilY = 410;
     for (let i = 0; i < UTILITY_ORDER.length; i++) {
@@ -518,10 +547,11 @@ export class CollectionScene extends Phaser.Scene {
   }
 
   /**
-   * Create a single utility upgrade card.
-   * @param {string} key - Utility upgrade key
-   * @param {number} x - Top-left X position
-   * @param {number} y - Top-left Y position
+   * 개별 유틸리티 업그레이드 카드를 생성한다.
+   * 아이콘, 이름, 현재 티어, 현재 효과를 표시하며 클릭 시 상세 뷰를 연다.
+   * @param {string} key - 유틸리티 업그레이드 키 ('baseHp' | 'goldBoost' | 'waveBonus')
+   * @param {number} x - 카드 좌상단 X 좌표
+   * @param {number} y - 카드 좌상단 Y 좌표
    * @private
    */
   _createUtilityCard(key, x, y) {
@@ -532,13 +562,14 @@ export class CollectionScene extends Phaser.Scene {
     const cx = x + UTIL_W / 2;
     const cy = y + UTIL_H / 2;
 
+    // 업그레이드가 있으면 금색, 없으면 회색 테두리
     const borderColor = tier > 0 ? 0xffd700 : 0x636e72;
     const bg = this.add.rectangle(cx, cy, UTIL_W, UTIL_H, COLORS.UI_PANEL)
       .setStrokeStyle(1, borderColor)
       .setInteractive({ useHandCursor: true });
     this.tabContent.add(bg);
 
-    // Icon + name
+    // 아이콘 + 이름
     const iconG = this.add.graphics();
     this._drawUtilityIcon(iconG, key, x + 18, y + 16);
     this.tabContent.add(iconG);
@@ -550,7 +581,7 @@ export class CollectionScene extends Phaser.Scene {
     }).setOrigin(0, 0.5);
     this.tabContent.add(nameText);
 
-    // Tier display
+    // 현재 티어 표시
     const tierText = this.add.text(cx, y + 40, `Tier ${tier}/${maxTier}`, {
       fontSize: '11px',
       fontFamily: 'Arial, sans-serif',
@@ -558,7 +589,7 @@ export class CollectionScene extends Phaser.Scene {
     }).setOrigin(0.5);
     this.tabContent.add(tierText);
 
-    // Current effect text
+    // 현재 효과 텍스트 (티어 0이면 기본값 표시)
     let effectStr = '';
     if (tier === 0) {
       effectStr = key === 'baseHp' ? 'HP: 20' : key === 'goldBoost' ? '250G' : '1.0x';
@@ -578,11 +609,12 @@ export class CollectionScene extends Phaser.Scene {
   }
 
   /**
-   * Draw a utility icon on a graphics object.
-   * @param {Phaser.GameObjects.Graphics} g - Graphics object
-   * @param {string} key - Utility key
-   * @param {number} x - Center X
-   * @param {number} y - Center Y
+   * 유틸리티 아이콘을 그래픽 오브젝트에 그린다.
+   * 하트(baseHp), 동전(goldBoost), 별(waveBonus) 아이콘을 지원한다.
+   * @param {Phaser.GameObjects.Graphics} g - 그래픽 오브젝트
+   * @param {string} key - 유틸리티 키
+   * @param {number} x - 중심 X 좌표
+   * @param {number} y - 중심 Y 좌표
    * @private
    */
   _drawUtilityIcon(g, key, x, y) {
@@ -591,6 +623,7 @@ export class CollectionScene extends Phaser.Scene {
 
     switch (util.icon) {
       case 'heart': {
+        // 하트 아이콘: 원 2개 + 삼각형
         g.fillStyle(color, 1);
         g.fillCircle(x - 3, y - 2, 4);
         g.fillCircle(x + 3, y - 2, 4);
@@ -598,6 +631,7 @@ export class CollectionScene extends Phaser.Scene {
         break;
       }
       case 'coin': {
+        // 동전 아이콘: 이중 원
         g.fillStyle(color, 1);
         g.fillCircle(x, y, 6);
         g.fillStyle(0x1a1a2e, 1);
@@ -607,6 +641,7 @@ export class CollectionScene extends Phaser.Scene {
         break;
       }
       case 'star': {
+        // 별 아이콘: 10개 꼭짓점 (외/내 반지름 교차)
         g.fillStyle(color, 1);
         const points = [];
         for (let i = 0; i < 10; i++) {
@@ -621,14 +656,15 @@ export class CollectionScene extends Phaser.Scene {
   }
 
   // ══════════════════════════════════════════════════════════════
-  // OVERLAYS (Meta Upgrade Detail, Utility Detail, Tower Unlock)
+  // 오버레이 (메타 업그레이드 상세, 유틸리티 상세, 타워 잠금 해제)
   // ══════════════════════════════════════════════════════════════
 
-  // ── Tower Detail View (Overlay) ──────────────────────────────
+  // ── 타워 메타 업그레이드 상세 뷰 ───────────────────────────
 
   /**
-   * Show the tower meta-upgrade detail overlay.
-   * @param {string} type - Tower type key
+   * 타워 메타 업그레이드 상세 오버레이를 표시한다.
+   * 3개 티어 각각에 A/B 옵션 버튼, 현재 보너스 요약을 포함한다.
+   * @param {string} type - 타워 타입 키
    * @private
    */
   _showTowerDetailView(type) {
@@ -640,13 +676,13 @@ export class CollectionScene extends Phaser.Scene {
 
     this.overlay = this.add.container(0, 0).setDepth(50);
 
-    // Dark backdrop
+    // 어두운 배경 막
     const backdrop = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000)
       .setAlpha(0.7)
       .setInteractive();
     this.overlay.add(backdrop);
 
-    // Panel
+    // 오버레이 패널
     const panelW = 320;
     const panelH = 520;
     const panelX = GAME_WIDTH / 2;
@@ -657,7 +693,7 @@ export class CollectionScene extends Phaser.Scene {
       .setStrokeStyle(2, stats.color);
     this.overlay.add(panelBg);
 
-    // Close button [X]
+    // 닫기 버튼 [X]
     const closeX = panelX + panelW / 2 - 20;
     const closeY = panelTop + 15;
     const closeBg = this.add.circle(closeX, closeY, 12, COLORS.BUTTON_ACTIVE)
@@ -677,12 +713,12 @@ export class CollectionScene extends Phaser.Scene {
       this._rebuildScene();
     });
 
-    // Tower icon (1.5x scale)
+    // 타워 아이콘 (1.5배 확대)
     const iconG = this.add.graphics();
     this._drawTowerIcon(iconG, type, panelX - 60, panelTop + 45, 1.5);
     this.overlay.add(iconG);
 
-    // Tower name
+    // 타워 이름
     const nameText = this.add.text(panelX, panelTop + 38, stats.displayName, {
       fontSize: '18px',
       fontFamily: 'Arial, sans-serif',
@@ -691,7 +727,7 @@ export class CollectionScene extends Phaser.Scene {
     }).setOrigin(0.5);
     this.overlay.add(nameText);
 
-    // Current in-game branch info
+    // 현재 메타 티어 정보
     const maxTier = this._getMaxMetaTier(type);
     const branchStr = maxTier > 0 ? `Meta Tier ${maxTier}` : 'No meta upgrades';
     const branchText = this.add.text(panelX, panelTop + 60, branchStr, {
@@ -701,12 +737,12 @@ export class CollectionScene extends Phaser.Scene {
     }).setOrigin(0.5);
     this.overlay.add(branchText);
 
-    // Divider
+    // 구분선
     const divider = this.add.rectangle(panelX, panelTop + 80, panelW - 40, 1, 0x636e72)
       .setAlpha(0.3);
     this.overlay.add(divider);
 
-    // Tier sections
+    // ── 티어별 A/B 옵션 섹션 (Tier 1~3) ──
     const tierStartY = panelTop + 95;
     const tierHeight = 85;
 
@@ -715,9 +751,10 @@ export class CollectionScene extends Phaser.Scene {
       const tierKey = `tier${tier}`;
       const tierData = treeData[tierKey];
       const choice = upgrades[tierKey] || null;
+      // 이전 티어가 완료되어야 현재 티어 구매 가능
       const prevTierDone = tier === 1 || (upgrades[`tier${tier - 1}`] !== undefined && upgrades[`tier${tier - 1}`] !== null);
 
-      // Tier label
+      // 티어 라벨
       const tierLabel = this.add.text(panelX - panelW / 2 + 25, tierY, `Tier ${tier}`, {
         fontSize: '14px',
         fontFamily: 'Arial, sans-serif',
@@ -726,20 +763,20 @@ export class CollectionScene extends Phaser.Scene {
       });
       this.overlay.add(tierLabel);
 
-      // Option A button
+      // 옵션 A 버튼
       this._createUpgradeOptionBtn(
         panelX, tierY + 25, panelW - 40, 25,
         'A', tierData.a, choice, 'a', prevTierDone, type, tierKey
       );
 
-      // Option B button
+      // 옵션 B 버튼
       this._createUpgradeOptionBtn(
         panelX, tierY + 54, panelW - 40, 25,
         'B', tierData.b, choice, 'b', prevTierDone, type, tierKey
       );
     }
 
-    // Current total bonuses summary
+    // ── 현재 보너스 요약 ──
     const summaryY = tierStartY + 3 * tierHeight + 10;
     const summaryHeader = this.add.text(panelX, summaryY, '── Current Bonuses ──', {
       fontSize: '12px',
@@ -759,18 +796,19 @@ export class CollectionScene extends Phaser.Scene {
   }
 
   /**
-   * Create an upgrade option button (A or B) for a tier.
-   * @param {number} x - Center X
-   * @param {number} y - Center Y
-   * @param {number} w - Button width
-   * @param {number} h - Button height
-   * @param {string} label - 'A' or 'B'
-   * @param {object} optionData - { name, desc, cost, effects }
-   * @param {string|null} currentChoice - Currently selected choice for this tier
-   * @param {string} optionKey - 'a' or 'b'
-   * @param {boolean} prevTierDone - Whether previous tier is completed
-   * @param {string} towerType - Tower type key
-   * @param {string} tierKey - 'tier1', 'tier2', or 'tier3'
+   * 티어 업그레이드 옵션(A 또는 B) 버튼을 생성한다.
+   * 구매 가능 여부, 선택 상태, 잠금 상태에 따라 시각적 스타일이 달라진다.
+   * @param {number} x - 중심 X 좌표
+   * @param {number} y - 중심 Y 좌표
+   * @param {number} w - 버튼 너비
+   * @param {number} h - 버튼 높이
+   * @param {string} label - 표시 라벨 ('A' 또는 'B')
+   * @param {object} optionData - 옵션 데이터 { name, desc, cost, effects }
+   * @param {string|null} currentChoice - 현재 티어에서 선택된 옵션 ('a'|'b'|null)
+   * @param {string} optionKey - 옵션 식별자 ('a' 또는 'b')
+   * @param {boolean} prevTierDone - 이전 티어 완료 여부
+   * @param {string} towerType - 타워 타입 키
+   * @param {string} tierKey - 티어 키 ('tier1', 'tier2', 'tier3')
    * @private
    */
   _createUpgradeOptionBtn(x, y, w, h, label, optionData, currentChoice, optionKey, prevTierDone, towerType, tierKey) {
@@ -781,7 +819,7 @@ export class CollectionScene extends Phaser.Scene {
     const canAfford = diamond >= optionData.cost;
     const canBuy = !isSelected && !isOtherSelected && !isLocked && canAfford;
 
-    // Determine button style
+    // 상태별 버튼 스타일 결정
     let bgColor = COLORS.BACKGROUND;
     let borderColor = 0x636e72;
     let borderWidth = 1;
@@ -789,29 +827,33 @@ export class CollectionScene extends Phaser.Scene {
     let costColor = '#636e72';
 
     if (isSelected) {
+      // 이미 선택된 옵션: 타워 색상 배경 + 금색 텍스트
       bgColor = TOWER_STATS[towerType].color;
       borderColor = TOWER_STATS[towerType].color;
       borderWidth = 2;
       textColor = '#ffd700';
       costColor = '#ffd700';
     } else if (isOtherSelected) {
+      // 다른 옵션이 선택됨: 비활성 회색
       bgColor = COLORS.BACKGROUND;
       borderColor = 0x636e72;
       borderWidth = 1;
       textColor = '#636e72';
     } else if (isLocked) {
+      // 이전 티어 미완료: 잠금 상태
       bgColor = COLORS.WALL;
       borderColor = 0x636e72;
       borderWidth = 1;
       textColor = '#636e72';
     } else if (canAfford) {
+      // 구매 가능: 다이아몬드 색 테두리 강조
       borderColor = COLORS.DIAMOND;
       borderWidth = 2;
       textColor = '#ffffff';
       costColor = COLORS.DIAMOND_CSS;
     }
 
-    // Button background
+    // 버튼 배경
     const bg = this.add.rectangle(x, y, w, h, bgColor, isSelected ? 0.3 : 1)
       .setStrokeStyle(borderWidth, borderColor);
     this.overlay.add(bg);
@@ -820,7 +862,7 @@ export class CollectionScene extends Phaser.Scene {
       bg.setInteractive({ useHandCursor: true });
     }
 
-    // Badge [A] or [B]
+    // A/B 배지 (파란색/보라색 원)
     const badgeColor = optionKey === 'a' ? BTN_PRIMARY : BTN_META;
     const badge = this.add.circle(x - w / 2 + 14, y, 9, badgeColor);
     this.overlay.add(badge);
@@ -833,7 +875,7 @@ export class CollectionScene extends Phaser.Scene {
     }).setOrigin(0.5);
     this.overlay.add(badgeText);
 
-    // Effect description
+    // 효과 설명 텍스트 (선택됨이면 체크 표시, 잠금이면 자물쇠)
     let descStr = optionData.desc;
     if (isSelected) descStr = '\u2713 ' + descStr;
     if (isLocked) descStr = '\uD83D\uDD12 ' + descStr;
@@ -845,7 +887,7 @@ export class CollectionScene extends Phaser.Scene {
     }).setOrigin(0.5);
     this.overlay.add(descText);
 
-    // Cost display
+    // 비용 표시 (이미 구매한 경우 비용 숨김)
     const costStr = isSelected ? '' : `\u25C6 ${optionData.cost}`;
     const costText = this.add.text(x + w / 2 - 30, y, costStr, {
       fontSize: '11px',
@@ -854,7 +896,7 @@ export class CollectionScene extends Phaser.Scene {
     }).setOrigin(0.5);
     this.overlay.add(costText);
 
-    // Click handler
+    // 구매 클릭 핸들러
     if (canBuy) {
       bg.on('pointerdown', () => {
         this._purchaseTowerUpgrade(towerType, tierKey, optionKey, optionData.cost);
@@ -863,11 +905,12 @@ export class CollectionScene extends Phaser.Scene {
   }
 
   /**
-   * Purchase a tower meta upgrade.
-   * @param {string} towerType - Tower type key
-   * @param {string} tierKey - 'tier1', 'tier2', or 'tier3'
-   * @param {string} choice - 'a' or 'b'
-   * @param {number} cost - Diamond cost
+   * 타워 메타 업그레이드를 구매한다.
+   * 다이아몬드를 차감하고 세이브 데이터를 갱신한 뒤 상세 뷰를 새로고침한다.
+   * @param {string} towerType - 타워 타입 키
+   * @param {string} tierKey - 티어 키 ('tier1', 'tier2', 'tier3')
+   * @param {string} choice - 선택 옵션 ('a' 또는 'b')
+   * @param {number} cost - 다이아몬드 비용
    * @private
    */
   _purchaseTowerUpgrade(towerType, tierKey, choice, cost) {
@@ -884,15 +927,16 @@ export class CollectionScene extends Phaser.Scene {
     this._saveToDB(this.saveData);
     this._refreshDiamondDisplay();
 
-    // Refresh the detail view
+    // 갱신된 정보로 상세 뷰 새로고침
     this._showTowerDetailView(towerType);
   }
 
   /**
-   * Calculate a text summary of all bonus effects for a tower.
-   * @param {string} type - Tower type key
-   * @param {object} upgrades - { tier1: 'a'|'b'|null, tier2: ..., tier3: ... }
-   * @returns {string} Formatted bonus summary
+   * 타워의 모든 메타 업그레이드 보너스 효과를 텍스트로 요약한다.
+   * 곱연산과 덧셈을 각 스탯별로 누적하여 한 줄로 표시한다.
+   * @param {string} type - 타워 타입 키
+   * @param {object} upgrades - 업그레이드 상태 { tier1: 'a'|'b'|null, tier2: ..., tier3: ... }
+   * @returns {string} 포맷된 보너스 요약 문자열
    * @private
    */
   _calcBonusSummary(type, upgrades) {
@@ -926,7 +970,7 @@ export class CollectionScene extends Phaser.Scene {
       const parts = [];
       if (val.multiply !== 1) {
         const pct = Math.round((val.multiply - 1) * 100);
-        // fireRate multiply < 1 means faster
+        // fireRate의 곱연산이 1 미만이면 공격 속도 증가를 의미
         if (stat === 'fireRate') {
           const speedPct = Math.round((1 - val.multiply) * 100);
           parts.push(`+${speedPct}% speed`);
@@ -942,11 +986,12 @@ export class CollectionScene extends Phaser.Scene {
     return lines.join('  |  ');
   }
 
-  // ── Utility Detail View (Overlay) ────────────────────────────
+  // ── 유틸리티 업그레이드 상세 뷰 ────────────────────────────
 
   /**
-   * Show the utility upgrade detail overlay.
-   * @param {string} key - Utility key ('baseHp', 'goldBoost', 'waveBonus')
+   * 유틸리티 업그레이드 상세 오버레이를 표시한다.
+   * 현재 상태, 각 티어 버튼, 비용을 포함한다.
+   * @param {string} key - 유틸리티 키 ('baseHp' | 'goldBoost' | 'waveBonus')
    * @private
    */
   _showUtilityDetailView(key) {
@@ -957,13 +1002,13 @@ export class CollectionScene extends Phaser.Scene {
 
     this.overlay = this.add.container(0, 0).setDepth(50);
 
-    // Dark backdrop
+    // 어두운 배경 막
     const backdrop = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000)
       .setAlpha(0.7)
       .setInteractive();
     this.overlay.add(backdrop);
 
-    // Panel
+    // 오버레이 패널
     const panelW = 300;
     const panelH = 350;
     const panelX = GAME_WIDTH / 2;
@@ -974,7 +1019,7 @@ export class CollectionScene extends Phaser.Scene {
       .setStrokeStyle(2, 0x636e72);
     this.overlay.add(panelBg);
 
-    // Close button [X]
+    // 닫기 버튼 [X]
     const closeX = panelX + panelW / 2 - 20;
     const closeY = panelTop + 15;
     const closeBg = this.add.circle(closeX, closeY, 12, COLORS.BUTTON_ACTIVE)
@@ -994,7 +1039,7 @@ export class CollectionScene extends Phaser.Scene {
       this._rebuildScene();
     });
 
-    // Icon + name
+    // 아이콘 + 이름
     const iconG = this.add.graphics();
     this._drawUtilityIcon(iconG, key, panelX - 50, panelTop + 50);
     this.overlay.add(iconG);
@@ -1007,7 +1052,7 @@ export class CollectionScene extends Phaser.Scene {
     }).setOrigin(0, 0.5);
     this.overlay.add(nameText);
 
-    // Current status
+    // 현재 상태 텍스트
     let currentDesc = '';
     if (currentTier === 0) {
       currentDesc = key === 'baseHp' ? 'HP 20' : key === 'goldBoost' ? '250G' : '1.0x';
@@ -1021,12 +1066,12 @@ export class CollectionScene extends Phaser.Scene {
     }).setOrigin(0.5);
     this.overlay.add(statusText);
 
-    // Divider
+    // 구분선
     const divider = this.add.rectangle(panelX, panelTop + 95, panelW - 40, 1, 0x636e72)
       .setAlpha(0.3);
     this.overlay.add(divider);
 
-    // Tier buttons
+    // ── 티어별 구매 버튼 ──
     const tierStartY = panelTop + 115;
     const diamond = this.saveData.diamond || 0;
 
@@ -1041,7 +1086,7 @@ export class CollectionScene extends Phaser.Scene {
       const canAfford = diamond >= tierData.cost;
       const canBuy = isNext && canAfford;
 
-      // Button style
+      // 상태별 버튼 스타일 결정
       let bgColor = COLORS.BACKGROUND;
       let borderColor = 0x636e72;
       let borderWidth = 1;
@@ -1069,7 +1114,7 @@ export class CollectionScene extends Phaser.Scene {
         bg.setInteractive({ useHandCursor: true });
       }
 
-      // Tier label
+      // 티어 라벨 (완료: 체크 표시, 잠금: 자물쇠)
       const labelPrefix = isCompleted ? '\u2713 ' : isLocked ? '\uD83D\uDD12 ' : '';
       const tierLabel = this.add.text(panelX - panelW / 2 + 40, btnY, `${labelPrefix}Tier ${tier}`, {
         fontSize: '13px',
@@ -1079,7 +1124,7 @@ export class CollectionScene extends Phaser.Scene {
       }).setOrigin(0, 0.5);
       this.overlay.add(tierLabel);
 
-      // Effect text
+      // 효과 설명
       const effectText = this.add.text(panelX + 10, btnY, tierData.desc, {
         fontSize: '12px',
         fontFamily: 'Arial, sans-serif',
@@ -1087,7 +1132,7 @@ export class CollectionScene extends Phaser.Scene {
       }).setOrigin(0, 0.5);
       this.overlay.add(effectText);
 
-      // Cost
+      // 비용 (완료된 티어는 비용 숨김)
       const costColor = isCompleted ? '#ffd700' : canAfford ? COLORS.DIAMOND_CSS : '#ff4757';
       const costStr = isCompleted ? '' : `\u25C6 ${tierData.cost}`;
       const costText = this.add.text(panelX + panelW / 2 - 30, btnY, costStr, {
@@ -1097,7 +1142,7 @@ export class CollectionScene extends Phaser.Scene {
       }).setOrigin(1, 0.5);
       this.overlay.add(costText);
 
-      // Click handler
+      // 구매 클릭 핸들러
       if (canBuy) {
         bg.on('pointerdown', () => {
           this._purchaseUtilityUpgrade(key, tier, tierData.cost);
@@ -1107,10 +1152,11 @@ export class CollectionScene extends Phaser.Scene {
   }
 
   /**
-   * Purchase a utility upgrade tier.
-   * @param {string} key - Utility key
-   * @param {number} tier - Tier being purchased (1-3)
-   * @param {number} cost - Diamond cost
+   * 유틸리티 업그레이드 티어를 구매한다.
+   * 다이아몬드를 차감하고 세이브 데이터를 갱신한 뒤 상세 뷰를 새로고침한다.
+   * @param {string} key - 유틸리티 키
+   * @param {number} tier - 구매할 티어 (1~3)
+   * @param {number} cost - 다이아몬드 비용
    * @private
    */
   _purchaseUtilityUpgrade(key, tier, cost) {
@@ -1126,15 +1172,16 @@ export class CollectionScene extends Phaser.Scene {
     this._saveToDB(this.saveData);
     this._refreshDiamondDisplay();
 
-    // Refresh the detail view
+    // 갱신된 정보로 상세 뷰 새로고침
     this._showUtilityDetailView(key);
   }
 
-  // ── Tower Unlock Popup ──────────────────────────────────────
+  // ── 타워 잠금 해제 팝업 ────────────────────────────────────
 
   /**
-   * Show the tower unlock confirmation popup.
-   * @param {string} type - Tower type key
+   * 타워 잠금 해제 확인 팝업을 표시한다.
+   * 잠금 해제 비용(다이아몬드)과 확인/취소 버튼을 포함한다.
+   * @param {string} type - 타워 타입 키
    * @private
    */
   _showTowerUnlockPopup(type) {
@@ -1147,13 +1194,13 @@ export class CollectionScene extends Phaser.Scene {
 
     this.overlay = this.add.container(0, 0).setDepth(50);
 
-    // Dark backdrop
+    // 어두운 배경 막
     const backdrop = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x000000)
       .setAlpha(0.7)
       .setInteractive();
     this.overlay.add(backdrop);
 
-    // Popup panel
+    // 팝업 패널
     const popW = 260;
     const popH = 180;
     const popX = GAME_WIDTH / 2;
@@ -1163,12 +1210,12 @@ export class CollectionScene extends Phaser.Scene {
       .setStrokeStyle(2, stats.color);
     this.overlay.add(popBg);
 
-    // Tower icon
+    // 타워 아이콘
     const iconG = this.add.graphics();
     this._drawTowerIcon(iconG, type, popX - 50, popY - 55, 1.2);
     this.overlay.add(iconG);
 
-    // Title
+    // 타이틀
     const titleText = this.add.text(popX + 10, popY - 55, `${stats.displayName} Tower`, {
       fontSize: '16px',
       fontFamily: 'Arial, sans-serif',
@@ -1177,7 +1224,7 @@ export class CollectionScene extends Phaser.Scene {
     }).setOrigin(0, 0.5);
     this.overlay.add(titleText);
 
-    // Description
+    // 설명
     const descText = this.add.text(popX, popY - 25, `Unlock ${stats.displayName} Tower?`, {
       fontSize: '14px',
       fontFamily: 'Arial, sans-serif',
@@ -1185,7 +1232,7 @@ export class CollectionScene extends Phaser.Scene {
     }).setOrigin(0.5);
     this.overlay.add(descText);
 
-    // Cost
+    // 비용 (부족하면 빨간색)
     const costColor = canAfford ? COLORS.DIAMOND_CSS : '#ff4757';
     const costText = this.add.text(popX, popY + 0, `Cost: \u25C6 ${unlockCost}`, {
       fontSize: '14px',
@@ -1194,7 +1241,7 @@ export class CollectionScene extends Phaser.Scene {
     }).setOrigin(0.5);
     this.overlay.add(costText);
 
-    // Unlock button
+    // 잠금 해제 버튼
     const unlockBtnColor = canAfford ? COLORS.BUTTON_ACTIVE : 0x636e72;
     const unlockBg = this.add.rectangle(popX - 55, popY + 45, 100, 36, unlockBtnColor)
       .setStrokeStyle(1, canAfford ? 0xffffff : 0x636e72);
@@ -1215,7 +1262,7 @@ export class CollectionScene extends Phaser.Scene {
       });
     }
 
-    // Cancel button
+    // 취소 버튼
     const cancelBg = this.add.rectangle(popX + 55, popY + 45, 80, 36, COLORS.BACKGROUND)
       .setStrokeStyle(1, 0x636e72)
       .setInteractive({ useHandCursor: true });
@@ -1234,8 +1281,9 @@ export class CollectionScene extends Phaser.Scene {
   }
 
   /**
-   * Unlock a tower, deducting Diamond and updating save data.
-   * @param {string} type - Tower type key to unlock
+   * 타워를 잠금 해제한다.
+   * 다이아몬드를 차감하고, unlockedTowers 배열에 추가한 뒤 씬을 재구성한다.
+   * @param {string} type - 잠금 해제할 타워 타입 키
    * @private
    */
   _unlockTower(type) {
@@ -1244,7 +1292,7 @@ export class CollectionScene extends Phaser.Scene {
 
     this.saveData.diamond -= unlockCost;
 
-    // Add to unlockedTowers array
+    // unlockedTowers 배열에 추가 (중복 방지)
     if (!this.saveData.unlockedTowers) this.saveData.unlockedTowers = [];
     if (!this.saveData.unlockedTowers.includes(type)) {
       this.saveData.unlockedTowers.push(type);
@@ -1255,10 +1303,10 @@ export class CollectionScene extends Phaser.Scene {
     this._rebuildScene();
   }
 
-  // ── Common Helpers ───────────────────────────────────────────
+  // ── 공통 헬퍼 ──────────────────────────────────────────────
 
   /**
-   * Close the current overlay.
+   * 현재 오버레이를 파괴하고 닫는다.
    * @private
    */
   _closeOverlay() {
@@ -1269,7 +1317,7 @@ export class CollectionScene extends Phaser.Scene {
   }
 
   /**
-   * Rebuild the entire scene to reflect updated data.
+   * 씬 전체를 재시작하여 갱신된 데이터를 반영한다.
    * @private
    */
   _rebuildScene() {
@@ -1277,15 +1325,15 @@ export class CollectionScene extends Phaser.Scene {
   }
 
   /**
-   * Save data to localStorage and sync registry.
-   * @param {object} saveData - Save data
+   * 세이브 데이터를 localStorage에 저장하고 레지스트리에 동기화한다.
+   * @param {object} saveData - 저장할 세이브 데이터 객체
    * @private
    */
   _saveToDB(saveData) {
     try {
       localStorage.setItem(SAVE_KEY, JSON.stringify(saveData));
     } catch (e) {
-      // Ignore errors
+      // localStorage 쓰기 실패는 무시 (용량 초과 등)
     }
     this.registry.set('saveData', saveData);
   }

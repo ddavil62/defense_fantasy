@@ -1,7 +1,9 @@
 /**
- * @fileoverview MergeCodexScene - Standalone merge codex (tower recipe catalogue).
- * Shows all T1~T5 towers with full recipe disclosure regardless of discovery status.
- * Accessible from both GameScene (pause overlay) and CollectionScene (codex tab).
+ * @fileoverview MergeCodexScene - 합성 도감 (타워 레시피 카탈로그) 씬.
+ * T1~T5 모든 타워를 발견 여부와 무관하게 전체 공개 형태로 표시한다.
+ * GameScene(일시정지 오버레이)과 CollectionScene(도감 탭) 양쪽에서 접근 가능하다.
+ * 카드 클릭 시 T1은 스탯 패널, T2+는 합성 트리 노드를 보여주며,
+ * 재료 노드 클릭으로 드릴다운 탐색이 가능하다.
  */
 
 import {
@@ -12,97 +14,123 @@ import {
 } from '../config.js';
 import { t } from '../i18n.js';
 
-/** @const {string[]} Tower type order for T1 listing */
+/** @const {string[]} T1 타워 표시 순서 */
 const TOWER_ORDER = [
   'archer', 'mage', 'ice', 'lightning',
   'flame', 'rock', 'poison', 'wind',
   'light', 'dragon',
 ];
 
-// ── Layout Constants ──────────────────────────────────────────
+// ── 레이아웃 상수 ─────────────────────────────────────────────
+
+/** @const {number} 서브탭 바 Y 좌표 */
 const SUBTAB_Y = 48;
+/** @const {number} 서브탭 버튼 높이 */
 const SUBTAB_H = 28;
+/** @const {number} 서브탭 버튼 너비 */
 const SUBTAB_W = 64;
+/** @const {number} 서브탭 간 간격 */
 const SUBTAB_GAP = 4;
+/** @const {number} 진행도 텍스트 Y 좌표 */
 const PROGRESS_Y = 82;
+/** @const {number} 도감 카드 그리드 시작 Y 좌표 */
 const CODEX_GRID_Y = 104;
+/** @const {number} 도감 카드 너비 */
 const CODEX_CARD_W = 62;
+/** @const {number} 도감 카드 높이 */
 const CODEX_CARD_H = 74;
+/** @const {number} 도감 그리드 열 수 */
 const CODEX_COLS = 5;
+/** @const {number} 도감 카드 간 간격 */
 const CODEX_CARD_GAP = 6;
+/** @const {number} 도감 그리드 시작 X 좌표 (가운데 정렬) */
 const CODEX_GRID_X = (GAME_WIDTH - (CODEX_COLS * CODEX_CARD_W + (CODEX_COLS - 1) * CODEX_CARD_GAP)) / 2;
 
+/**
+ * 합성 도감 씬 클래스.
+ * 전체 타워(T1~T5)의 레시피와 스탯을 카탈로그 형태로 열람할 수 있다.
+ * 서브탭으로 티어별 필터링, 드래그 스크롤, 카드 클릭 시 상세 오버레이를 지원한다.
+ * @extends Phaser.Scene
+ */
 export class MergeCodexScene extends Phaser.Scene {
+  /**
+   * MergeCodexScene 인스턴스를 생성한다.
+   */
   constructor() {
     super({ key: 'MergeCodexScene' });
   }
 
   /**
-   * Initialize scene state.
-   * @param {object} data - { fromScene: 'GameScene' | 'CollectionScene' }
+   * 씬 초기 상태를 설정한다.
+   * 이전 씬 정보, 스크롤 상태, 오버레이 히스토리 등을 초기화한다.
+   * @param {object} data - 씬 전환 시 전달되는 데이터
+   * @param {string} [data.fromScene='CollectionScene'] - 이 도감을 호출한 씬 이름
    */
   init(data) {
-    /** @type {string} Scene that launched this codex */
+    /** @type {string} 이 도감을 호출한 씬 ('GameScene' 또는 'CollectionScene') */
     this.fromScene = data?.fromScene || 'CollectionScene';
 
-    /** @type {number} Currently active sub-tab tier (1~5), default T2 */
+    /** @type {number} 현재 활성 서브탭 티어 (1~5), 기본값 T2 */
     this.codexTier = 2;
 
-    /** @type {number} Codex scroll offset Y */
+    /** @type {number} 도감 스크롤 Y 오프셋 */
     this.codexScrollY = 0;
 
-    /** @type {boolean} Whether user is dragging the codex scroll area */
+    /** @type {boolean} 사용자가 도감 스크롤 영역을 드래그 중인지 여부 */
     this.codexDragging = false;
 
-    /** @type {number} Pointer Y at drag start */
+    /** @type {number} 드래그 시작 시점의 포인터 Y 좌표 */
     this.codexDragStartY = 0;
 
-    /** @type {number} Scroll offset at drag start */
+    /** @type {number} 드래그 시작 시점의 스크롤 오프셋 */
     this.codexDragStartScroll = 0;
 
-    /** @type {boolean} Whether a drag has moved enough to count as scroll (vs click) */
+    /** @type {boolean} 드래그가 스크롤로 인정될 만큼 이동했는지 여부 (클릭과 구분) */
     this.codexDragMoved = false;
 
-    /** @type {object|null} Pre-built tier data cache */
+    /** @type {object|null} 사전 구축된 티어 데이터 캐시 */
     this._tierDataCache = null;
 
-    /** @type {Phaser.GameObjects.Container|null} Scroll container */
+    /** @type {Phaser.GameObjects.Container|null} 스크롤 가능 카드 컨테이너 */
     this.codexScrollContainer = null;
 
-    /** @type {Phaser.GameObjects.Container|null} Sub-tab container */
+    /** @type {Phaser.GameObjects.Container|null} 서브탭 바 컨테이너 */
     this._subTabContainer = null;
 
-    /** @type {Phaser.GameObjects.Container|null} Content container */
+    /** @type {Phaser.GameObjects.Container|null} 도감 콘텐츠 컨테이너 */
     this._codexContentContainer = null;
 
-    /** @type {Phaser.GameObjects.Rectangle|null} Mask shape */
+    /** @type {Phaser.GameObjects.Rectangle|null} 스크롤 마스크용 사각형 */
     this._maskShape = null;
 
-    /** @type {number} Max scroll value */
+    /** @type {number} 스크롤 가능한 최대 오프셋 값 */
     this._codexMaxScroll = 0;
 
-    /** @type {Phaser.GameObjects.Container|null} Active overlay container */
+    /** @type {Phaser.GameObjects.Container|null} 현재 활성 오버레이 컨테이너 */
     this.overlay = null;
 
-    /** @type {number} Timestamp when overlay was last closed */
+    /** @type {number} 오버레이가 마지막으로 닫힌 시각 (ms, 재오픈 방지용) */
     this._overlayClosedAt = 0;
 
-    /** @type {object[]} Overlay drill-down history stack */
+    /** @type {object[]} 오버레이 드릴다운 히스토리 스택 */
     this._overlayHistory = [];
 
-    /** @type {object} Meta upgrade choices from save data */
+    // 세이브 데이터에서 메타 업그레이드 정보 로드
+    /** @type {object} 타워별 메타 업그레이드 선택 정보 */
     const saveData = JSON.parse(localStorage.getItem('fantasyDefenceSave') || '{}');
     this._towerMetaUpgrades = saveData.towerUpgrades || {};
   }
 
   /**
-   * Create the codex UI.
+   * 도감 UI를 생성한다.
+   * 배경, 상단 바, 서브탭, 도감 그리드를 구성하고,
+   * 이전 씬에서의 클릭 관통을 방지하기 위해 100ms 동안 입력을 차단한다.
    */
   create() {
-    // Background
+    // 배경
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, COLORS.BACKGROUND);
 
-    // Block input briefly to prevent click-through from the previous scene
+    // 이전 씬에서의 클릭 관통 방지를 위해 입력을 잠시 차단
     this._inputReady = false;
 
     this._buildTierData();
@@ -110,20 +138,22 @@ export class MergeCodexScene extends Phaser.Scene {
     this._buildSubTabs();
     this._buildCodexContent();
 
+    // 100ms 후 입력 허용
     this.time.delayedCall(100, () => { this._inputReady = true; });
   }
 
-  // ── Top Bar ──────────────────────────────────────────────────
+  // ── 상단 바 ─────────────────────────────────────────────────
 
   /**
-   * Create the top navigation bar with BACK button and title.
+   * 상단 내비게이션 바를 생성한다.
+   * BACK 버튼(이전 씬 복귀)과 "합성 도감" 타이틀을 포함한다.
    * @private
    */
   _createTopBar() {
-    // Background
+    // 배경
     this.add.rectangle(GAME_WIDTH / 2, 24, GAME_WIDTH, 48, COLORS.HUD_BG);
 
-    // BACK button
+    // BACK 버튼
     const backBg = this.add.rectangle(38, 24, 60, 28, 0x000000, 0)
       .setStrokeStyle(1, 0x636e72)
       .setInteractive({ useHandCursor: true });
@@ -138,7 +168,7 @@ export class MergeCodexScene extends Phaser.Scene {
       this._goBack();
     });
 
-    // Title
+    // 타이틀
     this.add.text(180, 24, t('codex.title'), {
       fontSize: '18px',
       fontFamily: 'Arial, sans-serif',
@@ -148,7 +178,9 @@ export class MergeCodexScene extends Phaser.Scene {
   }
 
   /**
-   * Navigate back to the originating scene.
+   * 호출 씬에 따라 적절한 방식으로 뒤로 이동한다.
+   * GameScene에서 왔으면 도감을 닫고 게임씬을 깨우고,
+   * CollectionScene에서 왔으면 컬렉션 씬을 새로 시작한다.
    * @private
    */
   _goBack() {
@@ -160,11 +192,12 @@ export class MergeCodexScene extends Phaser.Scene {
     }
   }
 
-  // ── Tier Data ────────────────────────────────────────────────
+  // ── 티어 데이터 구축 ────────────────────────────────────────
 
   /**
-   * Build tier data from TOWER_STATS, MERGE_RECIPES, MERGED_TOWER_STATS.
-   * All entries are treated as discovered (full disclosure).
+   * TOWER_STATS, MERGE_RECIPES, MERGED_TOWER_STATS로부터 티어별 데이터를 구축한다.
+   * 모든 항목을 발견 상태로 처리한다 (전체 공개 모드).
+   * 캐시가 이미 존재하면 재구축하지 않는다.
    * @private
    */
   _buildTierData() {
@@ -172,7 +205,7 @@ export class MergeCodexScene extends Phaser.Scene {
 
     const data = { 1: [], 2: [], 3: [], 4: [], 5: [] };
 
-    // T1: base 10 towers
+    // T1: 기본 10종 타워
     for (const type of TOWER_ORDER) {
       const stats = TOWER_STATS[type];
       const lv1 = stats.levels[1];
@@ -186,7 +219,7 @@ export class MergeCodexScene extends Phaser.Scene {
       });
     }
 
-    // T2~T5: from MERGE_RECIPES
+    // T2~T5: MERGE_RECIPES에서 합성 타워 수집
     for (const [recipeKey, recipe] of Object.entries(MERGE_RECIPES)) {
       const mergedStats = MERGED_TOWER_STATS[recipe.id];
       const tier = recipe.tier;
@@ -202,7 +235,7 @@ export class MergeCodexScene extends Phaser.Scene {
       });
     }
 
-    // Sort each tier alphabetically by id for consistent order
+    // 각 티어를 id 알파벳순으로 정렬하여 일관된 표시 순서 보장
     for (let tierNum = 2; tierNum <= 5; tierNum++) {
       data[tierNum].sort((a, b) => a.id.localeCompare(b.id));
     }
@@ -210,10 +243,11 @@ export class MergeCodexScene extends Phaser.Scene {
     this._tierDataCache = data;
   }
 
-  // ── Sub-Tab Bar ──────────────────────────────────────────────
+  // ── 서브탭 바 (T1~T5) ──────────────────────────────────────
 
   /**
-   * Build sub-tab bar for T1~T5.
+   * T1~T5 서브탭 바를 구축한다.
+   * 활성 탭은 다이아몬드 색 테두리와 볼드 텍스트로 강조된다.
    * @private
    */
   _buildSubTabs() {
@@ -256,10 +290,11 @@ export class MergeCodexScene extends Phaser.Scene {
     }
   }
 
-  // ── Codex Content ────────────────────────────────────────────
+  // ── 도감 콘텐츠 ────────────────────────────────────────────
 
   /**
-   * Build the codex grid content for the current sub-tab tier.
+   * 현재 서브탭 티어에 맞는 도감 카드 그리드를 구축한다.
+   * 스크롤 마스크, 카드 배치, 드래그 스크롤 설정을 포함한다.
    * @private
    */
   _buildCodexContent() {
@@ -271,10 +306,10 @@ export class MergeCodexScene extends Phaser.Scene {
     const tierData = this._tierDataCache[this.codexTier] || [];
     const totalCount = tierData.length;
 
-    // Content container
+    // 콘텐츠 컨테이너
     this._codexContentContainer = this.add.container(0, 0).setDepth(6);
 
-    // Progress text
+    // 진행도 텍스트 (예: "T2: 15")
     const progressStr = t('codex.progress')
       .replace('{n}', String(this.codexTier))
       .replace('{total}', String(totalCount));
@@ -286,7 +321,7 @@ export class MergeCodexScene extends Phaser.Scene {
     }).setOrigin(0.5);
     this._codexContentContainer.add(progressText);
 
-    // Scroll mask & container
+    // 스크롤 마스크 및 스크롤 컨테이너
     const scrollAreaH = GAME_HEIGHT - CODEX_GRID_Y;
     this._maskShape = this.add.rectangle(GAME_WIDTH / 2, CODEX_GRID_Y + scrollAreaH / 2,
       GAME_WIDTH, scrollAreaH, 0x000000).setVisible(false);
@@ -298,12 +333,12 @@ export class MergeCodexScene extends Phaser.Scene {
     const mask = this._maskShape.createGeometryMask();
     this.codexScrollContainer.setMask(mask);
 
-    // Compute total content height
+    // 총 콘텐츠 높이 계산으로 최대 스크롤값 결정
     const rows = Math.ceil(tierData.length / CODEX_COLS);
     const totalContentH = rows * (CODEX_CARD_H + CODEX_CARD_GAP);
     this._codexMaxScroll = Math.max(0, totalContentH - scrollAreaH + 10);
 
-    // Build cards
+    // 카드 생성
     for (let i = 0; i < tierData.length; i++) {
       const col = i % CODEX_COLS;
       const row = Math.floor(i / CODEX_COLS);
@@ -312,19 +347,21 @@ export class MergeCodexScene extends Phaser.Scene {
       this._createCodexCard(tierData[i], x, y);
     }
 
-    // Apply initial scroll offset
+    // 초기 스크롤 오프셋 적용
     this.codexScrollY = 0;
     this._applyCodexScroll();
 
-    // Setup drag-scroll
+    // 드래그 스크롤 설정
     this._setupCodexDrag();
   }
 
   /**
-   * Create a single codex card. All cards are shown as discovered (full disclosure).
-   * @param {object} entry - Tier data entry
-   * @param {number} x - Top-left X
-   * @param {number} y - Top-left Y
+   * 개별 도감 카드를 생성한다.
+   * 모든 카드는 발견 상태(전체 공개)로 표시된다.
+   * 색상 원, 이름(6자 초과 시 말줄임), 공격 유형 배지, 티어 표시를 포함한다.
+   * @param {object} entry - 티어 데이터 항목 { id, displayName, color, attackType, recipeKey, tier }
+   * @param {number} x - 카드 좌상단 X 좌표
+   * @param {number} y - 카드 좌상단 Y 좌표
    * @private
    */
   _createCodexCard(entry, x, y) {
@@ -338,13 +375,13 @@ export class MergeCodexScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true });
     this.codexScrollContainer.add(bg);
 
-    // Color circle (radius 14)
+    // 타워 색상 원 (반지름 14)
     const circleG = this.add.graphics();
     circleG.fillStyle(entry.color, 1);
     circleG.fillCircle(cx, y + 20, 14);
     this.codexScrollContainer.add(circleG);
 
-    // Tower name (truncated)
+    // 타워 이름 (6자 초과 시 5자+'..' 로 말줄임)
     const displayName = entry.displayName.length > 6
       ? entry.displayName.substring(0, 5) + '..'
       : entry.displayName;
@@ -355,7 +392,7 @@ export class MergeCodexScene extends Phaser.Scene {
     }).setOrigin(0.5);
     this.codexScrollContainer.add(nameText);
 
-    // attackType badge with type-specific colors
+    // 공격 유형 배지 (유형별 고유 색상 적용)
     const badgeStr = this._getAttackTypeBadge(entry.attackType);
     const badgeColor = ATTACK_TYPE_COLORS_CSS[entry.attackType] || '#81ecec';
     const badgeText = this.add.text(cx, y + 54, badgeStr, {
@@ -367,7 +404,7 @@ export class MergeCodexScene extends Phaser.Scene {
     }).setOrigin(0.5);
     this.codexScrollContainer.add(badgeText);
 
-    // Tier indicator
+    // 티어 배지
     const tierBadge = this.add.text(cx, y + 67, `T${entry.tier}`, {
       fontSize: '8px',
       fontFamily: 'Arial, sans-serif',
@@ -375,21 +412,23 @@ export class MergeCodexScene extends Phaser.Scene {
     }).setOrigin(0.5);
     this.codexScrollContainer.add(tierBadge);
 
+    // pointerup 사용 - 드래그 스크롤과 탭 클릭을 구분하기 위함
     bg.on('pointerup', () => {
       if (!this._inputReady) return;
+      // 드래그가 이동한 경우 클릭으로 취급하지 않음, 오버레이 닫기 직후 재오픈 방지 (200ms 쿨다운)
       if (!this.codexDragMoved && Date.now() - this._overlayClosedAt > 200) {
         this._showCodexCardOverlay(entry);
       }
     });
   }
 
-  // ── Card Overlay ─────────────────────────────────────────────
+  // ── 카드 오버레이 ──────────────────────────────────────────
 
   /**
-   * Show an overlay with info for a codex card.
-   * T1 entries show a stat panel; T2+ entries show a node tree.
-   * Resets drill-down history on each fresh open.
-   * @param {object} entry - The tier data entry
+   * 도감 카드 클릭 시 상세 오버레이를 표시한다.
+   * T1은 스탯 패널, T2+는 합성 트리 노드를 보여준다.
+   * 드릴다운 히스토리를 초기화하고 새로운 탐색을 시작한다.
+   * @param {object} entry - 티어 데이터 항목
    * @private
    */
   _showCodexCardOverlay(entry) {
@@ -398,26 +437,27 @@ export class MergeCodexScene extends Phaser.Scene {
   }
 
   /**
-   * Render (or re-render) the overlay for the given entry.
-   * Destroys any existing overlay first, then delegates to T1 or tree panel.
-   * @param {object} entry - The tier data entry to display
+   * 주어진 항목에 대한 오버레이를 렌더링(또는 재렌더링)한다.
+   * 기존 오버레이를 파괴한 뒤 T1 패널 또는 합성 트리 패널로 위임한다.
+   * 히스토리가 있으면 "뒤로" 버튼을 표시한다.
+   * @param {object} entry - 표시할 티어 데이터 항목
    * @private
    */
   _renderOverlay(entry) {
     if (this.overlay) this.overlay.destroy();
     this.overlay = this.add.container(0, 0).setDepth(50);
 
-    // Backdrop (darker, near-opaque)
+    // 배경막 (어둡고 거의 불투명)
     const backdrop = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x050510)
       .setAlpha(0.96)
       .setInteractive();
     this.overlay.add(backdrop);
     backdrop.on('pointerdown', () => this._handleBack());
 
-    // Compute "used in" recipes for this entry
+    // 이 항목이 재료로 사용되는 상위 레시피 목록 계산
     const usedInList = this._findUsedInRecipes(entry.id);
 
-    // Panel dimensions — fixed with scrollable "used in" area
+    // 패널 크기 계산 - "상위 조합" 섹션이 있으면 높이 추가
     const panelW = 300;
     const hasUsedIn = usedInList.length > 0;
     const usedInViewH = hasUsedIn ? 100 : 0;
@@ -432,9 +472,9 @@ export class MergeCodexScene extends Phaser.Scene {
       .setInteractive();
     this.overlay.add(panelBg);
 
-    // ── Header row (0~30px from panel top) ──
+    // ── 헤더 영역 (패널 상단 0~30px) ──
     if (this._overlayHistory.length > 0) {
-      // Back button
+      // 뒤로 버튼 (드릴다운 탐색 시 표시)
       const backBg = this.add.rectangle(panelX - panelW / 2 + 40, panelTop + 15, 60, 24, 0x000000, 0)
         .setStrokeStyle(1, 0x636e72)
         .setInteractive({ useHandCursor: true });
@@ -446,7 +486,7 @@ export class MergeCodexScene extends Phaser.Scene {
       backBg.on('pointerdown', () => this._handleBack());
     }
 
-    // Close (X) button
+    // 닫기 (X) 버튼
     const closeX = panelX + panelW / 2 - 20;
     const closeY = panelTop + 15;
     const closeBg = this.add.circle(closeX, closeY, 12, COLORS.BUTTON_ACTIVE)
@@ -458,7 +498,7 @@ export class MergeCodexScene extends Phaser.Scene {
     this.overlay.add(closeText);
     closeBg.on('pointerdown', () => this._forceCloseOverlay());
 
-    // Delegate to tier-specific panel
+    // 티어에 따라 적절한 패널 렌더링
     if (entry.tier === 1) {
       this._renderT1Panel(entry, panelX, panelTop, panelW, usedInList);
     } else {
@@ -466,22 +506,26 @@ export class MergeCodexScene extends Phaser.Scene {
     }
   }
 
+  // ── T1 스탯 패널 ───────────────────────────────────────────
+
   /**
-   * Render T1 stat panel inside the current overlay.
-   * @param {object} entry - T1 tier data entry
-   * @param {number} panelX - Panel center X
-   * @param {number} panelTop - Panel top Y
-   * @param {number} panelW - Panel width
+   * T1 타워의 스탯 패널을 현재 오버레이 내부에 렌더링한다.
+   * 타워 이름, 색상 원, 공격 유형, 기본 스탯(메타 업그레이드 보너스 반영)을 표시한다.
+   * @param {object} entry - T1 티어 데이터 항목
+   * @param {number} panelX - 패널 중심 X 좌표
+   * @param {number} panelTop - 패널 상단 Y 좌표
+   * @param {number} panelW - 패널 너비
+   * @param {Array} usedInList - 이 타워가 재료로 사용되는 레시피 목록
    * @private
    */
   _renderT1Panel(entry, panelX, panelTop, panelW, usedInList) {
-    // Tower name
+    // 타워 이름
     const nameText = this.add.text(panelX, panelTop + 40, entry.displayName, {
       fontSize: '16px', fontFamily: 'Arial, sans-serif', color: '#ffffff', fontStyle: 'bold',
     }).setOrigin(0.5);
     this.overlay.add(nameText);
 
-    // Color circle + tier badge inline
+    // 색상 원 + 티어 배지
     const circleG = this.add.graphics();
     circleG.fillStyle(entry.color, 1);
     circleG.fillCircle(panelX - 30, panelTop + 65, 14);
@@ -492,14 +536,14 @@ export class MergeCodexScene extends Phaser.Scene {
     }).setOrigin(0, 0.5);
     this.overlay.add(tierBadge);
 
-    // Attack type
+    // 공격 유형 배지
     const atkColor = ATTACK_TYPE_COLORS_CSS[entry.attackType] || '#b2bec3';
     const atkText = this.add.text(panelX, panelTop + 90, this._getAttackTypeBadge(entry.attackType), {
       fontSize: '11px', fontFamily: 'Arial, sans-serif', color: atkColor,
     }).setOrigin(0.5);
     this.overlay.add(atkText);
 
-    // Basic stats with meta upgrade bonuses applied
+    // 기본 스탯 (메타 업그레이드 보너스가 적용된 값)
     const lv1 = TOWER_STATS[entry.id]?.levels?.[1];
     if (lv1) {
       const stats = { damage: lv1.damage, fireRate: lv1.fireRate, range: lv1.range };
@@ -511,17 +555,18 @@ export class MergeCodexScene extends Phaser.Scene {
       this.overlay.add(statsText);
     }
 
-    // ── "Used in" section ──
+    // ── "상위 조합" 섹션 ──
     if (usedInList.length > 0) {
       this._renderUsedInSection(entry, usedInList, panelX, panelTop + 130, panelW);
     }
   }
 
   /**
-   * Apply meta upgrade bonuses to a plain stats object.
-   * Mirrors GameScene._applyMetaUpgradesToTower logic but works on plain objects.
-   * @param {string} towerType - Tower type id (e.g. 'archer')
-   * @param {object} stats - { damage, fireRate, range, ... } — mutated in place
+   * 메타 업그레이드 보너스를 일반 스탯 객체에 적용한다.
+   * GameScene._applyMetaUpgradesToTower의 로직을 미러링하되,
+   * 타워 인스턴스 대신 일반 객체에서 동작한다.
+   * @param {string} towerType - 타워 타입 id (예: 'archer')
+   * @param {object} stats - { damage, fireRate, range, ... } - 직접 변경됨
    * @private
    */
   _applyMetaUpgradesToStats(towerType, stats) {
@@ -542,6 +587,7 @@ export class MergeCodexScene extends Phaser.Scene {
         if (stats[effect.stat] === undefined) continue;
         if (effect.type === 'multiply') {
           stats[effect.stat] *= effect.value;
+          // 정수형 스탯은 반올림 처리
           if (['damage', 'range', 'splashRadius', 'chainRadius',
                'pushbackDistance', 'chainCount'].includes(effect.stat)) {
             stats[effect.stat] = Math.round(stats[effect.stat]);
@@ -554,9 +600,9 @@ export class MergeCodexScene extends Phaser.Scene {
   }
 
   /**
-   * Find all MERGE_RECIPES where this tower is used as a material.
-   * @param {string} towerId - Tower id (T1 type or merged tower id)
-   * @returns {Array<{resultEntry: object, recipeKey: string}>}
+   * 주어진 타워가 재료로 사용되는 모든 합성 레시피를 찾는다.
+   * @param {string} towerId - 타워 id (T1 타입 또는 합성 타워 id)
+   * @returns {Array<{resultEntry: object, recipeKey: string}>} 결과 항목과 레시피 키 쌍의 배열
    * @private
    */
   _findUsedInRecipes(towerId) {
@@ -568,18 +614,20 @@ export class MergeCodexScene extends Phaser.Scene {
         if (resultEntry) results.push({ resultEntry, recipeKey });
       }
     }
-    // Sort by tier then name
+    // 티어 오름차순, 같은 티어 내에서는 이름 알파벳순으로 정렬
     results.sort((a, b) => a.resultEntry.tier - b.resultEntry.tier || a.resultEntry.displayName.localeCompare(b.resultEntry.displayName));
     return results;
   }
 
   /**
-   * Render scrollable "used in" list section inside the overlay.
-   * @param {object} currentEntry - Current entry (for history push)
-   * @param {Array} usedInList - Result of _findUsedInRecipes
-   * @param {number} panelX - Panel center X
-   * @param {number} startY - Y to start rendering
-   * @param {number} panelW - Panel width
+   * 오버레이 내부에 스크롤 가능한 "상위 조합" 목록 섹션을 렌더링한다.
+   * 이 타워가 재료로 사용되는 상위 합성 결과를 나열하며,
+   * 각 항목 클릭 시 해당 타워의 상세 오버레이로 드릴다운한다.
+   * @param {object} currentEntry - 현재 표시 중인 항목 (히스토리 push용)
+   * @param {Array} usedInList - _findUsedInRecipes의 결과
+   * @param {number} panelX - 패널 중심 X 좌표
+   * @param {number} startY - 섹션 렌더링 시작 Y 좌표
+   * @param {number} panelW - 패널 너비
    * @private
    */
   _renderUsedInSection(currentEntry, usedInList, panelX, startY, panelW) {
@@ -588,31 +636,31 @@ export class MergeCodexScene extends Phaser.Scene {
     const headerH = 18;
     let y = startY + 6;
 
-    // Divider
+    // 구분선
     const divider = this.add.graphics();
     divider.lineStyle(1, 0x636e72, 0.5);
     divider.lineBetween(panelX - panelW / 2 + 20, y, panelX + panelW / 2 - 20, y);
     this.overlay.add(divider);
     y += 8;
 
-    // Section header (fixed, outside scroll)
+    // 섹션 헤더 (스크롤 영역 바깥 고정)
     const header = this.add.text(panelX, y, t('codex.usedIn') || '상위 조합', {
       fontSize: '10px', fontFamily: 'Arial, sans-serif', color: '#636e72',
     }).setOrigin(0.5);
     this.overlay.add(header);
     y += headerH;
 
-    // Scroll viewport area
+    // 스크롤 뷰포트 영역
     const scrollTopY = y;
     const scrollH = viewH - headerH - 14;
     const contentH = usedInList.length * rowH;
     const maxScroll = Math.max(0, contentH - scrollH);
 
-    // Scrollable container
+    // 스크롤 가능 컨테이너
     const scrollContainer = this.add.container(0, 0);
     this.overlay.add(scrollContainer);
 
-    // Build items inside scrollContainer (positions relative to world)
+    // 스크롤 컨테이너 내부에 항목 구성
     for (let i = 0; i < usedInList.length; i++) {
       const { resultEntry } = usedInList[i];
       const itemY = scrollTopY + i * rowH + rowH / 2;
@@ -622,6 +670,7 @@ export class MergeCodexScene extends Phaser.Scene {
       }).setOrigin(0.5);
       scrollContainer.add(itemText);
 
+      // 투명 히트 영역 (호버/클릭용)
       const hitArea = this.add.rectangle(panelX, itemY, panelW - 40, rowH, 0x000000, 0)
         .setInteractive({ useHandCursor: true });
       scrollContainer.add(hitArea);
@@ -630,33 +679,34 @@ export class MergeCodexScene extends Phaser.Scene {
       hitArea.on('pointerout', () => itemText.setColor('#dfe6e9'));
       hitArea.on('pointerdown', () => {
         if (!this._inputReady) return;
+        // 현재 항목을 히스토리에 저장하고 클릭한 결과 타워로 드릴다운
         this._overlayHistory.push(currentEntry);
         this._renderOverlay(resultEntry);
       });
     }
 
-    // Mask to clip scroll area
+    // 스크롤 영역 클리핑 마스크
     const maskShape = this.add.rectangle(panelX, scrollTopY + scrollH / 2, panelW - 10, scrollH, 0x000000)
       .setVisible(false);
     this.overlay.add(maskShape);
     scrollContainer.setMask(maskShape.createGeometryMask());
 
-    // Scroll indicator (show only if content overflows)
+    // 스크롤 힌트 (콘텐츠가 넘칠 때만 하단 화살표 표시)
     if (maxScroll > 0) {
-      const hint = this.add.text(panelX + panelW / 2 - 28, scrollTopY + scrollH - 2, '▼', {
+      const hint = this.add.text(panelX + panelW / 2 - 28, scrollTopY + scrollH - 2, '\u25BC', {
         fontSize: '9px', fontFamily: 'Arial, sans-serif', color: '#636e72',
       }).setOrigin(0.5);
       this.overlay.add(hint);
       this._usedInScrollHint = hint;
     }
 
-    // Drag-to-scroll state
+    // 드래그 스크롤 상태
     let scrollY = 0;
     let dragging = false;
     let dragStartY = 0;
     let dragStartScroll = 0;
 
-    // Invisible drag zone covering the scroll area
+    // 스크롤 영역을 덮는 투명 드래그 존
     const dragZone = this.add.rectangle(panelX, scrollTopY + scrollH / 2, panelW - 10, scrollH, 0x000000, 0)
       .setInteractive();
     this.overlay.add(dragZone);
@@ -672,7 +722,7 @@ export class MergeCodexScene extends Phaser.Scene {
       const dy = pointer.y - dragStartY;
       scrollY = Phaser.Math.Clamp(dragStartScroll - dy, 0, maxScroll);
       scrollContainer.y = -scrollY;
-      // Update scroll hint
+      // 스크롤 힌트 가시성 갱신 (끝까지 스크롤하면 숨김)
       if (this._usedInScrollHint) {
         this._usedInScrollHint.setVisible(scrollY < maxScroll - 5);
       }
@@ -681,21 +731,26 @@ export class MergeCodexScene extends Phaser.Scene {
     this.input.on('pointerup', () => { dragging = false; });
   }
 
+  // ── T2+ 합성 트리 패널 ─────────────────────────────────────
+
   /**
-   * Render the node tree panel for T2+ entries.
-   * Shows result node (top) connected to two material nodes (bottom left/right).
-   * @param {object} entry - T2+ tier data entry
-   * @param {number} panelX - Panel center X
-   * @param {number} panelTop - Panel top Y
-   * @param {number} panelW - Panel width
+   * T2+ 항목의 합성 트리 노드 패널을 렌더링한다.
+   * 결과 노드(상단)와 두 재료 노드(하단 좌/우)를 Y자 연결선으로 표시한다.
+   * 재료 노드 클릭 시 해당 타워로 드릴다운할 수 있다.
+   * @param {object} entry - T2+ 티어 데이터 항목
+   * @param {number} panelX - 패널 중심 X 좌표
+   * @param {number} panelTop - 패널 상단 Y 좌표
+   * @param {number} panelW - 패널 너비
+   * @param {Array} usedInList - 이 타워가 재료로 사용되는 레시피 목록
    * @private
    */
   _renderTreePanel(entry, panelX, panelTop, panelW, usedInList) {
+    // 레시피 키에서 두 재료를 추출
     const parts = entry.recipeKey ? entry.recipeKey.split('+') : [];
     const matAEntry = parts[0] ? this._buildEntryById(parts[0]) : null;
     const matBEntry = parts[1] ? this._buildEntryById(parts[1]) : null;
 
-    // ── Result node (top center) ──
+    // ── 결과 노드 (상단 중앙) ──
     const resultY = panelTop + 90;
     const resultR = 28;
 
@@ -716,7 +771,7 @@ export class MergeCodexScene extends Phaser.Scene {
     }).setOrigin(0.5);
     this.overlay.add(resultTier);
 
-    // ── Connector lines ──
+    // ── Y자 연결선 ──
     const forkY = panelTop + 175;
     const matY = panelTop + 210;
     const matR = 20;
@@ -728,11 +783,11 @@ export class MergeCodexScene extends Phaser.Scene {
     this._renderConnectorLines(lines, { x: panelX, y: panelTop + 155 }, forkY, { x: matAX, y: matY }, { x: matBX, y: matY });
     this.overlay.add(lines);
 
-    // ── Material nodes ──
+    // ── 재료 노드 (좌/우) ──
     if (matAEntry) this._renderMaterialNode(matAEntry, matAX, matY, matR, panelTop, entry);
     if (matBEntry) this._renderMaterialNode(matBEntry, matBX, matY, matR, panelTop, entry);
 
-    // ── Stats below tree ──
+    // ── 트리 아래 스탯 표시 ──
     let nextY = panelTop + 270;
     const mergedStats = MERGED_TOWER_STATS[entry.id];
     if (mergedStats) {
@@ -750,34 +805,35 @@ export class MergeCodexScene extends Phaser.Scene {
       nextY += 16;
     }
 
-    // ── "Used in" section ──
+    // ── "상위 조합" 섹션 ──
     if (usedInList.length > 0) {
       this._renderUsedInSection(entry, usedInList, panelX, nextY, panelW);
     }
   }
 
   /**
-   * Render a single material node (circle + name + tier badge).
-   * Clickable: T2+ drills down, T1 shows stat panel.
-   * @param {object} matEntry - Material tier data entry
-   * @param {number} cx - Node center X
-   * @param {number} cy - Node center Y (circle)
-   * @param {number} r - Circle radius
-   * @param {number} panelTop - Panel top Y for text placement
-   * @param {object} currentEntry - The current result entry (for history push)
+   * 재료 노드 하나를 렌더링한다 (색상 원 + 이름 + 티어 배지).
+   * 클릭 시 해당 재료 타워의 상세 정보로 드릴다운한다.
+   * T2+ 재료는 금색 테두리, T1 재료는 은색 테두리로 구분한다.
+   * @param {object} matEntry - 재료 타워의 티어 데이터 항목
+   * @param {number} cx - 노드 중심 X 좌표
+   * @param {number} cy - 노드 중심 Y 좌표 (원 위치)
+   * @param {number} r - 원 반지름
+   * @param {number} panelTop - 패널 상단 Y 좌표 (텍스트 배치용)
+   * @param {object} currentEntry - 현재 결과 항목 (히스토리 push용)
    * @private
    */
   _renderMaterialNode(matEntry, cx, cy, r, panelTop, currentEntry) {
     const circle = this.add.graphics();
     circle.fillStyle(matEntry.color, 1);
     circle.fillCircle(cx, cy, r);
-    // Clickable indicator: gold border for T2+, subtle border for T1
+    // T2+ 재료는 금색 테두리로 드릴다운 가능함을 시각적으로 표시
     const borderColor = matEntry.tier >= 2 ? BTN_PRIMARY : 0x636e72;
     circle.lineStyle(2, borderColor, 1);
     circle.strokeCircle(cx, cy, r);
     this.overlay.add(circle);
 
-    // Truncate name for material nodes (smaller space)
+    // 재료 이름 (공간 절약을 위해 6자 초과 시 말줄임)
     const displayName = matEntry.displayName.length > 6
       ? matEntry.displayName.substring(0, 5) + '..'
       : matEntry.displayName;
@@ -791,58 +847,62 @@ export class MergeCodexScene extends Phaser.Scene {
     }).setOrigin(0.5);
     this.overlay.add(tierBadge);
 
-    // Interactive hit area (invisible rectangle over the node area)
+    // 투명 히트 영역 (노드 영역을 덮는 클릭 가능 사각형)
     const hitArea = this.add.rectangle(cx, cy + 10, r * 2 + 10, 70, 0x000000, 0)
       .setInteractive({ useHandCursor: true });
     this.overlay.add(hitArea);
 
     hitArea.on('pointerdown', () => {
       if (!this._inputReady) return;
-      // Push current entry to history, then navigate to material
+      // 현재 항목을 히스토리에 저장하고 재료 타워로 드릴다운
       this._overlayHistory.push(currentEntry);
       this._renderOverlay(matEntry);
     });
   }
 
   /**
-   * Render Y-shaped connector lines from result node down to two material nodes.
-   * @param {Phaser.GameObjects.Graphics} graphics - Graphics object to draw on
-   * @param {object} resultPos - { x, y } bottom of result node
-   * @param {number} forkY - Y coordinate of the fork point
-   * @param {object} matAPos - { x, y } top of material A node
-   * @param {object} matBPos - { x, y } top of material B node
+   * 결과 노드에서 두 재료 노드로 이어지는 Y자 연결선을 렌더링한다.
+   * 수직선(결과 -> 분기점) + 수평선(좌재료 <-> 우재료) + 수직선 2개(분기점 -> 각 재료).
+   * @param {Phaser.GameObjects.Graphics} graphics - 그리기 대상 그래픽 오브젝트
+   * @param {object} resultPos - 결과 노드 하단 좌표 { x, y }
+   * @param {number} forkY - 분기점 Y 좌표
+   * @param {object} matAPos - 재료 A 노드 상단 좌표 { x, y }
+   * @param {object} matBPos - 재료 B 노드 상단 좌표 { x, y }
    * @private
    */
   _renderConnectorLines(graphics, resultPos, forkY, matAPos, matBPos) {
     graphics.lineStyle(2, 0x636e72, 0.8);
 
-    // Vertical line from result down to fork point
+    // 결과 노드에서 분기점까지 수직선
     graphics.beginPath();
     graphics.moveTo(resultPos.x, resultPos.y);
     graphics.lineTo(resultPos.x, forkY);
     graphics.strokePath();
 
-    // Horizontal line across at fork point
+    // 분기점에서의 수평선
     graphics.beginPath();
     graphics.moveTo(matAPos.x, forkY);
     graphics.lineTo(matBPos.x, forkY);
     graphics.strokePath();
 
-    // Vertical line down to material A
+    // 분기점에서 재료 A까지 수직선
     graphics.beginPath();
     graphics.moveTo(matAPos.x, forkY);
     graphics.lineTo(matAPos.x, matAPos.y - 20);
     graphics.strokePath();
 
-    // Vertical line down to material B
+    // 분기점에서 재료 B까지 수직선
     graphics.beginPath();
     graphics.moveTo(matBPos.x, forkY);
     graphics.lineTo(matBPos.x, matBPos.y - 20);
     graphics.strokePath();
   }
 
+  // ── 오버레이 내비게이션 ─────────────────────────────────────
+
   /**
-   * Handle back navigation: pop history or close overlay.
+   * 뒤로가기를 처리한다.
+   * 히스토리에 이전 항목이 있으면 되돌아가고, 없으면 오버레이를 닫는다.
    * @private
    */
   _handleBack() {
@@ -855,7 +915,8 @@ export class MergeCodexScene extends Phaser.Scene {
   }
 
   /**
-   * Force-close the overlay completely, ignoring history.
+   * 히스토리를 무시하고 오버레이를 즉시 완전히 닫는다.
+   * 닫힌 시각을 기록하여 즉시 재오픈을 방지한다.
    * @private
    */
   _forceCloseOverlay() {
@@ -868,7 +929,7 @@ export class MergeCodexScene extends Phaser.Scene {
   }
 
   /**
-   * Close the current overlay (respects history for back navigation).
+   * 오버레이를 닫는다 (히스토리 기반 뒤로가기 지원).
    * @private
    */
   _closeOverlay() {
@@ -876,10 +937,10 @@ export class MergeCodexScene extends Phaser.Scene {
   }
 
   /**
-   * Build a tier data entry object by tower/merge ID.
-   * Searches through _tierDataCache across all tiers.
-   * @param {string} id - Tower or merged tower ID
-   * @returns {object|null} The tier data entry, or null if not found
+   * 타워/합성 ID로 티어 데이터 항목을 조회한다.
+   * 모든 티어(T1~T5)의 캐시를 순회하여 일치하는 항목을 반환한다.
+   * @param {string} id - 타워 또는 합성 타워 ID
+   * @returns {object|null} 일치하는 티어 데이터 항목, 없으면 null
    * @private
    */
   _buildEntryById(id) {
@@ -894,10 +955,10 @@ export class MergeCodexScene extends Phaser.Scene {
     return null;
   }
 
-  // ── Drag Scroll ──────────────────────────────────────────────
+  // ── 드래그 스크롤 ──────────────────────────────────────────
 
   /**
-   * Set up pointer-based drag scroll for the codex grid.
+   * 도감 그리드에 대한 포인터 기반 드래그 스크롤을 설정한다.
    * @private
    */
   _setupCodexDrag() {
@@ -907,8 +968,9 @@ export class MergeCodexScene extends Phaser.Scene {
   }
 
   /**
-   * Handle pointer down for codex scroll.
-   * @param {Phaser.Input.Pointer} pointer
+   * 도감 스크롤용 포인터 다운 이벤트를 처리한다.
+   * 그리드 영역 위에서만 드래그를 시작한다.
+   * @param {Phaser.Input.Pointer} pointer - 포인터 이벤트
    * @private
    */
   _onCodexPointerDown(pointer) {
@@ -921,13 +983,15 @@ export class MergeCodexScene extends Phaser.Scene {
   }
 
   /**
-   * Handle pointer move for codex scroll.
-   * @param {Phaser.Input.Pointer} pointer
+   * 도감 스크롤용 포인터 이동 이벤트를 처리한다.
+   * 5px 이상 이동하면 드래그로 인정하여 카드 클릭을 방지한다.
+   * @param {Phaser.Input.Pointer} pointer - 포인터 이벤트
    * @private
    */
   _onCodexPointerMove(pointer) {
     if (!this.codexDragging) return;
     const dy = pointer.y - this.codexDragStartY;
+    // 5px 이상 이동하면 스크롤로 판정 (탭 클릭과 구분)
     if (Math.abs(dy) > 5) {
       this.codexDragMoved = true;
     }
@@ -939,7 +1003,7 @@ export class MergeCodexScene extends Phaser.Scene {
   }
 
   /**
-   * Handle pointer up for codex scroll.
+   * 도감 스크롤용 포인터 업 이벤트를 처리한다.
    * @private
    */
   _onCodexPointerUp() {
@@ -947,7 +1011,7 @@ export class MergeCodexScene extends Phaser.Scene {
   }
 
   /**
-   * Apply the current codex scroll offset to the scroll container.
+   * 현재 스크롤 오프셋을 스크롤 컨테이너에 적용한다.
    * @private
    */
   _applyCodexScroll() {
@@ -957,7 +1021,7 @@ export class MergeCodexScene extends Phaser.Scene {
   }
 
   /**
-   * Clean up drag scroll event listeners.
+   * 드래그 스크롤 이벤트 리스너를 정리한다.
    * @private
    */
   _cleanupCodexDrag() {
@@ -967,12 +1031,13 @@ export class MergeCodexScene extends Phaser.Scene {
     this.input.off('pointerup', this._onCodexPointerUp, this);
   }
 
-  // ── Helper Methods ───────────────────────────────────────────
+  // ── 헬퍼 메서드 ────────────────────────────────────────────
 
   /**
-   * Get the border color for a given tier.
-   * @param {number} tier
-   * @returns {number} Color hex
+   * 티어에 해당하는 카드 테두리 색상을 반환한다.
+   * T1~T2: 은색, T3: 금색, T4: 보라색, T5: 금색.
+   * @param {number} tier - 티어 번호 (1~5)
+   * @returns {number} 16진수 색상 값
    * @private
    */
   _getTierBorderColor(tier) {
@@ -987,9 +1052,9 @@ export class MergeCodexScene extends Phaser.Scene {
   }
 
   /**
-   * Get a short badge string for an attack type.
-   * @param {string} attackType
-   * @returns {string}
+   * 공격 유형 키를 짧은 배지 문자열로 변환한다.
+   * @param {string} attackType - 공격 유형 키 (예: 'single', 'splash')
+   * @returns {string} 표시용 배지 문자열 (예: 'Single', 'Splash')
    * @private
    */
   _getAttackTypeBadge(attackType) {

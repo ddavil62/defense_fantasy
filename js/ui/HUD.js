@@ -1,8 +1,7 @@
 /**
- * @fileoverview HUD - Top bar displaying wave number, gold, and base HP.
- * Includes HP danger blinking effect and wave countdown display.
- *
- * Phase 6: Added wave break countdown and next wave preview dots.
+ * @fileoverview HUD - 게임 상단 정보 표시줄.
+ * 웨이브 번호, 골드, 기지 HP를 표시하며, HP 위험 시 깜빡임 효과와
+ * 웨이브 휴식 카운트다운 및 다음 웨이브 미리보기 점을 제공한다.
  */
 
 import {
@@ -12,7 +11,9 @@ import {
   BTN_SELL,
 } from '../config.js';
 
-/** @const {Object<string, number>} Enemy type to color mapping for preview dots */
+// ── 적 유형별 미리보기 색상 매핑 ──────────────────────────────
+
+/** @const {Object<string, number>} 적 유형 키 -> 미리보기 점 색상 매핑 */
 const ENEMY_PREVIEW_COLORS = {
   normal: COLORS.ENEMY_NORMAL,
   fast: COLORS.ENEMY_FAST,
@@ -24,101 +25,113 @@ const ENEMY_PREVIEW_COLORS = {
   armored: COLORS.ENEMY_ARMORED,
 };
 
+/**
+ * 게임 상단 HUD 클래스.
+ * 웨이브 번호, 골드 보유량, 기지 HP를 실시간으로 표시하고,
+ * HP가 임계값 이하로 떨어지면 위험 깜빡임 효과를 재생한다.
+ */
 export class HUD {
   /**
-   * @param {Phaser.Scene} scene - The game scene
+   * HUD 인스턴스를 생성한다.
+   * @param {Phaser.Scene} scene - HUD를 표시할 게임 씬
    */
   constructor(scene) {
-    /** @type {Phaser.Scene} */
+    /** @type {Phaser.Scene} HUD가 속한 게임 씬 */
     this.scene = scene;
 
-    /** @type {boolean} HP blink state */
+    /** @type {boolean} HP 깜빡임 현재 가시 상태 */
     this._hpBlinkVisible = true;
 
-    /** @type {number} HP blink timer */
+    /** @type {number} HP 깜빡임 누적 타이머 (ms) */
     this._hpBlinkTimer = 0;
 
-    /** @type {number} Current HP for blink check */
+    /** @type {number} 깜빡임 판정용 현재 HP */
     this._currentHP = 0;
 
     this._create();
   }
 
+  // ── UI 요소 생성 ────────────────────────────────────────────
+
   /**
-   * Create HUD visual elements.
+   * HUD의 시각적 요소(배경, 텍스트, 카운트다운, 프리뷰)를 생성한다.
    * @private
    */
   _create() {
-    // Background bar - gradient effect (dark at top, fading toward map)
+    // 배경 바 - 상단이 불투명하고 하단으로 갈수록 페이드아웃되는 그라데이션
     this.bgGraphics = this.scene.add.graphics();
     this.bgGraphics.setDepth(30);
     const gradientSteps = 4;
     const stepH = HUD_HEIGHT / gradientSteps;
     for (let i = 0; i < gradientSteps; i++) {
-      // Top is opaque, bottom fades
+      // 상단은 불투명(0.95), 한 단계마다 0.12씩 투명도 증가
       const alpha = 0.95 - (i * 0.12);
       this.bgGraphics.fillStyle(COLORS.HUD_BG, alpha);
       this.bgGraphics.fillRect(0, i * stepH, GAME_WIDTH, stepH);
     }
 
-    // HUD danger border graphics (initially hidden)
+    // 위험 상태 테두리 그래픽 (초기에는 숨김)
     this.dangerBorderGraphics = this.scene.add.graphics();
     this.dangerBorderGraphics.setDepth(32);
     this.dangerBorderGraphics.setAlpha(0);
 
-    // Wave text (left) - with sword icon
+    // 웨이브 텍스트 (좌측) - 검 아이콘 포함
     this.waveText = this.scene.add.text(10, HUD_HEIGHT / 2, '\u2694 Wave: 1', {
       fontSize: '16px',
       fontFamily: 'Arial, sans-serif',
       color: '#ffffff',
     }).setOrigin(0, 0.5).setDepth(31);
 
-    // Gold text (center) - with diamond icon
+    // 골드 텍스트 (중앙) - 다이아몬드 아이콘 포함
     this.goldText = this.scene.add.text(150, HUD_HEIGHT / 2, '\u25C6 200', {
       fontSize: '16px',
       fontFamily: 'Arial, sans-serif',
       color: GOLD_TEXT_CSS,
     }).setOrigin(0.5, 0.5).setDepth(31);
 
-    // HP text (right) - with heart icon
+    // HP 텍스트 (우측) - 하트 아이콘 포함
     this.hpText = this.scene.add.text(235, HUD_HEIGHT / 2, '\u2665 20', {
       fontSize: '16px',
       fontFamily: 'Arial, sans-serif',
       color: '#ffffff',
     }).setOrigin(0, 0.5).setDepth(31);
 
-    // Phase 6: Countdown text (below wave text, only shown during break)
+    // 카운트다운 텍스트 (웨이브 텍스트 아래, 휴식 시간에만 표시)
     this.countdownText = this.scene.add.text(10, HUD_HEIGHT + 4, '', {
       fontSize: '11px',
       fontFamily: 'Arial, sans-serif',
       color: '#b2bec3',
     }).setOrigin(0, 0).setDepth(31).setAlpha(0);
 
-    // Phase 6: Preview dots graphics (next to countdown)
+    // 다음 웨이브 미리보기 점 그래픽 (카운트다운 옆에 표시)
     this.previewGraphics = this.scene.add.graphics();
     this.previewGraphics.setDepth(31);
   }
 
+  // ── 정보 갱신 메서드 ────────────────────────────────────────
+
   /**
-   * Update the wave display.
-   * @param {number} round - Current round number
+   * 웨이브 번호 텍스트를 갱신한다.
+   * @param {number} round - 현재 라운드(웨이브) 번호
    */
   updateWave(round) {
     this.waveText.setText(`\u2694 Wave: ${round}`);
   }
 
   /**
-   * Update the gold display.
-   * @param {number} amount - Current gold amount
+   * 골드 표시 텍스트를 갱신한다.
+   * @param {number} amount - 현재 보유 골드
    */
   updateGold(amount) {
     this.goldText.setText(`\u25C6 ${amount}`);
   }
 
   /**
-   * Update the HP display with danger blinking.
-   * @param {number} current - Current HP
-   * @param {number} max - Maximum HP
+   * HP 표시를 갱신하고, 위험 상태일 때 테두리 효과를 적용한다.
+   * HP가 HP_DANGER_THRESHOLD 이하이면 빨간 테두리를 표시하고,
+   * 그 이상이면 일반 상태로 복원한다.
+   * @param {number} current - 현재 HP
+   * @param {number} max - 최대 HP
    */
   updateHP(current, max) {
     this._currentHP = current;
@@ -126,31 +139,35 @@ export class HUD {
 
     if (current > HP_DANGER_THRESHOLD) {
       this.hpText.setColor('#ffffff');
-      // Hide danger border when HP is safe
+      // HP가 안전 범위이면 위험 테두리 숨기기
       if (this.dangerBorderGraphics) {
         this.dangerBorderGraphics.setAlpha(0);
       }
     } else if (current > 0) {
-      // Show danger border when HP is low
+      // HP가 낮을 때 위험 테두리 표시
       this._drawDangerBorder();
     }
   }
 
   /**
-   * Draw red glow border on HUD for danger state.
+   * HUD에 빨간 발광 테두리를 그린다 (위험 상태 표시용).
    * @private
    */
   _drawDangerBorder() {
     if (!this.dangerBorderGraphics) return;
     this.dangerBorderGraphics.clear();
+    // 2px 두께, 빨간색(#ff4757), 80% 불투명도의 테두리
     this.dangerBorderGraphics.lineStyle(2, 0xff4757, 0.8);
     this.dangerBorderGraphics.strokeRect(0, 0, GAME_WIDTH, HUD_HEIGHT);
     this.dangerBorderGraphics.setAlpha(1);
   }
 
+  // ── 깜빡임 효과 ────────────────────────────────────────────
+
   /**
-   * Update blink effect for low HP.
-   * @param {number} delta - Frame delta in seconds
+   * 낮은 HP 상태에서 텍스트와 테두리의 깜빡임 효과를 매 프레임 갱신한다.
+   * HP_BLINK_INTERVAL마다 색상과 투명도를 토글한다.
+   * @param {number} delta - 프레임 간 경과 시간 (초)
    */
   updateBlink(delta) {
     if (this._currentHP <= HP_DANGER_THRESHOLD && this._currentHP > 0) {
@@ -159,7 +176,7 @@ export class HUD {
         this._hpBlinkTimer = 0;
         this._hpBlinkVisible = !this._hpBlinkVisible;
         this.hpText.setColor(this._hpBlinkVisible ? HP_DANGER_CSS : '#ffffff');
-        // Pulse danger border alpha
+        // 위험 테두리 투명도를 펄스 효과로 토글 (1.0 <-> 0.4)
         if (this.dangerBorderGraphics) {
           this.dangerBorderGraphics.setAlpha(this._hpBlinkVisible ? 1 : 0.4);
         }
@@ -167,10 +184,13 @@ export class HUD {
     }
   }
 
+  // ── 웨이브 카운트다운 & 미리보기 ────────────────────────────
+
   /**
-   * Update wave break countdown and next wave preview.
-   * @param {number} breakTime - Remaining break time in seconds (0 if not in break)
-   * @param {{ types: string[], isBoss: boolean }|null} preview - Next wave preview data
+   * 웨이브 사이 휴식 시간 카운트다운과 다음 웨이브 적 유형 미리보기를 갱신한다.
+   * 휴식 시간이 아니면 카운트다운 텍스트를 숨긴다.
+   * @param {number} breakTime - 남은 휴식 시간 (초, 0이면 휴식 아님)
+   * @param {{ types: string[], isBoss: boolean }|null} preview - 다음 웨이브 미리보기 데이터
    */
   updateCountdown(breakTime, preview) {
     this.previewGraphics.clear();
@@ -180,7 +200,7 @@ export class HUD {
       this.countdownText.setText(`Next: ${secs}s`);
       this.countdownText.setAlpha(1);
 
-      // Draw preview dots (enemy type colors)
+      // 적 유형별 색상으로 미리보기 점 렌더링
       const startX = 70;
       const dotY = HUD_HEIGHT + 10;
       for (let i = 0; i < preview.types.length; i++) {
@@ -189,7 +209,7 @@ export class HUD {
         this.previewGraphics.fillCircle(startX + i * 14, dotY, 4);
       }
 
-      // Boss indicator
+      // 보스 웨이브 표시 - 금색 원으로 강조
       if (preview.isBoss) {
         this.countdownText.setColor('#ffd700');
         this.previewGraphics.lineStyle(1, 0xffd700, 0.8);
@@ -204,8 +224,10 @@ export class HUD {
     }
   }
 
+  // ── 정리 ────────────────────────────────────────────────────
+
   /**
-   * Clean up HUD elements.
+   * HUD의 모든 게임 오브젝트를 파괴하여 메모리를 해제한다.
    */
   destroy() {
     if (this.bgGraphics) this.bgGraphics.destroy();

@@ -1,25 +1,25 @@
 /**
- * @fileoverview SoundManager - Web Audio API based procedural SFX + BGM manager.
- * All sounds are synthesized at runtime using OscillatorNode + GainNode.
- * No external audio files are used.
+ * @fileoverview SoundManager - Web Audio API 기반 절차적 SFX + BGM 관리자.
+ * 모든 사운드는 OscillatorNode + GainNode를 사용하여 런타임에 합성된다.
+ * 외부 오디오 파일을 사용하지 않는다.
  *
  * SFX: fire, hit, kill, kill_boss, boss_appear, base_hit, wave_clear, game_over
- * BGM: menu, battle, boss (note sequencer loop via setInterval)
+ * BGM: menu, battle, boss (노트 시퀀서 루프, setInterval 사용)
  *
- * Depends only on Web Audio API. No Phaser dependency.
+ * Web Audio API만 의존한다. Phaser 의존성 없음.
  */
 
-/** @const {string} localStorage key for sound settings */
+/** @const {string} 사운드 설정 localStorage 키 */
 const SOUND_SAVE_KEY = 'fantasy-td-sound';
 
-/** @const {number} Max concurrent sfx_hit instances */
+/** @const {number} sfx_hit 최대 동시 재생 수 */
 const MAX_HIT_CONCURRENT = 3;
 
-/** @const {number} Max concurrent sfx_kill instances */
+/** @const {number} sfx_kill 최대 동시 재생 수 */
 const MAX_KILL_CONCURRENT = 2;
 
 /**
- * Tower-specific fire SFX parameters.
+ * 타워 타입별 발사 SFX 파라미터.
  * @type {Object<string, {waveform: OscillatorType, freqStart: number, freqEnd: number, duration: number}>}
  */
 const FIRE_PARAMS = {
@@ -35,15 +35,17 @@ const FIRE_PARAMS = {
   dragon:    { waveform: 'sawtooth', freqStart: 300,  freqEnd: 100,  duration: 0.18 },
 };
 
+// ── BGM 시퀀스 데이터 ─────────────────────────────────────────────
+
 /**
- * BGM menu note sequence (C minor pentatonic arpeggio).
- * Each entry: { freq: Hz, beats: number }
- * BPM 60 => 1 beat = 1.0s
+ * 메뉴 BGM 노트 시퀀스 (C단조 펜타토닉 아르페지오).
+ * 각 항목: { freq: Hz, beats: 박자 수 }
+ * BPM 60 => 1박 = 1.0초
  */
 const BGM_MENU_NOTES = [
   { freq: 130.81, beats: 1 },   // C3
   { freq: 155.56, beats: 1 },   // Eb3
-  { freq: 196.00, beats: 2 },   // G3 (long)
+  { freq: 196.00, beats: 2 },   // G3 (긴 음)
   { freq: 233.08, beats: 1 },   // Bb3
   { freq: 261.63, beats: 1 },   // C4
   { freq: 233.08, beats: 1 },   // Bb3
@@ -52,8 +54,8 @@ const BGM_MENU_NOTES = [
 const BGM_MENU_BPM = 60;
 
 /**
- * BGM battle melody notes (D minor).
- * BPM 120 => 1 beat = 0.5s
+ * 전투 BGM 멜로디 노트 (D단조).
+ * BPM 120 => 1박 = 0.5초
  */
 const BGM_BATTLE_MELODY = [
   { freq: 293.66, beats: 0.5 },  // D4
@@ -73,17 +75,18 @@ const BGM_BATTLE_MELODY = [
   { freq: 261.63, beats: 0.5 },  // C4
   { freq: 293.66, beats: 1 },    // D4
 ];
+/** 전투 BGM 베이스라인 노트 */
 const BGM_BATTLE_BASS = [
   { freq: 146.83, beats: 4 },  // D3
-  { freq: 220.00, beats: 4 },  // A3 (corrected from A2 to A3)
+  { freq: 220.00, beats: 4 },  // A3
   { freq: 174.61, beats: 4 },  // F3
   { freq: 220.00, beats: 4 },  // A3
 ];
 const BGM_BATTLE_BPM = 120;
 
 /**
- * BGM boss lead notes (B minor pentatonic).
- * BPM 160 => 1 beat = 0.375s
+ * 보스 BGM 리드 노트 (B단조 펜타토닉).
+ * BPM 160 => 1박 = 0.375초
  */
 const BGM_BOSS_LEAD = [
   { freq: 246.94, beats: 0.5 },   // B3
@@ -106,63 +109,69 @@ const BGM_BOSS_LEAD = [
 const BGM_BOSS_BPM = 160;
 
 export class SoundManager {
+  /**
+   * SoundManager를 생성한다.
+   * AudioContext는 사용자 제스처 시점에 지연 초기화된다.
+   */
   constructor() {
-    /** @type {AudioContext|null} */
+    /** @type {AudioContext|null} Web Audio API 컨텍스트 */
     this._ctx = null;
 
-    /** @type {GainNode|null} */
+    /** @type {GainNode|null} 마스터 게인 노드 (음소거 제어) */
     this._masterGain = null;
 
-    /** @type {GainNode|null} */
+    /** @type {GainNode|null} SFX 게인 노드 */
     this._sfxGain = null;
 
-    /** @type {GainNode|null} */
+    /** @type {GainNode|null} BGM 게인 노드 */
     this._bgmGain = null;
 
-    /** @type {number} SFX volume 0.0~1.0 */
+    /** @type {number} SFX 볼륨 (0.0~1.0) */
     this.sfxVolume = 0.8;
 
-    /** @type {number} BGM volume 0.0~1.0 */
+    /** @type {number} BGM 볼륨 (0.0~1.0) */
     this.bgmVolume = 0.5;
 
-    /** @type {boolean} Global mute flag */
+    /** @type {boolean} 전역 음소거 플래그 */
     this.muted = false;
 
-    /** @type {string|null} Currently playing BGM id */
+    /** @type {string|null} 현재 재생 중인 BGM ID */
     this._currentBgmId = null;
 
-    /** @type {number|null} BGM scheduler interval ID */
+    /** @type {number|null} BGM 스케줄러 setInterval ID */
     this._bgmIntervalId = null;
 
-    /** @type {number} Current note index in BGM sequence */
+    /** @type {number} BGM 시퀀스의 현재 노트 인덱스 */
     this._bgmNoteIndex = 0;
 
-    /** @type {number} Next note scheduled time (AudioContext time) */
+    /** @type {number} 다음 노트 예약 시각 (AudioContext 시간 기준) */
     this._bgmNextNoteTime = 0;
 
-    /** @type {OscillatorNode[]} Active BGM oscillator nodes for cleanup */
+    /** @type {OscillatorNode[]} 정리용 활성 BGM 오실레이터 노드 배열 */
     this._bgmActiveNodes = [];
 
-    /** @type {number} BGM bass note index */
+    /** @type {number} BGM 베이스 노트 인덱스 */
     this._bgmBassIndex = 0;
 
-    /** @type {number} BGM bass next note time */
+    /** @type {number} BGM 베이스 다음 노트 시각 */
     this._bgmBassNextTime = 0;
 
-    /** @type {number} Active sfx_hit count */
+    /** @type {number} 활성 sfx_hit 수 (동시 재생 제한용) */
     this._hitCount = 0;
 
-    /** @type {number} Active sfx_kill count */
+    /** @type {number} 활성 sfx_kill 수 (동시 재생 제한용) */
     this._killCount = 0;
 
-    // Load saved settings
+    // 저장된 설정 로드
     this._loadSettings();
   }
 
+  // ── 오디오 컨텍스트 ────────────────────────────────────────────
+
   /**
-   * Ensure AudioContext is created and resumed.
-   * Must be called within a user gesture handler.
-   * @returns {AudioContext|null}
+   * AudioContext를 생성하고 resume한다.
+   * 사용자 제스처 핸들러 내에서 호출해야 한다 (브라우저 자동재생 정책).
+   * @returns {AudioContext|null} 생성된 컨텍스트, 또는 실패 시 null
    * @private
    */
   _ensureContext() {
@@ -172,7 +181,7 @@ export class SoundManager {
         if (!AudioCtx) return null;
         this._ctx = new AudioCtx();
 
-        // Build gain node tree
+        // 게인 노드 트리 구축: SFX/BGM -> Master -> Destination
         this._masterGain = this._ctx.createGain();
         this._masterGain.connect(this._ctx.destination);
 
@@ -185,6 +194,7 @@ export class SoundManager {
         this._applyVolumes();
       }
 
+      // suspended 상태이면 resume (사용자 제스처 필요)
       if (this._ctx.state === 'suspended') {
         this._ctx.resume();
       }
@@ -196,7 +206,7 @@ export class SoundManager {
   }
 
   /**
-   * Apply current volume/mute settings to gain nodes.
+   * 현재 볼륨/음소거 설정을 게인 노드에 반영한다.
    * @private
    */
   _applyVolumes() {
@@ -213,12 +223,12 @@ export class SoundManager {
     }
   }
 
-  // ── SFX ──────────────────────────────────────────────────────────
+  // ── SFX ─────────────────────────────────────────────────────────
 
   /**
-   * Play a sound effect by ID.
-   * @param {string} id - SFX identifier (e.g. 'sfx_fire', 'sfx_hit')
-   * @param {object} [opts] - Options (towerType for sfx_fire, bossRound for sfx_wave_clear, hpRatio for sfx_base_hit)
+   * ID로 효과음을 재생한다.
+   * @param {string} id - SFX 식별자 ('sfx_fire', 'sfx_hit', 'sfx_kill' 등)
+   * @param {object} [opts] - 옵션 (sfx_fire: towerType, sfx_wave_clear: bossRound, sfx_base_hit: hpRatio)
    */
   playSfx(id, opts = {}) {
     const ctx = this._ensureContext();
@@ -252,14 +262,15 @@ export class SoundManager {
           break;
       }
     } catch (e) {
-      // Silently ignore audio errors
+      // 오디오 오류 무시
     }
   }
 
   /**
-   * Play tower fire SFX with tower-type-specific sound.
-   * @param {AudioContext} ctx
-   * @param {string} towerType
+   * 타워 타입별 발사 SFX를 재생한다.
+   * FIRE_PARAMS 테이블에서 파형, 시작/종료 주파수, 지속 시간을 참조한다.
+   * @param {AudioContext} ctx - 오디오 컨텍스트
+   * @param {string} towerType - 타워 타입
    * @private
    */
   _playSfxFire(ctx, towerType) {
@@ -283,8 +294,8 @@ export class SoundManager {
   }
 
   /**
-   * Play enemy hit SFX (concurrency limited to 3).
-   * @param {AudioContext} ctx
+   * 적 명중 SFX를 재생한다 (동시 재생 최대 3개로 제한).
+   * @param {AudioContext} ctx - 오디오 컨텍스트
    * @private
    */
   _playSfxHit(ctx) {
@@ -312,8 +323,8 @@ export class SoundManager {
   }
 
   /**
-   * Play enemy kill SFX (concurrency limited to 2).
-   * @param {AudioContext} ctx
+   * 적 처치 SFX를 재생한다 (동시 재생 최대 2개로 제한).
+   * @param {AudioContext} ctx - 오디오 컨텍스트
    * @private
    */
   _playSfxKill(ctx) {
@@ -341,14 +352,15 @@ export class SoundManager {
   }
 
   /**
-   * Play boss kill SFX (3-layer simultaneous).
-   * @param {AudioContext} ctx
+   * 보스 처치 SFX를 재생한다 (3레이어 동시 재생).
+   * sine + square + sawtooth 파형을 겹쳐 묵직한 효과를 만든다.
+   * @param {AudioContext} ctx - 오디오 컨텍스트
    * @private
    */
   _playSfxKillBoss(ctx) {
     const t = ctx.currentTime;
 
-    // Layer 1: sine 500->100 Hz, 0.8s
+    // 레이어 1: sine 500->100 Hz, 0.8초
     const osc1 = ctx.createOscillator();
     const g1 = ctx.createGain();
     osc1.connect(g1);
@@ -361,7 +373,7 @@ export class SoundManager {
     osc1.start(t);
     osc1.stop(t + 0.8);
 
-    // Layer 2: square 250->50 Hz, 0.8s
+    // 레이어 2: square 250->50 Hz, 0.8초
     const osc2 = ctx.createOscillator();
     const g2 = ctx.createGain();
     osc2.connect(g2);
@@ -374,7 +386,7 @@ export class SoundManager {
     osc2.start(t);
     osc2.stop(t + 0.8);
 
-    // Layer 3: sawtooth 1000->200 Hz, 0.5s
+    // 레이어 3: sawtooth 1000->200 Hz, 0.5초
     const osc3 = ctx.createOscillator();
     const g3 = ctx.createGain();
     osc3.connect(g3);
@@ -389,14 +401,15 @@ export class SoundManager {
   }
 
   /**
-   * Play boss appear SFX (2-layer warning tone).
-   * @param {AudioContext} ctx
+   * 보스 등장 SFX를 재생한다 (2레이어 경고음).
+   * 저음 sawtooth + 중음 sine으로 위협적인 느낌을 만든다.
+   * @param {AudioContext} ctx - 오디오 컨텍스트
    * @private
    */
   _playSfxBossAppear(ctx) {
     const t = ctx.currentTime;
 
-    // Layer 1 (bass): sawtooth 80->60 Hz, 1.5s
+    // 레이어 1 (저음): sawtooth 80->60 Hz, 1.5초
     const osc1 = ctx.createOscillator();
     const g1 = ctx.createGain();
     osc1.connect(g1);
@@ -409,7 +422,7 @@ export class SoundManager {
     osc1.start(t);
     osc1.stop(t + 1.5);
 
-    // Layer 2 (warning): sine 200->150 Hz, 1.0s
+    // 레이어 2 (경고): sine 200->150 Hz, 1.0초
     const osc2 = ctx.createOscillator();
     const g2 = ctx.createGain();
     osc2.connect(g2);
@@ -424,14 +437,16 @@ export class SoundManager {
   }
 
   /**
-   * Play base hit SFX (siren).
-   * @param {AudioContext} ctx
-   * @param {number} [hpRatio=1] - Current HP ratio (0-1) for volume adjustment
+   * 기지 피격 SFX를 재생한다 (사이렌 효과).
+   * HP 비율이 25% 이하이면 볼륨이 약간 상승한다.
+   * @param {AudioContext} ctx - 오디오 컨텍스트
+   * @param {number} [hpRatio=1] - 현재 HP 비율 (0~1, 볼륨 조절용)
    * @private
    */
   _playSfxBaseHit(ctx, hpRatio = 1) {
     const t = ctx.currentTime;
     const dur = 0.4;
+    // HP 25% 이하이면 볼륨 1.2배 (최대 0.5)
     const vol = hpRatio != null && hpRatio <= 0.25 ? Math.min(0.5, 0.4 * 1.2) : 0.4;
 
     const osc = ctx.createOscillator();
@@ -440,6 +455,7 @@ export class SoundManager {
     gain.connect(this._sfxGain);
 
     osc.type = 'sawtooth';
+    // 440 -> 880 -> 440 Hz 사이렌 패턴
     osc.frequency.setValueAtTime(440, t);
     osc.frequency.linearRampToValueAtTime(880, t + 0.2);
     osc.frequency.linearRampToValueAtTime(440, t + dur);
@@ -452,16 +468,17 @@ export class SoundManager {
   }
 
   /**
-   * Play wave clear SFX (ascending 3-note fanfare).
-   * @param {AudioContext} ctx
-   * @param {boolean} bossRound - If true, play 1 octave higher
+   * 웨이브 클리어 SFX를 재생한다 (상승 3음 팡파레).
+   * 보스 라운드이면 1옥타브 높게 재생한다.
+   * @param {AudioContext} ctx - 오디오 컨텍스트
+   * @param {boolean} bossRound - 보스 라운드 여부
    * @private
    */
   _playSfxWaveClear(ctx, bossRound) {
     const t = ctx.currentTime;
-    const mult = bossRound ? 2 : 1;
+    const mult = bossRound ? 2 : 1; // 보스 라운드: 1옥타브 위
 
-    // Note 1: C5 (523 Hz)
+    // 음1: C5 (523 Hz)
     const osc1 = ctx.createOscillator();
     const g1 = ctx.createGain();
     osc1.connect(g1);
@@ -473,7 +490,7 @@ export class SoundManager {
     osc1.start(t);
     osc1.stop(t + 0.15);
 
-    // Note 2: E5 (659 Hz)
+    // 음2: E5 (659 Hz), 0.12초 지연
     const osc2 = ctx.createOscillator();
     const g2 = ctx.createGain();
     osc2.connect(g2);
@@ -486,7 +503,7 @@ export class SoundManager {
     osc2.start(t + 0.12);
     osc2.stop(t + 0.27);
 
-    // Note 3: G5 (784 Hz)
+    // 음3: G5 (784 Hz), 0.24초 지연
     const osc3 = ctx.createOscillator();
     const g3 = ctx.createGain();
     osc3.connect(g3);
@@ -501,14 +518,14 @@ export class SoundManager {
   }
 
   /**
-   * Play game over SFX (descending 2-note dirge).
-   * @param {AudioContext} ctx
+   * 게임 오버 SFX를 재생한다 (하강 2음 장송곡).
+   * @param {AudioContext} ctx - 오디오 컨텍스트
    * @private
    */
   _playSfxGameOver(ctx) {
     const t = ctx.currentTime;
 
-    // Note 1: sawtooth 300->200 Hz, 0.5s
+    // 음1: sawtooth 300->200 Hz, 0.5초
     const osc1 = ctx.createOscillator();
     const g1 = ctx.createGain();
     osc1.connect(g1);
@@ -521,7 +538,7 @@ export class SoundManager {
     osc1.start(t);
     osc1.stop(t + 0.5);
 
-    // Note 2: sawtooth 200->100 Hz, 0.6s (starts at t+0.4)
+    // 음2: sawtooth 200->100 Hz, 0.6초 (t+0.4부터 시작)
     const osc2 = ctx.createOscillator();
     const g2 = ctx.createGain();
     osc2.connect(g2);
@@ -536,17 +553,17 @@ export class SoundManager {
     osc2.stop(t + 1.0);
   }
 
-  // ── BGM ──────────────────────────────────────────────────────────
+  // ── BGM ─────────────────────────────────────────────────────────
 
   /**
-   * Start playing a BGM track.
-   * @param {string} id - BGM identifier ('menu', 'battle', 'boss')
+   * BGM 트랙을 시작한다. 기존 재생 중인 BGM은 즉시 중지한다.
+   * @param {string} id - BGM 식별자 ('menu', 'battle', 'boss')
    */
   playBgm(id) {
     const ctx = this._ensureContext();
     if (!ctx) return;
 
-    // Stop current BGM immediately
+    // 현재 BGM 즉시 중지
     if (this._currentBgmId) {
       this.stopBgm(false);
     }
@@ -557,15 +574,15 @@ export class SoundManager {
     this._bgmNextNoteTime = ctx.currentTime + 0.1;
     this._bgmBassNextTime = ctx.currentTime + 0.1;
 
-    // Start scheduler loop (100ms interval)
+    // 스케줄러 루프 시작 (100ms 간격으로 노트 예약)
     this._bgmIntervalId = setInterval(() => {
       this._scheduleBgmNotes();
     }, 100);
   }
 
   /**
-   * Stop current BGM.
-   * @param {boolean} [fadeOut=false] - Whether to fade out (1s) or stop immediately
+   * 현재 BGM을 중지한다.
+   * @param {boolean} [fadeOut=false] - true이면 1초 페이드아웃, false이면 즉시 중지
    */
   stopBgm(fadeOut = false) {
     if (this._bgmIntervalId !== null) {
@@ -573,7 +590,7 @@ export class SoundManager {
       this._bgmIntervalId = null;
     }
 
-    // Stop all active BGM nodes
+    // 모든 활성 BGM 노드 정지
     for (const node of this._bgmActiveNodes) {
       try {
         if (fadeOut && node._gainNode) {
@@ -585,7 +602,7 @@ export class SoundManager {
           node.stop();
         }
       } catch (e) {
-        // Node may already be stopped
+        // 이미 정지된 노드일 수 있음
       }
     }
     this._bgmActiveNodes = [];
@@ -593,14 +610,14 @@ export class SoundManager {
   }
 
   /**
-   * Schedule upcoming BGM notes (lookahead scheduling pattern).
-   * Called every 100ms by setInterval.
+   * 예정된 BGM 노트를 스케줄링한다 (룩어헤드 스케줄링 패턴).
+   * setInterval에 의해 100ms마다 호출된다.
    * @private
    */
   _scheduleBgmNotes() {
     if (!this._ctx || !this._currentBgmId) return;
 
-    const lookahead = 0.15; // seconds ahead to schedule
+    const lookahead = 0.15; // 미리 예약할 시간 (초)
     const now = this._ctx.currentTime;
 
     switch (this._currentBgmId) {
@@ -615,10 +632,9 @@ export class SoundManager {
         break;
     }
 
-    // Cleanup finished nodes
+    // 종료된 노드 정리
     this._bgmActiveNodes = this._bgmActiveNodes.filter(n => {
       try {
-        // Keep nodes that haven't ended yet
         return n._endTime > now;
       } catch (e) {
         return false;
@@ -627,13 +643,14 @@ export class SoundManager {
   }
 
   /**
-   * Schedule menu BGM notes.
-   * @param {number} now - Current AudioContext time
-   * @param {number} lookahead - Lookahead window in seconds
+   * 메뉴 BGM 노트를 스케줄링한다.
+   * C단조 펜타토닉 아르페지오를 sine 파형으로 반복한다.
+   * @param {number} now - 현재 AudioContext 시간
+   * @param {number} lookahead - 룩어헤드 윈도우 (초)
    * @private
    */
   _scheduleMenuNotes(now, lookahead) {
-    const beatDur = 60 / BGM_MENU_BPM; // 1.0s per beat
+    const beatDur = 60 / BGM_MENU_BPM; // 1.0초/박
     const notes = BGM_MENU_NOTES;
 
     while (this._bgmNextNoteTime < now + lookahead) {
@@ -650,15 +667,16 @@ export class SoundManager {
   }
 
   /**
-   * Schedule battle BGM notes (melody + bass).
-   * @param {number} now - Current AudioContext time
-   * @param {number} lookahead - Lookahead window in seconds
+   * 전투 BGM 노트를 스케줄링한다 (멜로디 + 베이스라인).
+   * D단조 멜로디를 square 파형, 베이스를 sine 파형으로 재생한다.
+   * @param {number} now - 현재 AudioContext 시간
+   * @param {number} lookahead - 룩어헤드 윈도우 (초)
    * @private
    */
   _scheduleBattleNotes(now, lookahead) {
-    const beatDur = 60 / BGM_BATTLE_BPM; // 0.5s per beat
+    const beatDur = 60 / BGM_BATTLE_BPM; // 0.5초/박
 
-    // Melody
+    // 멜로디 스케줄링
     const melody = BGM_BATTLE_MELODY;
     while (this._bgmNextNoteTime < now + lookahead) {
       const note = melody[this._bgmNoteIndex % melody.length];
@@ -671,7 +689,7 @@ export class SoundManager {
       this._bgmNoteIndex++;
     }
 
-    // Bass
+    // 베이스라인 스케줄링
     const bass = BGM_BATTLE_BASS;
     while (this._bgmBassNextTime < now + lookahead) {
       const note = bass[this._bgmBassIndex % bass.length];
@@ -686,15 +704,16 @@ export class SoundManager {
   }
 
   /**
-   * Schedule boss BGM notes (lead + pulse bass).
-   * @param {number} now - Current AudioContext time
-   * @param {number} lookahead - Lookahead window in seconds
+   * 보스 BGM 노트를 스케줄링한다 (리드 멜로디 + 펄스 베이스).
+   * B단조 펜타토닉 리드를 sawtooth 파형, 펄스 베이스를 square 파형으로 재생한다.
+   * @param {number} now - 현재 AudioContext 시간
+   * @param {number} lookahead - 룩어헤드 윈도우 (초)
    * @private
    */
   _scheduleBossNotes(now, lookahead) {
-    const beatDur = 60 / BGM_BOSS_BPM; // 0.375s per beat
+    const beatDur = 60 / BGM_BOSS_BPM; // 0.375초/박
 
-    // Lead
+    // 리드 멜로디 스케줄링
     const lead = BGM_BOSS_LEAD;
     while (this._bgmNextNoteTime < now + lookahead) {
       const note = lead[this._bgmNoteIndex % lead.length];
@@ -707,26 +726,27 @@ export class SoundManager {
       this._bgmNoteIndex++;
     }
 
-    // Pulse bass: B2 (123.47) 0.5 beat on, 0.5 beat off
+    // 펄스 베이스: B2 (123.47Hz), 0.5박 재생 + 0.5박 무음 반복
     const bassBeatDur = 0.5 * beatDur;
     while (this._bgmBassNextTime < now + lookahead) {
       this._playBgmNote(
         123.47, this._bgmBassNextTime, bassBeatDur,
         'square', 0.18, 0.4
       );
-      this._bgmBassNextTime += bassBeatDur * 2; // on + off
+      this._bgmBassNextTime += bassBeatDur * 2; // 재생 + 무음
       this._bgmBassIndex++;
     }
   }
 
   /**
-   * Play a single BGM note using OscillatorNode + GainNode.
-   * @param {number} freq - Frequency in Hz
-   * @param {number} startTime - AudioContext start time
-   * @param {number} duration - Note duration in seconds
-   * @param {OscillatorType} waveform - Oscillator waveform type
-   * @param {number} noteGain - Note gain value
-   * @param {number} bgmLevelGain - BGM level gain (unused, kept for API consistency)
+   * OscillatorNode + GainNode로 단일 BGM 노트를 재생한다.
+   * ADSR 엔벨로프(attack -> sustain -> release)를 적용한다.
+   * @param {number} freq - 주파수 (Hz)
+   * @param {number} startTime - AudioContext 시작 시간
+   * @param {number} duration - 노트 지속 시간 (초)
+   * @param {OscillatorType} waveform - 오실레이터 파형 타입
+   * @param {number} noteGain - 노트 게인 값
+   * @param {number} bgmLevelGain - BGM 레벨 게인 (API 일관성용, 미사용)
    * @private
    */
   _playBgmNote(freq, startTime, duration, waveform, noteGain, bgmLevelGain) {
@@ -741,7 +761,7 @@ export class SoundManager {
       osc.type = waveform;
       osc.frequency.setValueAtTime(freq, startTime);
 
-      // Envelope: attack -> sustain -> release
+      // ADSR 엔벨로프: attack(0.02초) -> sustain -> release
       const attackTime = 0.02;
       const releaseTime = Math.min(0.1, duration * 0.3);
       const sustainEnd = startTime + duration - releaseTime;
@@ -756,20 +776,20 @@ export class SoundManager {
       osc.start(startTime);
       osc.stop(startTime + duration + 0.01);
 
-      // Track for cleanup
+      // 정리 추적용 메타데이터
       osc._endTime = startTime + duration + 0.05;
       osc._gainNode = gain;
       this._bgmActiveNodes.push(osc);
     } catch (e) {
-      // Silently ignore
+      // 오류 무시
     }
   }
 
-  // ── Volume Controls ──────────────────────────────────────────────
+  // ── 볼륨 제어 ──────────────────────────────────────────────────
 
   /**
-   * Set SFX volume.
-   * @param {number} v - Volume 0.0~1.0
+   * SFX 볼륨을 설정한다.
+   * @param {number} v - 볼륨 (0.0~1.0)
    */
   setSfxVolume(v) {
     this.sfxVolume = Math.max(0, Math.min(1, v));
@@ -780,8 +800,8 @@ export class SoundManager {
   }
 
   /**
-   * Set BGM volume.
-   * @param {number} v - Volume 0.0~1.0
+   * BGM 볼륨을 설정한다.
+   * @param {number} v - 볼륨 (0.0~1.0)
    */
   setBgmVolume(v) {
     this.bgmVolume = Math.max(0, Math.min(1, v));
@@ -792,8 +812,8 @@ export class SoundManager {
   }
 
   /**
-   * Set global mute state.
-   * @param {boolean} muted
+   * 전역 음소거 상태를 설정한다.
+   * @param {boolean} muted - 음소거 여부
    */
   setMuted(muted) {
     this.muted = muted;
@@ -806,10 +826,10 @@ export class SoundManager {
     this._saveSettings();
   }
 
-  // ── Persistence ──────────────────────────────────────────────────
+  // ── 설정 저장/로드 ─────────────────────────────────────────────
 
   /**
-   * Save sound settings to localStorage.
+   * 사운드 설정을 localStorage에 저장한다.
    * @private
    */
   _saveSettings() {
@@ -820,12 +840,12 @@ export class SoundManager {
         muted: this.muted,
       }));
     } catch (e) {
-      // localStorage may be unavailable
+      // localStorage 사용 불가 시 무시
     }
   }
 
   /**
-   * Load sound settings from localStorage.
+   * localStorage에서 사운드 설정을 로드한다.
    * @private
    */
   _loadSettings() {
@@ -838,14 +858,15 @@ export class SoundManager {
         if (typeof data.muted === 'boolean') this.muted = data.muted;
       }
     } catch (e) {
-      // Use defaults
+      // 기본값 사용
     }
   }
 
-  // ── Cleanup ──────────────────────────────────────────────────────
+  // ── 정리 ───────────────────────────────────────────────────────
 
   /**
-   * Destroy the SoundManager and release all resources.
+   * SoundManager를 파괴하고 모든 리소스를 해제한다.
+   * AudioContext를 닫고 모든 BGM 노드를 정지한다.
    */
   destroy() {
     this.stopBgm(false);
@@ -853,7 +874,7 @@ export class SoundManager {
       try {
         this._ctx.close();
       } catch (e) {
-        // Ignore
+        // 무시
       }
       this._ctx = null;
     }

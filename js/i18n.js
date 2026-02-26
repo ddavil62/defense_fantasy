@@ -1,32 +1,33 @@
 /**
- * @fileoverview Internationalization (i18n) module for Fantasy Tower Defense.
- * All user-facing text must be defined here in both ko and en.
- * Use t(key) to retrieve the localized string for the current locale.
+ * @fileoverview 다국어(i18n) 모듈.
+ * 유저에게 노출되는 모든 텍스트를 한국어(ko)와 영어(en)로 정의한다.
+ * t(key) 함수로 현재 로케일에 맞는 문자열을 조회한다.
  */
 
-// ── Current locale (default: ko) ────────────────────────────────
+// ── 현재 로케일 (기본값: ko) ────────────────────────────────────
 let _locale = 'ko';
 
 /**
- * Set the active locale.
- * @param {'ko'|'en'} loc - Locale code
+ * 활성 로케일을 설정한다.
+ * @param {'ko'|'en'} loc - 로케일 코드
  */
 export function setLocale(loc) { _locale = loc; }
 
 /**
- * Get the current locale.
- * @returns {string}
+ * 현재 설정된 로케일을 반환한다.
+ * @returns {string} 현재 로케일 코드
  */
 export function getLocale() { return _locale; }
 
 /**
- * Get localized string by key. Falls back to ko, then returns the key itself.
- * @param {string} key - Flat dot-notation key (e.g. 'tower.archer.name')
- * @returns {string}
+ * 키에 해당하는 번역 문자열을 반환한다.
+ * 현재 로케일에 없으면 ko(한국어)로 폴백하고, 그래도 없으면 키 자체를 반환한다.
+ * @param {string} key - 점(dot) 표기법 키 (예: 'tower.archer.name')
+ * @returns {string} 번역된 문자열
  */
 export function t(key) { return STRINGS[_locale]?.[key] ?? STRINGS['ko'][key] ?? key; }
 
-// ── String Table ─────────────────────────────────────────────────
+// ── 문자열 테이블 ────────────────────────────────────────────────
 const STRINGS = {
   ko: {
     // 타워 이름

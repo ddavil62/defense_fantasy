@@ -1,12 +1,8 @@
 /**
- * @fileoverview GameScene - Core gameplay scene.
- * Manages the game loop: map rendering, tower placement, enemy spawning,
- * combat (including chain, beam, AoE instant attacks), wave progression,
- * splitter enemy spawning, and game over detection.
- *
- * Phase 5: Added SoundManager integration (SFX/BGM), boss appear sequence,
- * enhanced visual effects (chain glow, beam thickness, aoe ring particles),
- * pause overlay volume controls, HUD mute button.
+ * @fileoverview GameScene - 타워 디펜스 핵심 게임플레이 씬.
+ * 맵 렌더링, 타워 배치/머지/강화/판매, 적 스폰/이동/피격, 투사체/AoE/체인/빔 전투,
+ * 웨이브 진행, 분열(splitter) 적 처리, 게임오버 판정, 일시정지/골드싱크 오버레이,
+ * 사운드(SFX/BGM) 통합, 보스 등장 연출 등 게임 루프 전반을 관리한다.
  */
 
 import {
@@ -26,68 +22,78 @@ import {
   BTN_SELL, BTN_META, BTN_DANGER, BTN_PRIMARY, BTN_BACK,
 } from '../config.js';
 
+// ── 매니저 ──
 import { MapManager } from '../managers/MapManager.js';
 import { WaveManager } from '../managers/WaveManager.js';
 import { GoldManager } from '../managers/GoldManager.js';
 import { ProjectilePool } from '../managers/ProjectilePool.js';
+// ── UI ──
 import { HUD } from '../ui/HUD.js';
 import { TowerPanel } from '../ui/TowerPanel.js';
+// ── 엔티티 ──
 import { Tower } from '../entities/Tower.js';
 import { Enemy } from '../entities/Enemy.js';
+// ── 유틸 ──
 import { t } from '../i18n.js';
 
+/**
+ * 타워 디펜스 핵심 게임플레이 씬.
+ * 맵 위에 타워를 배치하고, 웨이브별 적을 스폰하여 전투를 진행하며,
+ * 기지 HP가 0이 되면 게임오버를 처리한다.
+ */
 export class GameScene extends Phaser.Scene {
   constructor() {
     super({ key: 'GameScene' });
   }
 
   /**
-   * Initialize scene state.
+   * 씬 상태 초기화. 매 게임 시작(scene.start)마다 호출되어
+   * 모든 런타임 변수를 기본값으로 리셋한다.
    */
   init() {
-    /** @type {Tower[]} */
+    /** @type {Tower[]} 현재 맵에 배치된 타워 목록 */
     this.towers = [];
 
-    /** @type {Enemy[]} */
+    /** @type {Enemy[]} 현재 살아있는 적 목록 */
     this.enemies = [];
 
-    /** @type {Projectile[]} */
+    /** @type {Projectile[]} 활성 투사체 목록 */
     this.projectiles = [];
 
-    /** @type {number} Current base HP (overridden in create with meta upgrades) */
+    /** @type {number} 현재 기지 HP (create()에서 메타 업그레이드 반영) */
     this.baseHP = BASE_HP;
 
-    /** @type {number} Max base HP (overridden in create with meta upgrades) */
+    /** @type {number} 최대 기지 HP (create()에서 메타 업그레이드 반영) */
     this.maxBaseHP = MAX_BASE_HP;
 
-    /** @type {number} Game speed multiplier */
+    /** @type {number} 게임 속도 배율 (1x, 2x, 3x) */
     this.gameSpeed = SPEED_NORMAL;
 
-    /** @type {boolean} Game over flag */
+    /** @type {boolean} 게임오버 플래그 */
     this.isGameOver = false;
 
-    /** @type {number} Total enemies killed */
+    /** @type {number} 누적 처치 수 */
     this.totalKills = 0;
 
-    /** @type {Phaser.GameObjects.Graphics|null} Damage flash overlay */
+    /** @type {Phaser.GameObjects.Graphics|null} 기지 피격 시 빨간 플래시 오버레이 */
     this.damageFlash = null;
 
-    /** @type {object[]} Queue of enemies to spawn from splitter deaths */
+    /** @type {object[]} 분열(splitter) 적 사망 시 생성할 자식 적 대기열 */
     this._splitSpawnQueue = [];
 
-    /** @type {boolean} Pause state flag */
+    /** @type {boolean} 일시정지 상태 플래그 */
     this.isPaused = false;
 
-    /** @type {number} Saved game speed before pause */
+    /** @type {number} 일시정지 직전 저장된 게임 속도 (Resume 시 복원) */
     this.gameSpeed_saved = SPEED_NORMAL;
 
-    /** @type {Phaser.GameObjects.Container|null} Pause overlay container */
+    /** @type {Phaser.GameObjects.Container|null} 일시정지 오버레이 컨테이너 */
     this.pauseOverlay = null;
 
-    /** @type {boolean} Whether boss appear sequence has been triggered for current wave */
+    /** @type {boolean} 현재 웨이브에서 보스 등장 연출이 이미 트리거되었는지 여부 */
     this._bossAppearTriggered = false;
 
-    /** @type {object} Per-game statistics for Phase 6 stats system */
+    /** @type {object} 게임 내 통계 (게임오버 화면에서 표시) */
     this.gameStats = {
       towersPlaced: 0,
       towersUpgraded: 0,
@@ -95,22 +101,25 @@ export class GameScene extends Phaser.Scene {
       goldEarned: 0,
       goldSpent: 0,
       damageDealt: 0,
-      killsByType: {},
-      killsByTower: {},
+      killsByType: {},     // 적 타입별 처치 수
+      killsByTower: {},    // 타워 타입별 처치 수
       bossesKilled: 0,
       baseDamageTaken: 0,
       wavesCleared: 0,
-      peakGold: 0,
+      peakGold: 0,         // 게임 중 최고 보유 골드
     };
 
-    /** @type {Phaser.GameObjects.Graphics|null} Range preview for tower placement */
+    /** @type {Phaser.GameObjects.Graphics|null} 타워 배치 시 사거리 미리보기 원 */
     this.rangePreviewGraphics = null;
 
-    // ── Gold Sink State ──
-    /** @type {number} HP recovery use count (affects cost scaling) */
+    // ── 골드 싱크 상태 ──
+    /** @type {number} HP 회복 사용 횟수 (사용할수록 비용 증가) */
     this.hpRecoverUseCount = 0;
 
-    /** @type {object} Consumable ability state */
+    /**
+     * @type {object} 소모품 능력 상태.
+     * 각 키(slowAll, goldRain, lightning)마다 사용 횟수, 쿨다운, 활성 여부, 남은 지속시간을 추적한다.
+     */
     this.consumableState = {
       slowAll: { useCount: 0, cooldownTimer: 0, active: false, remainingDuration: 0 },
       goldRain: { useCount: 0, cooldownTimer: 0, active: false, remainingDuration: 0 },
@@ -119,29 +128,30 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
-   * Create all game objects and initialize managers.
+   * 게임 오브젝트 생성 및 매니저 초기화.
+   * 세이브 데이터에서 메타 업그레이드를 불러오고, 맵/HUD/타워 패널/골드싱크 UI를 구성하며,
+   * 입력 핸들러를 등록한 뒤 첫 웨이브를 시작한다.
    */
   create() {
-    // Register shutdown handler for cleanup
+    // 씬 종료(shutdown) 시 리소스 정리 핸들러 등록
     this.events.on('shutdown', this._cleanup, this);
 
-    // Wake handler: re-show pause overlay when returning from MergeCodexScene
+    // MergeCodexScene에서 복귀 시 일시정지 오버레이를 다시 표시하기 위한 wake 핸들러
     this.events.on('wake', this._onWake, this);
 
-    // Load meta upgrades from save data
+    // ── 세이브 데이터에서 메타 업그레이드 로드 ──
     const saveData = this.registry.get('saveData');
-    /** @type {object} Tower meta upgrade choices */
+    /** @type {object} 타워별 메타 업그레이드 선택 정보 (tier1~3) */
     this.towerMetaUpgrades = saveData?.towerUpgrades || {};
-    /** @type {object} Utility upgrade tiers */
+    /** @type {object} 유틸리티 업그레이드 티어 정보 (기지 HP, 시작 골드 등) */
     this.utilityUpgrades = saveData?.utilityUpgrades || {};
-    /** @type {string[]} Unlocked tower types */
+    /** @type {string[]} 해금된 타워 타입 목록 */
     this.unlockedTowers = saveData?.unlockedTowers || [];
 
-    // Phase 5: Get SoundManager reference
-    /** @type {import('../managers/SoundManager.js').SoundManager|null} */
+    /** @type {import('../managers/SoundManager.js').SoundManager|null} 사운드 매니저 참조 */
     this.soundManager = this.registry.get('soundManager') || null;
 
-    // Apply utility upgrades
+    // ── 유틸리티 메타 업그레이드 적용 (기지 HP, 시작 골드) ──
     const metaBaseHP = getMetaBaseHP(this.utilityUpgrades);
     const metaMaxHP = getMetaMaxBaseHP(this.utilityUpgrades);
     this.baseHP = metaBaseHP;
@@ -149,27 +159,27 @@ export class GameScene extends Phaser.Scene {
 
     const metaGold = getMetaInitialGold(this.utilityUpgrades);
 
-    // Initialize managers
+    // ── 매니저 초기화 ──
     this.mapManager = new MapManager(this);
     this.goldManager = new GoldManager(metaGold);
     this.waveManager = new WaveManager(this);
 
-    // Phase 6: Projectile pool
+    // 투사체 오브젝트 풀 (초기 용량 30, 부족 시 자동 확장)
     this.projectilePool = new ProjectilePool(this, 30);
 
-    // Render map
+    // ── 맵 렌더링 ──
     this.mapManager.renderMap();
 
-    // Create HUD
+    // ── HUD 생성 및 초기값 표시 ──
     this.hud = new HUD(this);
     this.hud.updateGold(this.goldManager.getGold());
     this.hud.updateHP(this.baseHP, this.maxBaseHP);
     this.hud.updateWave(1);
 
-    // Create Pause button and HUD mute button
+    // 일시정지 버튼 및 HUD 음소거 버튼 생성
     this._createPauseButton();
 
-    // Create tower panel
+    // ── 타워 패널 생성 (하단 UI) ──
     this.towerPanel = new TowerPanel(this, {
       onTowerSelect: (type) => this._onTowerTypeSelect(type),
       onMerge: (towerA, towerB) => this._onTowerMerge(towerA, towerB),
@@ -182,48 +192,50 @@ export class GameScene extends Phaser.Scene {
     });
     this.towerPanel.updateAffordability(this.goldManager.getGold());
 
-    // Create gold sink UI elements
+    // ── 골드 싱크 UI (HP 회복 버튼 + 소모품 능력 버튼) ──
     this._createHpRecoverButton();
     this._createConsumableButtons();
 
-    // Damage flash overlay (initially invisible)
+    // 기지 피격 플래시 오버레이 (초기 투명, 피격 시 빨간색으로 점멸)
     this.damageFlash = this.add.rectangle(
       GAME_WIDTH / 2, GAME_HEIGHT / 2,
       GAME_WIDTH, GAME_HEIGHT,
       0xff0000
     ).setAlpha(0).setDepth(40);
 
-    // Phase 6: Range preview graphics (reused single object)
+    // 타워 배치 시 사거리 미리보기용 그래픽스 (매 프레임 재활용)
     this.rangePreviewGraphics = this.add.graphics();
     this.rangePreviewGraphics.setDepth(5);
 
-    // Input handling
+    // ── 입력 핸들러 등록 ──
     this.input.on('pointerdown', (pointer) => this._onPointerDown(pointer));
     this.input.on('pointermove', (pointer) => this._onPointerMove(pointer));
     this.input.on('pointerup', (pointer) => this._onPointerUp(pointer));
 
-    // Phase 5: Start battle BGM
+    // 전투 BGM 재생 시작
     if (this.soundManager) {
       this.soundManager.playBgm('battle');
     }
 
-    // Start first wave
+    // 첫 번째 웨이브 시작
     this.waveManager.startFirstWave();
   }
 
   /**
-   * Main game loop update.
-   * @param {number} time - Total elapsed time in ms
-   * @param {number} rawDelta - Frame delta in ms (not speed-adjusted)
+   * 메인 게임 루프. 매 프레임 호출되어 웨이브/타워/투사체/적을 갱신하고
+   * HUD와 소모품 쿨다운을 업데이트한 뒤 게임오버 여부를 판정한다.
+   * @param {number} time - 게임 시작 이후 총 경과 시간 (ms)
+   * @param {number} rawDelta - 이전 프레임과의 시간 차이 (ms, 속도 미적용)
    */
   update(time, rawDelta) {
     if (this.isPaused || this.isGameOver) return;
 
-    // Phase 6: Cap delta to avoid huge jumps after tab switch
+    // 탭 전환 후 복귀 시 프레임 간 시간이 크게 점프하는 것을 방지 (최대 100ms)
     const cappedRaw = Math.min(rawDelta, 100);
+    // 초 단위로 변환하고 게임 속도 배율 적용
     const delta = (cappedRaw / 1000) * this.gameSpeed;
 
-    // Update wave manager (spawning)
+    // 웨이브 매니저 갱신 (적 스폰 타이밍 및 웨이브 전환)
     this.waveManager.update(
       delta,
       this.enemies,
@@ -233,46 +245,47 @@ export class GameScene extends Phaser.Scene {
       this.maxBaseHP
     );
 
-    // Update towers (targeting and firing)
+    // 타워 갱신 (타겟팅 및 발사)
     this._updateTowers(delta);
 
-    // Update projectiles (movement and hit detection)
+    // 투사체 갱신 (이동 및 적중 판정)
     this._updateProjectiles(delta);
 
-    // Update enemies (movement, death/arrival cleanup, gold award)
+    // 적 갱신 (이동, 사망/기지 도착 처리, 골드 지급)
     this._updateEnemies(delta);
 
-    // Process split spawn queue (after enemy loop to avoid array mutation issues)
+    // 분열 적 자식 스폰 처리 (적 루프 이후에 실행하여 배열 변경 충돌 방지)
     this._processSplitSpawnQueue();
 
-    // Update HUD
+    // ── HUD 갱신 ──
     this.hud.updateGold(this.goldManager.getGold());
     this.hud.updateHP(this.baseHP, this.maxBaseHP);
     this.hud.updateWave(this.waveManager.currentWave);
     this.hud.updateBlink(delta);
 
-    // Phase 6: Update wave countdown + preview
+    // 웨이브 간 휴식 시간 카운트다운 및 다음 웨이브 미리보기 표시
     const breakTime = this.waveManager.getBreakTimeRemaining();
     const preview = breakTime > 0 ? this.waveManager.getNextWavePreview() : null;
     this.hud.updateCountdown(breakTime, preview);
 
-    // Update consumable abilities (cooldowns, gold rain duration)
+    // 소모품 능력 쿨다운/지속시간 갱신
     this._updateConsumables(delta);
 
-    // Update tower panel affordability
+    // 타워 패널 구매 가능 여부 갱신
     this.towerPanel.updateAffordability(this.goldManager.getGold());
 
-    // Check game over
+    // 기지 HP가 0 이하이면 게임오버
     if (this.baseHP <= 0) {
       this._gameOver();
     }
   }
 
-  // ── Input Handling ─────────────────────────────────────────────
+  // ── 입력 처리 ─────────────────────────────────────────────────
 
   /**
-   * Handle pointer down events on the game area.
-   * @param {Phaser.Input.Pointer} pointer
+   * 포인터(터치/마우스) 다운 이벤트 처리.
+   * 게임 영역 내 클릭을 그리드 좌표로 변환하여 타워 선택, 배치, 드래그 준비를 수행한다.
+   * @param {Phaser.Input.Pointer} pointer - Phaser 포인터 객체
    * @private
    */
   _onPointerDown(pointer) {
@@ -280,51 +293,54 @@ export class GameScene extends Phaser.Scene {
 
     const { x, y } = pointer;
 
-    // Ignore clicks on UI panel area
+    // 하단 UI 패널 영역 클릭 무시
     if (y >= PANEL_Y) return;
 
-    // Ignore clicks on HUD area
+    // 상단 HUD 영역 클릭 무시
     if (y < HUD_HEIGHT) return;
 
-    // Convert to grid coordinates
+    // 픽셀 좌표를 그리드(col, row) 좌표로 변환
     const grid = pixelToGrid(x, y);
     const { col, row } = grid;
 
-    // Validate grid bounds
+    // 그리드 범위 밖이면 선택 해제
     if (col < 0 || col >= GRID_COLS || row < 0 || row >= GRID_ROWS) {
       this.towerPanel.clearSelection();
       return;
     }
 
-    // Check if clicking on an existing tower
+    // 기존 타워가 있는 셀을 클릭한 경우
     const existingTower = this.mapManager.getTowerAt(col, row);
     if (existingTower) {
-      // Show range circle immediately, but defer modal to pointerup (to distinguish click vs drag)
+      // 사거리 원을 즉시 표시하되, 정보 모달은 pointerup에서 열어
+      // 클릭과 드래그를 구분한다
       this._deselectAllTowers();
       existingTower.showRangeCircle();
       this._pendingTowerClick = { tower: existingTower, startX: pointer.x, startY: pointer.y };
-      // Prepare drag for merge — actual drag starts after movement threshold
+      // 강화(enhance)되지 않은 타워만 머지용 드래그 준비
+      // (이동 임계값 초과 시 실제 드래그 시작)
       if (existingTower.enhanceLevel === 0 && Object.keys(MERGE_RECIPES).length > 0) {
         this._pendingDrag = { tower: existingTower, startX: pointer.x, startY: pointer.y };
       }
       return;
     }
 
-    // If we have a tower type selected for placement
+    // 타워 타입이 선택된 상태에서 빈 셀 클릭 시 배치 시도
     const selectedType = this.towerPanel.getSelectedTowerType();
     if (selectedType) {
       this._attemptPlaceTower(selectedType, col, row);
       return;
     }
 
-    // Clicking empty space with nothing selected
+    // 아무것도 선택되지 않은 상태에서 빈 공간 클릭 시 모든 선택 해제
     this.towerPanel.clearSelection();
     this._deselectAllTowers();
   }
 
   /**
-   * Handle tower type selection from panel.
-   * @param {string} type - Tower type
+   * 타워 패널에서 타워 타입이 선택되었을 때 호출.
+   * 기존 타워 선택을 해제하고 건설 가능 셀을 하이라이트 표시한다.
+   * @param {string} type - 선택된 타워 타입 키
    * @private
    */
   _onTowerTypeSelect(type) {
@@ -333,7 +349,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
-   * Handle deselection from panel.
+   * 타워 패널에서 선택 해제 시 호출.
+   * 모든 타워 선택과 맵 하이라이트를 제거한다.
    * @private
    */
   _onDeselect() {
@@ -342,8 +359,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
-   * Select a placed tower to show its info.
-   * @param {Tower} tower - The tower to select
+   * 배치된 타워를 선택하여 정보 패널을 표시한다.
+   * 사거리 원을 보여주고 타워 패널에 상세 정보를 전달한다.
+   * @param {Tower} tower - 선택할 타워
    * @private
    */
   _selectPlacedTower(tower) {
@@ -353,7 +371,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
-   * Deselect all towers (hide range circles).
+   * 모든 타워의 사거리 원을 숨긴다 (선택 해제).
    * @private
    */
   _deselectAllTowers() {
@@ -363,10 +381,11 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
-   * Attempt to place a tower at the given grid position.
-   * @param {string} type - Tower type
-   * @param {number} col - Grid column
-   * @param {number} row - Grid row
+   * 지정된 그리드 위치에 타워 배치를 시도한다.
+   * 건설 불가 셀이거나 골드가 부족하면 배치 실패 연출을 표시한다.
+   * @param {string} type - 타워 타입 키
+   * @param {number} col - 그리드 열
+   * @param {number} row - 그리드 행
    * @private
    */
   _attemptPlaceTower(type, col, row) {
@@ -375,6 +394,7 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
+    // Lv.1 배치 비용 확인
     const cost = TOWER_STATS[type].levels[1].cost;
     if (!this.goldManager.canAfford(cost)) {
       this.mapManager.showInvalidPlacement(col, row);
@@ -384,7 +404,7 @@ export class GameScene extends Phaser.Scene {
     this.goldManager.spend(cost);
     this.gameStats.goldSpent += cost;
     const tower = new Tower(this, type, col, row);
-    // Apply meta upgrades to tower stats
+    // 메타 업그레이드(영구 강화)를 새 타워에 적용
     this._applyMetaUpgradesToTower(tower);
     this.towers.push(tower);
     this.mapManager.placeTower(col, row, tower);
@@ -392,14 +412,15 @@ export class GameScene extends Phaser.Scene {
 
     this.towerPanel.clearSelection();
     this.mapManager.clearHighlights();
-    // Clear range preview on placement
+    // 배치 완료 후 사거리 미리보기 제거
     if (this.rangePreviewGraphics) this.rangePreviewGraphics.clear();
   }
 
   /**
-   * Handle tower merge (drag A onto B).
-   * @param {Tower} towerA - Dragged tower (will be removed)
-   * @param {Tower} towerB - Drop target (will become merge result)
+   * 타워 머지 처리. 드래그한 타워(A)를 대상 타워(B) 위에 놓으면
+   * A를 제거하고 B를 머지 결과 타워로 변환한다.
+   * @param {Tower} towerA - 드래그된 타워 (제거됨)
+   * @param {Tower} towerB - 드롭 대상 타워 (머지 결과로 변환됨)
    * @private
    */
   _onTowerMerge(towerA, towerB) {
@@ -408,31 +429,32 @@ export class GameScene extends Phaser.Scene {
     const mergeResult = getMergeResult(idA, idB);
     if (!mergeResult) return;
 
-    // Accumulate totalInvested
+    // 두 타워의 누적 투자 골드를 합산 (판매가 산정에 사용)
     const combinedInvested = towerA.totalInvested + towerB.totalInvested;
 
-    // Transform towerB into the merge result
+    // towerB를 머지 결과 타워로 변환
     towerB.totalInvested = combinedInvested;
     towerB.applyMergeResult(mergeResult);
 
-    // Re-apply meta upgrades to the merged tower
+    // 머지된 타워에 메타 업그레이드 재적용
     this._applyMetaUpgradesToTower(towerB);
 
-    // Remove towerA from map and tower list
+    // towerA를 맵과 타워 목록에서 제거
     this.mapManager.removeTower(towerA.col, towerA.row);
     this.towers = this.towers.filter(t => t !== towerA);
     towerA.destroy();
 
-    // Register merge discovery
+    // 머지 레시피 발견을 세이브 데이터에 기록 (도감용)
     this._registerMergeDiscovery(mergeResult.id);
 
-    // Refresh selection
+    // 머지된 타워를 선택 상태로 전환
     this._selectPlacedTower(towerB);
   }
 
   /**
-   * Register a merge discovery in save data.
-   * @param {string} mergeId - The merge result ID
+   * 머지 발견을 세이브 데이터에 기록한다.
+   * 이미 발견된 머지 ID는 중복 추가하지 않으며, localStorage에 즉시 저장한다.
+   * @param {string} mergeId - 발견된 머지 결과 ID
    * @private
    */
   _registerMergeDiscovery(mergeId) {
@@ -444,14 +466,14 @@ export class GameScene extends Phaser.Scene {
       try {
         localStorage.setItem(SAVE_KEY, JSON.stringify(saveData));
       } catch (e) {
-        // Ignore
+        // localStorage 쓰기 실패 무시 (용량 초과 등)
       }
     }
   }
 
   /**
-   * Handle tower enhancement (Lv.3+ gold sink).
-   * @param {Tower} tower - Tower to enhance
+   * 타워 강화(enhance) 처리. Lv.3 이상 타워에 골드를 소모하여 스탯을 추가 강화한다.
+   * @param {Tower} tower - 강화할 타워
    * @private
    */
   _onTowerEnhance(tower) {
@@ -463,15 +485,15 @@ export class GameScene extends Phaser.Scene {
     this.gameStats.goldSpent += cost;
     tower.enhance();
 
-    // Re-apply meta upgrades are not needed since enhance() modifies stats directly
+    // enhance()가 스탯을 직접 수정하므로 메타 업그레이드 재적용 불필요
 
-    // Refresh tower info panel
+    // 타워 정보 패널 갱신
     this._selectPlacedTower(tower);
   }
 
   /**
-   * Handle tower sell.
-   * @param {Tower} tower - Tower to sell
+   * 타워 판매 처리. 투자 골드의 일정 비율을 환불받고 타워를 제거한다.
+   * @param {Tower} tower - 판매할 타워
    * @private
    */
   _onTowerSell(tower) {
@@ -488,19 +510,20 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
-   * Handle speed toggle.
-   * @param {number} speed - New speed multiplier
+   * 게임 속도 변경 처리.
+   * @param {number} speed - 새 속도 배율 (1, 2, 3)
    * @private
    */
   _onSpeedToggle(speed) {
     this.gameSpeed = speed;
   }
 
-  // ── Entity Updates ─────────────────────────────────────────────
+  // ── 엔티티 갱신 ─────────────────────────────────────────────────
 
   /**
-   * Spawn an enemy based on wave data.
-   * @param {object} enemyData - Enemy creation data
+   * 웨이브 데이터를 기반으로 적을 스폰한다.
+   * 분열(splitter) 적은 사망 콜백을 등록하고, 보스는 등장 연출을 트리거한다.
+   * @param {object} enemyData - 적 생성 데이터 (type, hp, speed, gold, resistance, damage)
    * @private
    */
   _spawnEnemy(enemyData) {
@@ -513,14 +536,14 @@ export class GameScene extends Phaser.Scene {
       damage: enemyData.damage,
     });
 
-    // Set up splitter callback
+    // 분열 적(splitter)은 사망 시 자식 적을 스폰하는 콜백 등록
     if (enemyData.type === 'splitter') {
       enemy.onSplit = (deadEnemy) => this._onSplitterDeath(deadEnemy);
     }
 
     this.enemies.push(enemy);
 
-    // Phase 5: Boss appear sequence trigger
+    // 보스 첫 등장 시 연출(BGM 전환, 카메라 흔들림, 경고 텍스트) 트리거
     if ((enemyData.type === 'boss' || enemyData.type === 'boss_armored') && !this._bossAppearTriggered) {
       this._bossAppearTriggered = true;
       this._playBossAppearSequence();
@@ -528,11 +551,12 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
-   * Spawn a child enemy at a specific position (for splitter death).
-   * @param {object} enemyData - Enemy creation data
-   * @param {number} x - Spawn X position
-   * @param {number} y - Spawn Y position
-   * @param {number} waypointIndex - Current waypoint index on path
+   * 특정 위치에 자식 적을 스폰한다 (분열 적 사망 시 사용).
+   * 부모의 위치와 경로 진행도를 이어받아 경로 중간에서 스폰된다.
+   * @param {object} enemyData - 적 생성 데이터 (type, hp, speed, gold)
+   * @param {number} x - 스폰 X 위치 (부모 사망 지점)
+   * @param {number} y - 스폰 Y 위치
+   * @param {number} waypointIndex - 부모의 현재 웨이포인트 인덱스
    * @private
    */
   _spawnChildEnemy(enemyData, x, y, waypointIndex) {
@@ -543,12 +567,12 @@ export class GameScene extends Phaser.Scene {
       gold: enemyData.gold,
     });
 
-    // Place at parent's position
+    // 부모의 위치에서 시작
     enemy.x = x;
     enemy.y = y;
     enemy.waypointIndex = waypointIndex;
 
-    // Calculate accurate pathProgress including sub-waypoint interpolation
+    // 웨이포인트 사이의 보간 위치를 고려한 정확한 경로 진행도 계산
     if (waypointIndex < path.length - 1) {
       const wp1 = path[waypointIndex];
       const wp2 = path[waypointIndex + 1];
@@ -558,6 +582,7 @@ export class GameScene extends Phaser.Scene {
       const toDx = x - wp1.x;
       const toDy = y - wp1.y;
       const toLen = Math.sqrt(toDx * toDx + toDy * toDy);
+      // 현재 세그먼트에서의 비율 (0~1)
       const fraction = segLen > 0 ? Math.min(1, toLen / segLen) : 0;
       enemy.pathProgress = (waypointIndex + fraction) / (path.length - 1);
     } else {
@@ -568,8 +593,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
-   * Handle splitter enemy death by queuing child spawns.
-   * @param {Enemy} deadEnemy - The dead splitter enemy
+   * 분열(splitter) 적 사망 시 자식 적 스폰을 대기열에 등록한다.
+   * 실제 스폰은 _processSplitSpawnQueue()에서 적 갱신 루프 이후에 처리된다.
+   * @param {Enemy} deadEnemy - 사망한 분열 적
    * @private
    */
   _onSplitterDeath(deadEnemy) {
@@ -579,7 +605,7 @@ export class GameScene extends Phaser.Scene {
         type: 'swarm',
         hp: ENEMY_STATS.swarm.hp,
         speed: ENEMY_STATS.swarm.speed,
-        gold: 0, // Spawned swarms give no gold
+        gold: 0, // 분열 생성된 swarm은 골드를 주지 않음
         x: deadEnemy.x,
         y: deadEnemy.y,
         waypointIndex: deadEnemy.waypointIndex,
@@ -588,7 +614,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
-   * Process queued split spawns (called after enemy update loop).
+   * 분열 적 자식 스폰 대기열을 처리한다.
+   * 적 갱신 루프 이후에 호출하여 배열 변경 중 충돌을 방지한다.
    * @private
    */
   _processSplitSpawnQueue() {
@@ -604,8 +631,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
-   * Update all enemies.
-   * @param {number} delta - Frame delta in seconds (speed-adjusted)
+   * 모든 적의 이동, 기지 도착, 사망을 처리한다.
+   * 역순 순회하여 배열에서 안전하게 splice할 수 있다.
+   * @param {number} delta - 프레임 시간 (초 단위, 속도 배율 적용됨)
    * @private
    */
   _updateEnemies(delta) {
@@ -614,13 +642,14 @@ export class GameScene extends Phaser.Scene {
       enemy.update(delta);
 
       if (enemy.reachedBase) {
+        // 적이 기지에 도달: 기지 HP 감소
         this.baseHP -= enemy.damage;
         this.gameStats.baseDamageTaken += enemy.damage;
         if (this.baseHP < 0) this.baseHP = 0;
 
         this._playDamageFlash();
 
-        // Phase 5: SFX base hit
+        // 기지 피격 효과음 (HP 비율에 따라 긴급도 변화)
         if (this.soundManager) {
           this.soundManager.playSfx('sfx_base_hit', {
             hpRatio: this.baseHP / this.maxBaseHP,
@@ -630,7 +659,7 @@ export class GameScene extends Phaser.Scene {
         enemy.destroy();
         this.enemies.splice(i, 1);
       } else if (!enemy.alive) {
-        // Enemy killed - award gold (2x during Gold Rain)
+        // 적 처치: 골드 지급 (Gold Rain 활성 시 2배)
         const goldMultiplier = this.consumableState.goldRain.active ? 2 : 1;
         const killGold = enemy.gold * goldMultiplier;
         this.goldManager.earn(killGold);
@@ -638,13 +667,13 @@ export class GameScene extends Phaser.Scene {
         this.totalKills++;
         this.waveManager.totalKills++;
 
-        // Phase 6: Track kills by type
+        // 적 타입별 처치 통계 기록
         this.gameStats.killsByType[enemy.type] = (this.gameStats.killsByType[enemy.type] || 0) + 1;
         if (enemy.type === 'boss' || enemy.type === 'boss_armored') {
           this.gameStats.bossesKilled++;
         }
 
-        // Phase 5: SFX kill / kill_boss
+        // 처치 효과음 (보스는 별도)
         if (this.soundManager) {
           if (enemy.type === 'boss' || enemy.type === 'boss_armored') {
             this.soundManager.playSfx('sfx_kill_boss');
@@ -660,8 +689,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
-   * Update all towers (attack logic).
-   * @param {number} delta - Frame delta in seconds (speed-adjusted)
+   * 모든 타워의 공격 로직을 갱신한다.
+   * 각 타워에 공격 타입별 콜백(투사체/AoE/체인/빔)을 전달한다.
+   * @param {number} delta - 프레임 시간 (초 단위, 속도 배율 적용됨)
    * @private
    */
   _updateTowers(delta) {
@@ -678,57 +708,60 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
-   * Create a projectile from a tower towards a target.
-   * @param {Tower} tower - Firing tower
-   * @param {Enemy} target - Target enemy
+   * 타워에서 대상 적을 향해 투사체를 생성한다.
+   * 타워의 스탯에 따라 스플래시, 슬로우, 화상, 관통, 밀치기, 방어력 감소, 독 등의
+   * 부가 효과를 투사체에 설정한다.
+   * @param {Tower} tower - 발사하는 타워
+   * @param {Enemy} target - 대상 적
    * @private
    */
   _createProjectile(tower, target) {
+    // 투사체에 전달할 부가 효과 정보
     const extra = {
       attackType: tower.stats.attackType || 'single',
     };
 
-    // Splash properties
+    // 스플래시(범위 폭발) 반경
     if (tower.stats.splashRadius) {
       extra.splashRadius = tower.stats.splashRadius;
     }
 
-    // Slow properties
+    // 슬로우(이동속도 감소) 효과
     if (tower.stats.slowAmount) {
       extra.slowAmount = tower.stats.slowAmount;
       extra.slowDuration = tower.stats.slowDuration;
     }
 
-    // Burn DoT properties
+    // 화상(DoT) 효과
     if (tower.stats.burnDamage) {
       extra.burnDamage = tower.stats.burnDamage;
       extra.burnDuration = tower.stats.burnDuration;
     }
 
-    // Armor piercing
+    // 방어력 관통 (저항 무시)
     if (tower.stats.armorPiercing) {
       extra.armorPiercing = true;
     }
 
-    // Pushback
+    // 밀치기 (경로 역행)
     if (tower.stats.pushbackDistance) {
       extra.pushbackDistance = tower.stats.pushbackDistance;
     }
 
-    // Armor reduction (Phase 4)
+    // 방어력 감소 디버프
     if (tower.stats.armorReduction) {
       extra.armorReduction = tower.stats.armorReduction;
       extra.armorReductionDuration = tower.stats.armorReductionDuration;
     }
 
-    // Poison DoT (Phase 4)
+    // 독(DoT, 중첩 가능) 효과
     if (tower.stats.poisonDamage) {
       extra.poisonDamage = tower.stats.poisonDamage;
       extra.poisonDuration = tower.stats.poisonDuration;
       extra.maxPoisonStacks = tower.stats.maxPoisonStacks || 1;
     }
 
-    // Phase 6: Use projectile pool instead of new Projectile()
+    // 오브젝트 풀에서 투사체를 가져와 초기화
     const projectile = this.projectilePool.acquire(
       tower.type,
       tower.x,
@@ -740,31 +773,31 @@ export class GameScene extends Phaser.Scene {
     );
     this.projectiles.push(projectile);
 
-    // Phase 5: SFX fire
+    // 발사 효과음
     if (this.soundManager) {
       this.soundManager.playSfx('sfx_fire', { towerType: tower.type });
     }
   }
 
   /**
-   * Apply instant AoE attack (ice 2b, flame 2b, poison, wind 2b, light 2b).
-   * AoE is centered on the target enemy position to avoid dead zones
-   * when range > splashRadius.
-   * @param {Tower} tower - The attacking tower
-   * @param {Enemy} triggerTarget - The enemy that triggered this attack
-   * @param {Enemy[]} enemies - All active enemies
+   * 즉발 AoE(범위) 공격을 적용한다 (ice 2b, flame 2b, poison, wind 2b, light 2b 등).
+   * AoE 중심을 트리거 대상 적의 위치에 놓아, 사거리 > 스플래시 반경일 때
+   * 사각지대가 발생하는 것을 방지한다.
+   * @param {Tower} tower - 공격하는 타워
+   * @param {Enemy} triggerTarget - 공격을 트리거한 적 (AoE 중심점)
+   * @param {Enemy[]} enemies - 모든 활성 적 목록
    * @private
    */
   _applyAoeInstant(tower, triggerTarget, enemies) {
     const splashRadius = tower.stats.splashRadius || tower.stats.range;
     const damage = tower.stats.damage;
 
-    // Use the trigger target's position as the AoE center
-    // This prevents dead zones when range > splashRadius
+    // AoE 중심을 타워가 아닌 트리거 대상의 위치로 설정
+    // (사거리 > 스플래시 반경일 때 사각지대 방지)
     const centerX = triggerTarget.x;
     const centerY = triggerTarget.y;
 
-    // Find enemies within splash radius centered on target position
+    // 스플래시 반경 내 모든 적을 수집
     let targets = [];
     for (const enemy of enemies) {
       if (!enemy.alive || enemy.reachedBase) continue;
@@ -776,7 +809,7 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    // Wind 2b: limit to closest N targets
+    // wind 2b: 가장 가까운 N개 대상으로 제한 (밀치기 타겟 수 제한)
     if (tower.stats.pushbackTargets) {
       targets.sort((a, b) => {
         const dA = Math.sqrt((a.x - centerX) ** 2 + (a.y - centerY) ** 2);
@@ -792,65 +825,67 @@ export class GameScene extends Phaser.Scene {
       enemy.takeDamage(damage, armorPiercing);
       this.gameStats.damageDealt += damage;
 
-      // Phase 6: Track AoE kills by tower
+      // AoE 처치 시 타워별 킬 통계 기록
       if (wasAlive && !enemy.alive) {
         this.gameStats.killsByTower[tower.type] =
           (this.gameStats.killsByTower[tower.type] || 0) + 1;
       }
 
-      // Apply slow if defined
+      // 슬로우 디버프 적용
       if (tower.stats.slowAmount && enemy.alive) {
         enemy.applySlow(tower.stats.slowAmount, tower.stats.slowDuration);
       }
 
-      // Apply burn DoT if defined
+      // 화상 DoT 적용
       if (tower.stats.burnDamage && enemy.alive) {
         enemy.applyBurn(tower.stats.burnDamage, tower.stats.burnDuration);
       }
 
-      // Apply poison if defined
+      // 독 DoT 적용 (중첩 가능)
       if (tower.stats.poisonDamage && enemy.alive) {
         const maxStacks = tower.stats.maxPoisonStacks || 1;
         enemy.applyPoison(tower.stats.poisonDamage, tower.stats.poisonDuration, maxStacks);
       }
 
-      // Apply armor reduction if defined
+      // 방어력 감소 디버프 적용
       if (tower.stats.armorReduction && enemy.alive) {
         enemy.applyArmorReduction(tower.stats.armorReduction, tower.stats.armorReductionDuration);
       }
 
-      // Apply pushback if defined
+      // 밀치기 적용 (경로를 일정 거리 역행)
       if (tower.stats.pushbackDistance && enemy.alive) {
         enemy.pushBack(tower.stats.pushbackDistance);
       }
     }
 
-    // Visual effect for AoE centered on target position
+    // AoE 시각 효과 (확장되는 원형 이펙트)
     this._playAoeEffect(centerX, centerY, splashRadius, tower.type);
 
-    // Phase 5: SFX fire for AoE
+    // AoE 발사 효과음
     if (this.soundManager) {
       this.soundManager.playSfx('sfx_fire', { towerType: tower.type });
     }
   }
 
   /**
-   * Apply chain lightning attack.
-   * @param {Tower} tower - The attacking tower
-   * @param {Enemy} firstTarget - First target enemy
-   * @param {Enemy[]} enemies - All active enemies
+   * 체인 라이트닝 공격을 적용한다.
+   * 첫 번째 대상부터 시작하여, 체인 반경 내 가장 가까운 다음 적으로 연쇄하며
+   * 피해가 chainDecay 비율만큼 감소한다. 이미 맞은 적은 다시 대상이 되지 않는다.
+   * @param {Tower} tower - 공격하는 타워
+   * @param {Enemy} firstTarget - 체인의 첫 번째 대상
+   * @param {Enemy[]} enemies - 모든 활성 적 목록
    * @private
    */
   _applyChain(tower, firstTarget, enemies) {
-    const chainCount = tower.stats.chainCount || 4;
-    const chainDecay = tower.stats.chainDecay || 0.7;
-    const chainRadius = tower.stats.chainRadius || 80;
+    const chainCount = tower.stats.chainCount || 4;    // 최대 연쇄 횟수
+    const chainDecay = tower.stats.chainDecay || 0.7;  // 연쇄마다 데미지 감소 비율
+    const chainRadius = tower.stats.chainRadius || 80; // 다음 대상 탐색 반경 (px)
     let currentDamage = tower.stats.damage;
     const armorPiercing = tower.stats.armorPiercing || false;
 
-    const hitEnemies = new Set();
+    const hitEnemies = new Set(); // 이미 맞은 적을 추적하여 중복 피격 방지
     let currentTarget = firstTarget;
-    const chainPoints = [{ x: tower.x, y: tower.y }];
+    const chainPoints = [{ x: tower.x, y: tower.y }]; // 시각 효과용 체인 경로 좌표
 
     for (let i = 0; i < chainCount && currentTarget; i++) {
       hitEnemies.add(currentTarget);
@@ -860,41 +895,42 @@ export class GameScene extends Phaser.Scene {
       currentTarget.takeDamage(currentDamage, armorPiercing);
       this.gameStats.damageDealt += currentDamage;
 
-      // Phase 6: Track chain kills by tower
+      // 체인 처치 시 타워별 킬 통계 기록
       if (wasAlive && !currentTarget.alive) {
         this.gameStats.killsByTower[tower.type] =
           (this.gameStats.killsByTower[tower.type] || 0) + 1;
       }
 
-      // Apply slow
+      // 슬로우 디버프
       if (tower.stats.slowAmount && currentTarget.alive) {
         currentTarget.applySlow(tower.stats.slowAmount, tower.stats.slowDuration);
       }
 
-      // Apply burn DoT
+      // 화상 DoT
       if (tower.stats.burnDamage && currentTarget.alive) {
         currentTarget.applyBurn(tower.stats.burnDamage, tower.stats.burnDuration);
       }
 
-      // Apply poison DoT
+      // 독 DoT (중첩 가능)
       if (tower.stats.poisonDamage && currentTarget.alive) {
         const maxStacks = tower.stats.maxPoisonStacks || 1;
         currentTarget.applyPoison(tower.stats.poisonDamage, tower.stats.poisonDuration, maxStacks);
       }
 
-      // Apply armor reduction
+      // 방어력 감소 디버프
       if (tower.stats.armorReduction && currentTarget.alive) {
         currentTarget.applyArmorReduction(tower.stats.armorReduction, tower.stats.armorReductionDuration);
       }
 
-      // Apply pushback
+      // 밀치기
       if (tower.stats.pushbackDistance && currentTarget.alive) {
         currentTarget.pushBack(tower.stats.pushbackDistance);
       }
 
+      // 연쇄마다 데미지 감소
       currentDamage *= chainDecay;
 
-      // Find next closest enemy within chain radius
+      // 체인 반경 내에서 아직 맞지 않은 가장 가까운 적을 다음 대상으로 선택
       let nextTarget = null;
       let minDist = Infinity;
 
@@ -912,44 +948,47 @@ export class GameScene extends Phaser.Scene {
       currentTarget = nextTarget;
     }
 
-    // Visual: draw chain lines
+    // 체인 전격 시각 효과 (연결선 + 노드 광점)
     this._playChainEffect(chainPoints);
 
-    // Phase 5: SFX fire for chain
+    // 체인 발사 효과음
     if (this.soundManager) {
       this.soundManager.playSfx('sfx_fire', { towerType: tower.type });
     }
   }
 
   /**
-   * Apply piercing beam attack (light tower).
-   * @param {Tower} tower - The attacking tower
-   * @param {Enemy} firstTarget - First target for beam direction
-   * @param {Enemy[]} enemies - All active enemies
+   * 관통 빔 공격을 적용한다 (light 타워).
+   * 타워에서 첫 번째 대상 방향으로 사거리만큼 빔을 쏘아,
+   * 빔 선분 근처(hitRadius 이내)의 모든 적에게 데미지를 준다.
+   * @param {Tower} tower - 공격하는 타워
+   * @param {Enemy} firstTarget - 빔 방향을 결정하는 첫 번째 대상
+   * @param {Enemy[]} enemies - 모든 활성 적 목록
    * @private
    */
   _applyBeam(tower, firstTarget, enemies) {
-    // Calculate beam direction
+    // 타워에서 대상까지의 방향 벡터 계산
     const dx = firstTarget.x - tower.x;
     const dy = firstTarget.y - tower.y;
     const len = Math.sqrt(dx * dx + dy * dy);
     if (len === 0) return;
 
+    // 정규화된 방향 벡터
     const nx = dx / len;
     const ny = dy / len;
 
-    // Beam extends to max range (600px, essentially map diagonal)
+    // 빔은 사거리만큼 연장 (실질적으로 맵 대각선 길이)
     const beamLength = tower.stats.range;
     const beamEndX = tower.x + nx * beamLength;
     const beamEndY = tower.y + ny * beamLength;
-    const hitRadius = 10; // Enemy hit detection radius for beam
+    const hitRadius = 10; // 빔 적중 판정 반경 (px)
 
     const armorPiercing = tower.stats.armorPiercing || false;
 
     for (const enemy of enemies) {
       if (!enemy.alive || enemy.reachedBase) continue;
 
-      // Check distance from enemy to beam line segment
+      // 적과 빔 선분 사이의 최단 거리 계산
       const dist = this._pointToSegmentDist(
         enemy.x, enemy.y,
         tower.x, tower.y,
@@ -961,58 +1000,60 @@ export class GameScene extends Phaser.Scene {
         enemy.takeDamage(tower.stats.damage, armorPiercing);
         this.gameStats.damageDealt += tower.stats.damage;
 
-        // Phase 6: Track beam kills by tower
+        // 빔 처치 시 타워별 킬 통계 기록
         if (wasAlive && !enemy.alive) {
           this.gameStats.killsByTower[tower.type] =
             (this.gameStats.killsByTower[tower.type] || 0) + 1;
         }
 
-        // Apply burn DoT
+        // 화상 DoT
         if (tower.stats.burnDamage && enemy.alive) {
           enemy.applyBurn(tower.stats.burnDamage, tower.stats.burnDuration);
         }
 
-        // Apply slow
+        // 슬로우 디버프
         if (tower.stats.slowAmount && enemy.alive) {
           enemy.applySlow(tower.stats.slowAmount, tower.stats.slowDuration);
         }
 
-        // Apply poison DoT
+        // 독 DoT (중첩 가능)
         if (tower.stats.poisonDamage && enemy.alive) {
           const maxStacks = tower.stats.maxPoisonStacks || 1;
           enemy.applyPoison(tower.stats.poisonDamage, tower.stats.poisonDuration, maxStacks);
         }
 
-        // Apply armor reduction
+        // 방어력 감소 디버프
         if (tower.stats.armorReduction && enemy.alive) {
           enemy.applyArmorReduction(tower.stats.armorReduction, tower.stats.armorReductionDuration);
         }
 
-        // Apply pushback
+        // 밀치기
         if (tower.stats.pushbackDistance && enemy.alive) {
           enemy.pushBack(tower.stats.pushbackDistance);
         }
       }
     }
 
-    // Visual: draw beam line
+    // 빔 시각 효과 (발광 선 + 끝점 플래시)
     this._playBeamEffect(tower.x, tower.y, beamEndX, beamEndY);
 
-    // Phase 5: SFX fire for beam
+    // 빔 발사 효과음
     if (this.soundManager) {
       this.soundManager.playSfx('sfx_fire', { towerType: tower.type });
     }
   }
 
   /**
-   * Calculate distance from a point to a line segment.
-   * @param {number} px - Point X
-   * @param {number} py - Point Y
-   * @param {number} ax - Segment start X
-   * @param {number} ay - Segment start Y
-   * @param {number} bx - Segment end X
-   * @param {number} by - Segment end Y
-   * @returns {number} Distance
+   * 점에서 선분까지의 최단 거리를 계산한다 (빔 적중 판정에 사용).
+   * 선분 AB 위의 투영점을 구하고, 투영점이 선분 범위를 벗어나면
+   * 가장 가까운 끝점까지의 거리를 반환한다.
+   * @param {number} px - 점 X
+   * @param {number} py - 점 Y
+   * @param {number} ax - 선분 시작점 X
+   * @param {number} ay - 선분 시작점 Y
+   * @param {number} bx - 선분 끝점 X
+   * @param {number} by - 선분 끝점 Y
+   * @returns {number} 최단 거리
    * @private
    */
   _pointToSegmentDist(px, py, ax, ay, bx, by) {
@@ -1022,8 +1063,10 @@ export class GameScene extends Phaser.Scene {
     const apy = py - ay;
     const abLenSq = abx * abx + aby * aby;
 
+    // 선분 길이가 0이면 점까지의 거리 반환
     if (abLenSq === 0) return Math.sqrt(apx * apx + apy * apy);
 
+    // 투영 비율 t를 [0, 1]로 클램프하여 선분 범위 내로 제한
     let t = (apx * abx + apy * aby) / abLenSq;
     t = Math.max(0, Math.min(1, t));
 
@@ -1036,8 +1079,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
-   * Update all projectiles.
-   * @param {number} delta - Frame delta in seconds (speed-adjusted)
+   * 모든 투사체의 이동 및 적중 판정을 갱신한다.
+   * 역순 순회하여 배열에서 안전하게 제거하고, 소진된 투사체는 풀로 반환한다.
+   * @param {number} delta - 프레임 시간 (초 단위, 속도 배율 적용됨)
    * @private
    */
   _updateProjectiles(delta) {
@@ -1046,12 +1090,12 @@ export class GameScene extends Phaser.Scene {
       const result = proj.update(delta, this.enemies);
 
       if (result.hit || !proj.active) {
-        // Phase 5: SFX hit on projectile impact
+        // 투사체 적중 시 효과음
         if (result.hit && this.soundManager) {
           this.soundManager.playSfx('sfx_hit');
         }
 
-        // Phase 6: Track damage and kills for projectile hits
+        // 적중 데미지 및 처치 통계 기록
         if (result.hit) {
           this.gameStats.damageDealt += proj.damage;
           if (result.kills && result.kills.length > 0) {
@@ -1060,17 +1104,17 @@ export class GameScene extends Phaser.Scene {
           }
         }
 
-        // Phase 6: Release to pool instead of destroy
+        // 투사체를 오브젝트 풀로 반환 (destroy 대신 재활용)
         this.projectilePool.release(proj);
         this.projectiles.splice(i, 1);
       }
     }
   }
 
-  // ── Visual Effects ────────────────────────────────────────────
+  // ── 시각 효과 ──────────────────────────────────────────────────
 
   /**
-   * Play red damage flash on screen edges when enemy reaches base.
+   * 적이 기지에 도달했을 때 화면 전체에 빨간 플래시를 재생한다.
    * @private
    */
   _playDamageFlash() {
@@ -1085,14 +1129,15 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
-   * Play AoE visual effect (expanding circle with Phase 5 particle ring).
-   * @param {number} x - Center X
-   * @param {number} y - Center Y
-   * @param {number} radius - Max radius
-   * @param {string} towerType - Tower type for color selection
+   * AoE 시각 효과를 재생한다. 확장되는 원, 내부 원, 회전하는 파티클 8개로 구성된다.
+   * @param {number} x - 중심 X 좌표
+   * @param {number} y - 중심 Y 좌표
+   * @param {number} radius - 최대 반경
+   * @param {string} towerType - 타워 타입 (색상 결정에 사용)
    * @private
    */
   _playAoeEffect(x, y, radius, towerType) {
+    // 타워 타입별 이펙트 색상 매핑
     const colorMap = {
       ice: COLORS.ICE_TOWER,
       flame: COLORS.BURN_TINT,
@@ -1107,34 +1152,35 @@ export class GameScene extends Phaser.Scene {
     let elapsed = 0;
     const duration = VISUALS.DEATH_EFFECT_DURATION;
 
+    // 16ms 간격 타이머로 프레임별 이펙트 애니메이션 구동
     const timer = this.time.addEvent({
       delay: 16,
       callback: () => {
         elapsed += 16;
-        const progress = elapsed / duration;
-        const currentRadius = radius * progress;
-        const alpha = 0.4 * (1 - progress);
-        const rotation = (elapsed / 1000) * 1; // 1 rad/s
+        const progress = elapsed / duration;        // 0~1 진행도
+        const currentRadius = radius * progress;    // 확장되는 반경
+        const alpha = 0.4 * (1 - progress);         // 서서히 투명해짐
+        const rotation = (elapsed / 1000) * 1;      // 파티클 회전 (1 rad/s)
 
         effectGraphics.clear();
 
-        // Original fill circle
+        // 외부 채움 원
         effectGraphics.fillStyle(effectColor, alpha);
         effectGraphics.fillCircle(x, y, currentRadius);
 
-        // Phase 5: Ring stroke with decreasing thickness
+        // 외곽선 (시간에 따라 두께 감소)
         const strokeWidth = 2 * (1 - progress) + 1;
         effectGraphics.lineStyle(strokeWidth, effectColor, alpha * 0.8);
         effectGraphics.strokeCircle(x, y, currentRadius);
 
-        // Phase 5: Inner ring at 50% radius
+        // 내부 원 (외부의 50% 반경)
         const innerRadius = currentRadius * 0.5;
         effectGraphics.fillStyle(effectColor, alpha * 0.5);
         effectGraphics.fillCircle(x, y, innerRadius);
         effectGraphics.lineStyle(1, effectColor, alpha * 0.4);
         effectGraphics.strokeCircle(x, y, innerRadius);
 
-        // Phase 5: 8 particle dots rotating along outer ring edge
+        // 외곽 원 위를 회전하는 8개 파티클 점
         effectGraphics.fillStyle(0xffffff, alpha * 0.9);
         for (let i = 0; i < 8; i++) {
           const angle = (Math.PI * 2 / 8) * i + rotation;
@@ -1153,8 +1199,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
-   * Play chain lightning visual effect with Phase 5 glow points.
-   * @param {{ x: number, y: number }[]} points - Chain points from tower to last target
+   * 체인 라이트닝 시각 효과를 재생한다.
+   * 연결 노드 사이에 전격 선(두꺼운 외곽 + 밝은 내부)을 그리고,
+   * 각 적중 지점에 발광 포인트를 표시한다.
+   * @param {{ x: number, y: number }[]} points - 체인 경유 좌표 (타워 -> 적1 -> 적2 -> ...)
    * @private
    */
   _playChainEffect(points) {
@@ -1164,7 +1212,7 @@ export class GameScene extends Phaser.Scene {
     effectGraphics.setDepth(19);
 
     let elapsed = 0;
-    const duration = 200;
+    const duration = 200; // 이펙트 지속 시간 (ms)
 
     const timer = this.time.addEvent({
       delay: 16,
@@ -1174,7 +1222,7 @@ export class GameScene extends Phaser.Scene {
 
         effectGraphics.clear();
 
-        // Phase 5: Thicker chain line (3px instead of 2px)
+        // 외곽 체인 선 (3px 두께)
         effectGraphics.lineStyle(3, COLORS.CHAIN_COLOR, alpha);
         for (let i = 0; i < points.length - 1; i++) {
           effectGraphics.lineBetween(
@@ -1183,7 +1231,7 @@ export class GameScene extends Phaser.Scene {
           );
         }
 
-        // Phase 5: White inner line overlay
+        // 내부 밝은 선 오버레이 (1px 흰색)
         effectGraphics.lineStyle(1, 0xffffff, alpha * 0.5);
         for (let i = 0; i < points.length - 1; i++) {
           effectGraphics.lineBetween(
@@ -1192,13 +1240,13 @@ export class GameScene extends Phaser.Scene {
           );
         }
 
-        // Phase 5: Glow points at each chain node (skip tower origin at index 0)
+        // 각 체인 노드(적 적중점)에 발광 포인트 (타워 원점 index 0은 제외)
         for (let i = 1; i < points.length; i++) {
           const p = points[i];
-          // Outer glow
+          // 외부 글로우
           effectGraphics.fillStyle(COLORS.CHAIN_COLOR, alpha * 0.6);
           effectGraphics.fillCircle(p.x, p.y, 8);
-          // Inner bright point
+          // 내부 밝은 점
           effectGraphics.fillStyle(0xffffff, alpha * 0.9);
           effectGraphics.fillCircle(p.x, p.y, 4);
         }
@@ -1213,11 +1261,13 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
-   * Play piercing beam visual effect with Phase 5 thickness variation and hit flash.
-   * @param {number} startX - Beam start X
-   * @param {number} startY - Beam start Y
-   * @param {number} endX - Beam end X
-   * @param {number} endY - Beam end Y
+   * 관통 빔 시각 효과를 재생한다.
+   * 발사 직후 두꺼운 빔이 시간에 따라 가늘어지며 사라지고,
+   * 빔 끝점에 적중 플래시를 표시한다.
+   * @param {number} startX - 빔 시작점 X (타워 위치)
+   * @param {number} startY - 빔 시작점 Y
+   * @param {number} endX - 빔 끝점 X
+   * @param {number} endY - 빔 끝점 Y
    * @private
    */
   _playBeamEffect(startX, startY, endX, endY) {
@@ -1225,7 +1275,7 @@ export class GameScene extends Phaser.Scene {
     effectGraphics.setDepth(19);
 
     let elapsed = 0;
-    const duration = 250;
+    const duration = 250; // 이펙트 지속 시간 (ms)
 
     const timer = this.time.addEvent({
       delay: 16,
@@ -1233,7 +1283,7 @@ export class GameScene extends Phaser.Scene {
         elapsed += 16;
         const alpha = 1 - (elapsed / duration);
 
-        // Phase 5: Dynamic beam thickness
+        // 빔 두께: 처음 80ms는 최대(5px), 이후 서서히 감소
         let thickness;
         if (elapsed < 80) {
           thickness = 5;
@@ -1244,15 +1294,15 @@ export class GameScene extends Phaser.Scene {
 
         effectGraphics.clear();
 
-        // Main beam with dynamic thickness
+        // 메인 빔 선
         effectGraphics.lineStyle(thickness, COLORS.BEAM_COLOR, alpha);
         effectGraphics.lineBetween(startX, startY, endX, endY);
 
-        // Inner bright line
+        // 내부 밝은 선 오버레이
         effectGraphics.lineStyle(1, 0xffffff, alpha * 0.8);
         effectGraphics.lineBetween(startX, startY, endX, endY);
 
-        // Phase 5: Hit point flash at beam end
+        // 빔 끝점 적중 플래시 (축소되며 사라짐)
         const flashScale = Math.max(0, 1 - elapsed / duration);
         effectGraphics.fillStyle(0xffffff, Math.min(1, alpha * 1.2));
         effectGraphics.fillCircle(endX, endY, 8 * flashScale);
@@ -1268,23 +1318,24 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  // ── Boss Appear Sequence (Phase 5) ────────────────────────────
+  // ── 보스 등장 연출 ──────────────────────────────────────────────
 
   /**
-   * Play boss wave entrance sequence: BGM switch, SFX, camera shake, warning text.
+   * 보스 웨이브 등장 연출을 재생한다.
+   * BGM을 보스 전용으로 전환하고, 효과음/카메라 흔들림/경고 텍스트(점멸 후 페이드아웃)를 표시한다.
    * @private
    */
   _playBossAppearSequence() {
-    // Switch BGM to boss
+    // BGM을 보스 전투곡으로 전환 + 보스 등장 효과음
     if (this.soundManager) {
       this.soundManager.playBgm('boss');
       this.soundManager.playSfx('sfx_boss_appear');
     }
 
-    // Camera shake (800ms, intensity 0.01)
+    // 카메라 흔들림 (800ms, 강도 0.01)
     this.cameras.main.shake(800, 0.01, true);
 
-    // Warning text
+    // 100ms 딜레이 후 경고 텍스트 표시
     this.time.delayedCall(100, () => {
       const warnText = this.add.text(
         GAME_WIDTH / 2, GAME_HEIGHT / 2 - 60,
@@ -1299,7 +1350,7 @@ export class GameScene extends Phaser.Scene {
         }
       ).setOrigin(0.5).setDepth(55).setAlpha(0).setScale(0.5);
 
-      // Pop-in animation
+      // 팝인 애니메이션 (0.5x -> 1.0x 스케일)
       this.tweens.add({
         targets: warnText,
         alpha: 1,
@@ -1308,7 +1359,7 @@ export class GameScene extends Phaser.Scene {
         ease: 'Back.Out',
       });
 
-      // Blink effect
+      // 250ms 간격 점멸 효과
       const blinkTimer = this.time.addEvent({
         delay: 250,
         callback: () => {
@@ -1319,7 +1370,7 @@ export class GameScene extends Phaser.Scene {
         loop: true,
       });
 
-      // Fade out and destroy at t=2.0s
+      // 약 2초 후 페이드아웃 및 파괴
       this.time.delayedCall(1900, () => {
         blinkTimer.remove();
         if (warnText && warnText.active) {
@@ -1338,35 +1389,37 @@ export class GameScene extends Phaser.Scene {
     });
   }
 
-  // ── Wave Events ────────────────────────────────────────────────
+  // ── 웨이브 이벤트 ──────────────────────────────────────────────
 
   /**
-   * Handle wave clear event.
-   * @param {number} bonusGold - Bonus gold to award
-   * @returns {number} Actual awarded gold
+   * 웨이브 클리어 이벤트 처리.
+   * 유틸리티 메타 업그레이드의 보너스 배율을 적용한 골드를 지급하고,
+   * 보스 웨이브였으면 BGM을 일반 전투곡으로 복원한다.
+   * @param {number} bonusGold - 기본 보너스 골드
+   * @returns {number} 배율 적용 후 실제 지급된 골드
    * @private
    */
   _onWaveClear(bonusGold) {
-    // Apply wave bonus multiplier from utility upgrades
+    // 유틸리티 업그레이드의 웨이브 보너스 배율 적용
     const multiplier = getMetaWaveBonusMultiplier(this.utilityUpgrades);
     const adjustedBonus = Math.floor(bonusGold * multiplier);
     this.goldManager.earn(adjustedBonus);
     this.gameStats.goldEarned += adjustedBonus;
     this.gameStats.wavesCleared++;
-    // Track peak gold
+    // 최고 보유 골드 갱신
     const currentGold = this.goldManager.getGold();
     if (currentGold > this.gameStats.peakGold) {
       this.gameStats.peakGold = currentGold;
     }
 
-    // Phase 5: SFX wave clear
+    // 웨이브 클리어 효과음
     if (this.soundManager) {
       this.soundManager.playSfx('sfx_wave_clear', {
         bossRound: this.waveManager.isBossRound,
       });
     }
 
-    // Phase 5: Boss round clear - switch BGM back to battle, reset flag
+    // 보스 웨이브 클리어 시 BGM을 일반 전투곡으로 복원
     if (this.waveManager.isBossRound) {
       if (this.soundManager) {
         this.soundManager.playBgm('battle');
@@ -1378,16 +1431,18 @@ export class GameScene extends Phaser.Scene {
     return adjustedBonus;
   }
 
-  // ── Game Over ──────────────────────────────────────────────────
+  // ── 게임오버 ──────────────────────────────────────────────────
 
   /**
-   * Trigger game over sequence.
+   * 게임오버 시퀀스를 트리거한다.
+   * BGM을 멈추고, 0.5초 후 GameOverScene으로 전환하며
+   * 최종 라운드/킬 수/통계를 전달한다.
    * @private
    */
   _gameOver() {
     this.isGameOver = true;
 
-    // Phase 5: SFX game over + stop BGM
+    // 게임오버 효과음 + BGM 정지
     if (this.soundManager) {
       this.soundManager.playSfx('sfx_game_over');
       this.soundManager.stopBgm(true);
@@ -1398,6 +1453,7 @@ export class GameScene extends Phaser.Scene {
 
     this.waveManager.destroy();
 
+    // 0.5초 딜레이 후 게임오버 씬으로 전환
     this.time.delayedCall(500, () => {
       this.scene.start('GameOverScene', {
         round: finalRound,
@@ -1408,9 +1464,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
-   * Apply permanent meta upgrades from save data to a tower's stats.
-   * Called after tower placement and after in-game level upgrade.
-   * @param {Tower} tower - Tower instance to apply bonuses to
+   * 세이브 데이터의 영구 메타 업그레이드를 타워 스탯에 적용한다.
+   * 타워 배치 시와 머지 후에 호출된다. tier1~3의 선택된 업그레이드 효과를
+   * 순서대로 적용하며, multiply/add 두 가지 효과 타입을 지원한다.
+   * @param {Tower} tower - 보너스를 적용할 타워 인스턴스
    * @private
    */
   _applyMetaUpgradesToTower(tower) {
@@ -1432,6 +1489,7 @@ export class GameScene extends Phaser.Scene {
 
         if (effect.type === 'multiply') {
           tower.stats[effect.stat] *= effect.value;
+          // 정수 스탯은 반올림하여 소수점 방지
           if (['damage', 'range', 'splashRadius', 'chainRadius',
                'pushbackDistance', 'chainCount'].includes(effect.stat)) {
             tower.stats[effect.stat] = Math.round(tower.stats[effect.stat]);
@@ -1442,18 +1500,18 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    // Store meta reference for potential future use
+    // 메타 업그레이드 참조를 타워에 저장 (향후 확장용)
     tower._metaUpgrades = this.towerMetaUpgrades;
   }
 
-  // ── Pause System ─────────────────────────────────────────────
+  // ── 일시정지 시스템 ──────────────────────────────────────────
 
   /**
-   * Create the Pause button and HUD mute button.
+   * 일시정지 버튼과 HUD 음소거 버튼을 생성한다.
    * @private
    */
   _createPauseButton() {
-    // Pause button - circular background with icon
+    // 일시정지 버튼 - 원형 배경 + 아이콘
     this.pauseBtnBg = this.add.graphics();
     this.pauseBtnBg.setDepth(25);
     this.pauseBtnBg.fillStyle(BTN_SELL, 0.9);
@@ -1461,6 +1519,7 @@ export class GameScene extends Phaser.Scene {
     this.pauseBtnBg.lineStyle(1, 0xffffff, 0.5);
     this.pauseBtnBg.strokeCircle(310, 20, 12);
 
+    // 투명한 인터랙티브 원 (히트 영역)
     this.pauseBtn = this.add.circle(310, 20, 12)
       .setInteractive({ useHandCursor: true })
       .setDepth(25)
@@ -1479,7 +1538,7 @@ export class GameScene extends Phaser.Scene {
       }
     });
 
-    // Phase 5: HUD mute button (next to pause button)
+    // HUD 음소거 버튼 (일시정지 버튼 왼쪽)
     const sm = this.soundManager;
     const isMuted = sm ? sm.muted : false;
 
@@ -1503,7 +1562,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
-   * Update the HUD mute button visual state.
+   * HUD 음소거 버튼의 시각 상태를 갱신한다 (아이콘/색상 전환).
    * @private
    */
   _updateMuteButton() {
@@ -1518,7 +1577,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
-   * Handle scene wake event (e.g. returning from MergeCodexScene).
+   * 씬 wake 이벤트 핸들러. MergeCodexScene에서 복귀 시
+   * 일시정지 상태였으면 오버레이를 다시 표시한다.
    * @private
    */
   _onWake() {
@@ -1528,7 +1588,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
-   * Pause the game and show overlay.
+   * 게임을 일시정지하고 오버레이를 표시한다.
+   * 현재 게임 속도를 저장하여 Resume 시 복원한다.
    * @private
    */
   _pauseGame() {
@@ -1538,26 +1599,28 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
-   * Resume the game and hide overlay.
+   * 게임을 재개하고 오버레이를 숨긴다.
+   * 일시정지 전 게임 속도를 복원한다.
    * @private
    */
   _resumeGame() {
     this.isPaused = false;
     this.gameSpeed = this.gameSpeed_saved;
     this._hidePauseOverlay();
-    // Update HUD mute button in case it changed
+    // 일시정지 중 변경되었을 수 있는 음소거 버튼 갱신
     this._updateMuteButton();
   }
 
   /**
-   * Return to main menu from pause.
+   * 일시정지 상태에서 메인 메뉴로 복귀한다.
+   * BGM을 정지하고 MenuScene으로 전환한다.
    * @private
    */
   _returnToMainMenu() {
     this.isPaused = false;
     this._hidePauseOverlay();
 
-    // Phase 5: Stop current BGM before switching scenes
+    // 씬 전환 전 BGM 정지
     if (this.soundManager) {
       this.soundManager.stopBgm(false);
     }
@@ -1566,13 +1629,15 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
-   * Show the pause overlay with Resume, Main Menu, and volume controls.
+   * 일시정지 오버레이를 표시한다.
+   * 어두운 배경 위에 Resume / 머지 도감 / Main Menu 버튼과
+   * 볼륨 컨트롤(SFX/BGM/MUTE)을 배치한다.
    * @private
    */
   _showPauseOverlay() {
     this.pauseOverlay = this.add.container(0, 0).setDepth(50);
 
-    // Full screen dark background: 0x05050f alpha 0.97
+    // 전체 화면 어두운 배경 (입력 차단용 setInteractive)
     const overlay = this.add.rectangle(
       GAME_WIDTH / 2, GAME_HEIGHT / 2,
       GAME_WIDTH, GAME_HEIGHT,
@@ -1580,13 +1645,13 @@ export class GameScene extends Phaser.Scene {
     ).setAlpha(0.97).setInteractive();
     this.pauseOverlay.add(overlay);
 
-    // Panel with gold border
+    // 중앙 패널 (금색 테두리)
     const panel = this.add.rectangle(
       180, 310, 220, 260, 0x05050f
     ).setStrokeStyle(2, BTN_PRIMARY).setDepth(51);
     this.pauseOverlay.add(panel);
 
-    // "PAUSED" text: gold with glow
+    // "PAUSED" 텍스트 (금색 + 글로우)
     const pausedText = this.add.text(180, 220, 'PAUSED', {
       fontSize: '20px',
       fontFamily: 'Arial, sans-serif',
@@ -1602,7 +1667,7 @@ export class GameScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(52);
     this.pauseOverlay.add(pausedText);
 
-    // Resume button: BTN_BACK (teal)
+    // Resume(재개) 버튼
     const resumeBtn = this.add.rectangle(
       180, 252, 180, 30, BTN_BACK
     ).setInteractive({ useHandCursor: true }).setDepth(52);
@@ -1620,7 +1685,7 @@ export class GameScene extends Phaser.Scene {
       this._resumeGame();
     });
 
-    // Merge Codex button: BTN_META (purple)
+    // 머지 도감 버튼 (일시정지 유지 상태로 MergeCodexScene 전환)
     const codexBtn = this.add.rectangle(
       180, 288, 180, 30, BTN_META
     ).setInteractive({ useHandCursor: true }).setDepth(52);
@@ -1636,12 +1701,12 @@ export class GameScene extends Phaser.Scene {
 
     codexBtn.on('pointerdown', () => {
       this._hidePauseOverlay();
-      // isPaused remains true
+      // isPaused는 true 유지 (도감에서 돌아올 때 오버레이 다시 표시)
       this.scene.launch('MergeCodexScene', { fromScene: 'GameScene' });
       this.scene.sleep('GameScene');
     });
 
-    // Main Menu button: BTN_DANGER (red)
+    // 메인 메뉴 버튼 (게임 포기)
     const menuBtn = this.add.rectangle(
       180, 324, 180, 30, BTN_DANGER
     ).setInteractive({ useHandCursor: true }).setDepth(52);
@@ -1659,7 +1724,7 @@ export class GameScene extends Phaser.Scene {
       this._returnToMainMenu();
     });
 
-    // Phase 5: Volume controls
+    // 볼륨 컨트롤 (SFX/BGM/MUTE)
     const sm = this.soundManager;
     if (sm) {
       this._createVolumeControls(sm);
@@ -1667,8 +1732,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
-   * Create SFX/BGM volume controls in the pause overlay.
-   * @param {import('../managers/SoundManager.js').SoundManager} sm - SoundManager instance
+   * 일시정지 오버레이에 SFX/BGM 볼륨 조절 및 MUTE 토글 컨트롤을 생성한다.
+   * +/- 버튼으로 10% 단위로 볼륨을 조절할 수 있다.
+   * @param {import('../managers/SoundManager.js').SoundManager} sm - SoundManager 인스턴스
    * @private
    */
   _createVolumeControls(sm) {
@@ -1684,7 +1750,7 @@ export class GameScene extends Phaser.Scene {
       color: '#ffd700',
     };
 
-    // ── SFX row ── (track: BTN_SELL grey, handle: BTN_PRIMARY gold)
+    // ── SFX 볼륨 조절 행 ──
     const sfxLabel = this.add.text(100, baseY, 'SFX', labelStyle).setOrigin(0, 0.5).setDepth(52);
     this.pauseOverlay.add(sfxLabel);
 
@@ -1713,7 +1779,7 @@ export class GameScene extends Phaser.Scene {
       sfxValText.setText(`${Math.round(sm.sfxVolume * 100)}%`);
     });
 
-    // ── BGM row ── (track: BTN_SELL grey, handle: BTN_PRIMARY gold)
+    // ── BGM 볼륨 조절 행 ──
     const bgmY = baseY + 30;
     const bgmLabel = this.add.text(100, bgmY, 'BGM', labelStyle).setOrigin(0, 0.5).setDepth(52);
     this.pauseOverlay.add(bgmLabel);
@@ -1743,7 +1809,7 @@ export class GameScene extends Phaser.Scene {
       bgmValText.setText(`${Math.round(sm.bgmVolume * 100)}%`);
     });
 
-    // ── MUTE toggle ──
+    // ── 전체 음소거 토글 ──
     const muteY = bgmY + 35;
     const muteBtn = this.add.rectangle(180, muteY, 100, 24, sm.muted ? BTN_SELL : BTN_SELL)
       .setStrokeStyle(1, sm.muted ? BTN_DANGER : BTN_PRIMARY)
@@ -1767,7 +1833,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
-   * Hide and destroy the pause overlay.
+   * 일시정지 오버레이를 숨기고 파괴한다.
    * @private
    */
   _hidePauseOverlay() {
@@ -1777,11 +1843,11 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  // ── Gold Sink: HP Recovery ─────────────────────────────────────
+  // ── 골드 싱크: HP 회복 ──────────────────────────────────────────
 
   /**
-   * Create the HP recovery button in the bottom panel.
-   * Positioned at the right side of row 2 (next to Speed button area).
+   * HP 회복 버튼을 하단 패널에 생성한다.
+   * 속도 버튼 옆(2행 오른쪽)에 배치되며, 사용할수록 비용이 증가한다.
    * @private
    */
   _createHpRecoverButton() {
@@ -1815,7 +1881,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
-   * Update HP recover button display (cost, availability).
+   * HP 회복 버튼의 표시를 갱신한다 (비용, 구매 가능 여부, HP 만충전 상태).
    * @private
    */
   _updateHpRecoverButton() {
@@ -1838,7 +1904,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
-   * Handle HP recovery button click.
+   * HP 회복 버튼 클릭 처리. 골드를 소모하여 기지 HP를 일정량 회복한다.
+   * 사용 횟수에 따라 비용이 점진적으로 증가한다.
    * @private
    */
   _onHpRecover() {
@@ -1852,28 +1919,30 @@ export class GameScene extends Phaser.Scene {
     this.gameStats.goldSpent += cost;
     this.hpRecoverUseCount++;
 
+    // HP 회복 (최대 HP 초과 방지)
     this.baseHP = Math.min(this.baseHP + HP_RECOVER_AMOUNT, this.maxBaseHP);
 
-    // Visual feedback: green flash
+    // 초록색 플래시로 시각 피드백
     this._playAbilityFlash(0x00b894);
     this._updateHpRecoverButton();
   }
 
-  // ── Gold Sink: Consumable Abilities ──────────────────────────
+  // ── 골드 싱크: 소모품 능력 ──────────────────────────────────────
 
   /**
-   * Create the 3 consumable ability buttons.
+   * 3종 소모품 능력 버튼(전체 감속, 골드 비, 번개)을 생성한다.
+   * HP 회복 버튼 왼쪽에 일렬로 배치된다.
    * @private
    */
   _createConsumableButtons() {
     const keys = ['slowAll', 'goldRain', 'lightning'];
-    const y = PANEL_Y + 68;  // Same row as HP recover button
+    const y = PANEL_Y + 68;  // HP 회복 버튼과 같은 행
     const btnSize = 24;
     const spacing = 26;
-    // Position consumables left of HP recover button (x=322)
+    // HP 회복 버튼(x=322) 왼쪽에 배치
     const baseX = GAME_WIDTH - 38 - spacing * 3;
 
-    /** @type {object} Button references for each ability */
+    /** @type {object} 각 능력의 버튼 UI 참조 */
     this.consumableButtons = {};
 
     for (let i = 0; i < keys.length; i++) {
@@ -1899,7 +1968,7 @@ export class GameScene extends Phaser.Scene {
         color: '#ffd700',
       }).setOrigin(0.5).setDepth(31);
 
-      // Cooldown overlay text
+      // 쿨다운 카운트 오버레이 텍스트
       const cdText = this.add.text(x, y, '', {
         fontSize: '9px',
         fontFamily: 'Arial, sans-serif',
@@ -1918,7 +1987,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
-   * Update consumable button displays (cost, cooldown).
+   * 소모품 능력 버튼의 표시를 갱신한다 (비용, 쿨다운, 활성 상태 표시).
    * @private
    */
   _updateConsumableButtons() {
@@ -1948,7 +2017,7 @@ export class GameScene extends Phaser.Scene {
         btn.cdText.setAlpha(0);
       }
 
-      // Gold rain active indicator
+      // 활성 중인 능력은 테두리 색상 강조 표시
       if (key === 'goldRain' && state.active) {
         btn.bg.setStrokeStyle(2, 0xffd700);
       } else if (key === 'slowAll' && state.active) {
@@ -1960,8 +2029,9 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
-   * Use a consumable ability.
-   * @param {string} key - Ability key ('slowAll', 'goldRain', 'lightning')
+   * 소모품 능력을 사용한다. 쿨다운 중이거나 골드가 부족하면 무시된다.
+   * 즉발 능력(slowAll, lightning)은 적이 없을 때 사용 낭비를 방지한다.
+   * @param {string} key - 능력 키 ('slowAll' | 'goldRain' | 'lightning')
    * @private
    */
   _useConsumable(key) {
@@ -1971,11 +2041,11 @@ export class GameScene extends Phaser.Scene {
     const def = CONSUMABLE_ABILITIES[key];
     if (state.cooldownTimer > 0) return;
 
+    // 비용 = 기본 비용 + (사용 횟수 * 증가분)
     const cost = def.baseCost + state.useCount * def.costIncrement;
     if (!this.goldManager.canAfford(cost)) return;
 
-    // Prevent instant abilities from being wasted when no enemies exist
-    // (goldRain is duration-based so it's still useful to pre-activate)
+    // 즉발 능력은 적이 없으면 사용 불가 (골드 비는 지속형이므로 미리 발동 가능)
     if (key !== 'goldRain') {
       const hasAliveEnemies = this.enemies.some(e => e.alive && !e.reachedBase);
       if (!hasAliveEnemies) return;
@@ -1986,7 +2056,7 @@ export class GameScene extends Phaser.Scene {
     state.useCount++;
     state.cooldownTimer = def.cooldown;
 
-    // Execute ability
+    // 능력 실행
     switch (key) {
       case 'slowAll':
         this._executeSlowAll();
@@ -2007,7 +2077,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
-   * Execute Slow All ability: 50% slow on all enemies for 5 seconds.
+   * 전체 감속 능력 실행: 모든 적에게 50% 이동속도 감소를 5초간 적용한다.
    * @private
    */
   _executeSlowAll() {
@@ -2021,7 +2091,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
-   * Execute Gold Rain ability: 2x kill gold for 10 seconds.
+   * 골드 비 능력 실행: 10초간 적 처치 골드가 2배가 된다.
+   * 실제 2배 적용은 _updateEnemies()에서 goldRain.active 상태로 처리된다.
    * @private
    */
   _executeGoldRain() {
@@ -2029,7 +2100,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
-   * Execute Lightning Strike ability: 100 damage to all enemies.
+   * 번개 능력 실행: 모든 적에게 고정 데미지를 입히고 카메라를 흔든다.
    * @private
    */
   _executeLightningStrike() {
@@ -2040,14 +2111,15 @@ export class GameScene extends Phaser.Scene {
         this.gameStats.damageDealt += def.damage;
       }
     }
-    // Camera shake
+    // 카메라 흔들림으로 타격감 연출
     this.cameras.main.shake(400, 0.008, true);
     this._playAbilityFlash(0xfdcb6e);
   }
 
   /**
-   * Play a full-screen flash effect for ability use.
-   * @param {number} color - Flash color (hex)
+   * 능력 사용 시 전체 화면 플래시 효과를 재생한다.
+   * 0.25 알파에서 시작하여 0.4초에 걸쳐 투명해진다.
+   * @param {number} color - 플래시 색상 (16진수)
    * @private
    */
   _playAbilityFlash(color) {
@@ -2067,20 +2139,21 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
-   * Update consumable cooldowns and durations each frame.
-   * @param {number} delta - Frame delta in seconds (speed-adjusted)
+   * 매 프레임 소모품 능력의 쿨다운과 지속시간을 갱신한다.
+   * 지속시간이 만료되면 능력을 비활성화하고, 버튼 표시도 함께 갱신한다.
+   * @param {number} delta - 프레임 시간 (초 단위, 속도 배율 적용됨)
    * @private
    */
   _updateConsumables(delta) {
     for (const key of Object.keys(this.consumableState)) {
       const state = this.consumableState[key];
 
-      // Update cooldown
+      // 쿨다운 타이머 감소
       if (state.cooldownTimer > 0) {
         state.cooldownTimer = Math.max(0, state.cooldownTimer - delta);
       }
 
-      // Update active duration
+      // 활성 능력의 남은 지속시간 감소 (만료 시 비활성화)
       if (state.active && state.remainingDuration > 0) {
         state.remainingDuration -= delta;
         if (state.remainingDuration <= 0) {
@@ -2095,14 +2168,17 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
-   * Clean up custom resources on scene shutdown.
+   * 씬 종료(shutdown) 시 커스텀 리소스를 정리한다.
+   * 모든 엔티티를 파괴하고, 오브젝트 풀/오버레이/UI 요소를 해제하며,
+   * 이벤트 리스너를 제거한다.
    * @private
    */
   _cleanup() {
+    // 모든 타워와 적 파괴
     for (const tower of this.towers) tower.destroy();
     for (const enemy of this.enemies) enemy.destroy();
 
-    // Phase 6: Destroy pool (handles all projectiles)
+    // 투사체 오브젝트 풀 파괴 (내부 투사체 포함)
     if (this.projectilePool) this.projectilePool.destroy();
 
     this.towers = [];
@@ -2117,7 +2193,7 @@ export class GameScene extends Phaser.Scene {
       this.rangePreviewGraphics = null;
     }
 
-    // Destroy gold sink UI elements
+    // 골드 싱크 UI 요소 파괴
     if (this.hpRecoverBg) { this.hpRecoverBg.destroy(); this.hpRecoverBg = null; }
     if (this.hpRecoverText) { this.hpRecoverText.destroy(); this.hpRecoverText = null; }
     if (this.hpRecoverCostText) { this.hpRecoverCostText.destroy(); this.hpRecoverCostText = null; }
@@ -2134,13 +2210,16 @@ export class GameScene extends Phaser.Scene {
 
     if (this.waveManager) this.waveManager.destroy();
 
+    // 이벤트 리스너 해제
     this.events.off('wake', this._onWake, this);
     this.events.off('shutdown', this._cleanup, this);
   }
 
   /**
-   * Handle pointer up events (drag end).
-   * @param {Phaser.Input.Pointer} pointer
+   * 포인터 업(터치/마우스 해제) 이벤트 처리.
+   * 드래그 중이었으면 머지 드롭을 완료하고,
+   * 드래그가 아닌 클릭이었으면 타워 정보 모달을 연다.
+   * @param {Phaser.Input.Pointer} pointer - Phaser 포인터 객체
    * @private
    */
   _onPointerUp(pointer) {
@@ -2150,12 +2229,12 @@ export class GameScene extends Phaser.Scene {
       this.towerPanel.endDrag(pointer, (col, row) => this.mapManager.getTowerAt(col, row));
     }
 
-    // Open tower modal only on clean click (no drag)
+    // 드래그 없이 깨끗한 클릭(이동 10px 이내)이었을 때만 타워 정보 모달 표시
     if (this._pendingTowerClick && !wasDragging) {
       const { tower, startX, startY } = this._pendingTowerClick;
       const dx = pointer.x - startX;
       const dy = pointer.y - startY;
-      if (dx * dx + dy * dy <= 100) { // 10px threshold
+      if (dx * dx + dy * dy <= 100) { // 10px 임계값 (제곱 거리)
         this._selectPlacedTower(tower);
       }
     }
@@ -2163,23 +2242,25 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
-   * Handle pointer move for tower range preview and drag ghost update.
-   * @param {Phaser.Input.Pointer} pointer
+   * 포인터 이동 이벤트 처리.
+   * 드래그 임계값 초과 시 머지 드래그를 시작하고,
+   * 타워 타입이 선택된 상태에서는 사거리 미리보기를 표시한다.
+   * @param {Phaser.Input.Pointer} pointer - Phaser 포인터 객체
    * @private
    */
   _onPointerMove(pointer) {
-    // Check pending drag threshold (10px movement to start drag)
+    // 드래그 대기 중: 이동 거리가 10px 초과하면 실제 드래그 시작
     if (this._pendingDrag) {
       const dx = pointer.x - this._pendingDrag.startX;
       const dy = pointer.y - this._pendingDrag.startY;
-      if (dx * dx + dy * dy > 100) { // 10px threshold
+      if (dx * dx + dy * dy > 100) { // 10px 임계값 (제곱 거리)
         this.towerPanel.startDrag(this._pendingDrag.tower, pointer);
         this._pendingDrag = null;
-        this._pendingTowerClick = null; // Cancel click — this is a drag
+        this._pendingTowerClick = null; // 클릭 취소 -- 이것은 드래그
       }
     }
 
-    // Update drag ghost if dragging
+    // 드래그 중이면 고스트(반투명 타워 아이콘) 위치 갱신
     if (this.towerPanel && this.towerPanel.isDragging()) {
       this.towerPanel.updateDrag(pointer);
       return;
@@ -2204,18 +2285,19 @@ export class GameScene extends Phaser.Scene {
     const towerData = TOWER_STATS[selectedType];
     if (!towerData) return;
 
+    // Lv.1 사거리로 미리보기 원 표시
     const range = towerData.levels[1].range;
     const centerX = col * CELL_SIZE + CELL_SIZE / 2;
     const centerY = row * CELL_SIZE + CELL_SIZE / 2 + HUD_HEIGHT;
 
     if (canBuild) {
-      // Green range circle
+      // 건설 가능: 초록색 사거리 원
       this.rangePreviewGraphics.fillStyle(COLORS.RANGE_FILL, 0.1);
       this.rangePreviewGraphics.fillCircle(centerX, centerY, range);
       this.rangePreviewGraphics.lineStyle(1, COLORS.BUILDABLE_HIGHLIGHT, 0.4);
       this.rangePreviewGraphics.strokeCircle(centerX, centerY, range);
     } else {
-      // Red X marker
+      // 건설 불가: 빨간 X 표시
       this.rangePreviewGraphics.lineStyle(2, COLORS.INVALID_PLACEMENT, 0.6);
       this.rangePreviewGraphics.lineBetween(
         centerX - 8, centerY - 8, centerX + 8, centerY + 8

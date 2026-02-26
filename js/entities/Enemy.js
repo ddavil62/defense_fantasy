@@ -1,126 +1,130 @@
 /**
- * @fileoverview Enemy - Represents an enemy unit that follows the path towards the base.
- * Handles movement along waypoints, slow debuff, burn/poison DoT, armor resistance,
- * splitter death callback, HP bar rendering, and death effects.
+ * @fileoverview Enemy 엔티티 - 경로를 따라 기지로 이동하는 적 유닛을 나타낸다.
+ * 웨이포인트 이동, 감속 디버프, 화상/독 DoT, 방어력(resistance), 분열체 콜백,
+ * HP 바 렌더링, 사망 이펙트를 처리한다.
  */
 
 import {
   COLORS, VISUALS, ENEMY_STATS,
 } from '../config.js';
 
-/** @const {number} Boss visual radius (draw only, does not affect collision) */
+/** @const {number} 보스 시각적 반지름 (충돌 판정에는 영향 없음, 렌더링 전용) */
 const VISUAL_BOSS_RADIUS = 26;
 
-/** @const {number} Boss armored visual radius (draw only, does not affect collision) */
+/** @const {number} 장갑 보스 시각적 반지름 (충돌 판정에는 영향 없음, 렌더링 전용) */
 const VISUAL_BOSS_ARMORED_RADIUS = 30;
 
 export class Enemy {
   /**
-   * @param {Phaser.Scene} scene - The game scene
-   * @param {string} type - Enemy type ('normal','fast','tank','boss','swarm','splitter','armored','boss_armored')
-   * @param {{ x: number, y: number }[]} path - Pixel waypoint path
-   * @param {object} [overrides] - Optional stat overrides (for scaling)
+   * 적 유닛을 생성한다.
+   * @param {Phaser.Scene} scene - 게임 씬
+   * @param {string} type - 적 타입 ('normal','fast','tank','boss','swarm','splitter','armored','boss_armored')
+   * @param {{ x: number, y: number }[]} path - 픽셀 웨이포인트 경로 배열
+   * @param {object} [overrides] - 스케일링용 스탯 오버라이드 (hp, speed, gold 등)
    */
   constructor(scene, type, path, overrides = {}) {
-    /** @type {Phaser.Scene} */
+    /** @type {Phaser.Scene} 게임 씬 참조 */
     this.scene = scene;
 
-    /** @type {string} */
+    /** @type {string} 적 타입 */
     this.type = type;
 
-    /** @type {{ x: number, y: number }[]} */
+    /** @type {{ x: number, y: number }[]} 이동 경로 (픽셀 좌표 배열) */
     this.path = path;
 
-    /** @type {number} Current waypoint index */
+    /** @type {number} 현재 웨이포인트 인덱스 */
     this.waypointIndex = 0;
 
-    // Stats (with possible overrides for scaling)
+    // ── 스탯 초기화 (스케일링 오버라이드 적용) ──
     const baseStats = ENEMY_STATS[type];
-    /** @type {number} */
+    /** @type {number} 최대 체력 */
     this.maxHp = overrides.hp || baseStats.hp;
-    /** @type {number} */
+    /** @type {number} 현재 체력 */
     this.hp = this.maxHp;
-    /** @type {number} */
+    /** @type {number} 기본 이동속도 (디버프 해제 시 복원용) */
     this.baseSpeed = overrides.speed || baseStats.speed;
-    /** @type {number} */
+    /** @type {number} 현재 이동속도 */
     this.speed = this.baseSpeed;
-    /** @type {number} Gold reward on kill */
+    /** @type {number} 처치 시 골드 보상 */
     this.gold = overrides.gold != null ? overrides.gold : baseStats.gold;
-    /** @type {number} Damage dealt to base on arrival */
+    /** @type {number} 기지 도달 시 가하는 데미지 */
     this.damage = overrides.damage || baseStats.damage;
 
-    // Position
-    /** @type {number} */
+    // ── 위치 초기화 ──
+    /** @type {number} 현재 픽셀 X 좌표 */
     this.x = path[0].x;
-    /** @type {number} */
+    /** @type {number} 현재 픽셀 Y 좌표 */
     this.y = path[0].y;
 
-    // Slow debuff
-    /** @type {number} Remaining slow duration in seconds */
+    // ── 감속 디버프 ──
+    /** @type {number} 감속 잔여 시간 (초) */
     this.slowTimer = 0;
-    /** @type {number} Slow percentage (0-1) */
+    /** @type {number} 감속 비율 (0~1, 예: 0.3 = 30% 감속) */
     this.slowAmount = 0;
 
-    // Burn DoT (flame/light towers)
-    /** @type {number} Burn damage per second */
+    // ── 화상 DoT (화염/빛 타워) ──
+    /** @type {number} 초당 화상 데미지 */
     this.burnDamage = 0;
-    /** @type {number} Remaining burn duration in seconds */
+    /** @type {number} 화상 잔여 시간 (초) */
     this.burnTimer = 0;
 
-    // Poison DoT (poison tower)
-    /** @type {number} Poison damage per second (per stack) */
+    // ── 독 DoT (독 타워) ──
+    /** @type {number} 스택당 초당 독 데미지 */
     this.poisonDamage = 0;
-    /** @type {number} Remaining poison duration in seconds */
+    /** @type {number} 독 잔여 시간 (초) */
     this.poisonTimer = 0;
-    /** @type {number} Poison stacks (max 2) */
+    /** @type {number} 독 중첩 수 (최대 2) */
     this.poisonStacks = 0;
 
-    // Armor reduction debuff (poison tower)
-    /** @type {number} Armor reduction ratio (0.0-1.0) */
+    // ── 방어력 감소 디버프 (독 타워) ──
+    /** @type {number} 방어력 감소 비율 (0.0~1.0) */
     this.armorReduction = 0;
-    /** @type {number} Remaining armor reduction duration */
+    /** @type {number} 방어력 감소 잔여 시간 (초) */
     this.armorReductionTimer = 0;
 
-    // Resistance (armored enemies)
-    /** @type {number} Damage resistance (0.0-1.0) */
+    // ── 방어력 (장갑 적) ──
+    /** @type {number} 데미지 저항 비율 (0.0~1.0, 예: 0.4 = 40% 감소) */
     this.resistance = overrides.resistance != null ? overrides.resistance : (baseStats.resistance || 0);
 
-    // Immunities (data-driven status effect immunity)
-    /** @type {Set<string>} */
+    // ── 면역 (데이터 기반 상태이상 면역) ──
+    /** @type {Set<string>} 면역 상태이상 목록 ('slow','burn','poison' 등) */
     this.immunities = new Set(baseStats.immunities || []);
 
-    // Splitter callback
-    /** @type {Function|null} Called when splitter dies */
+    // ── 분열 콜백 ──
+    /** @type {Function|null} 분열체 사망 시 호출되는 콜백 */
     this.onSplit = null;
 
-    // Pushback lock
-    /** @type {boolean} True during pushback processing */
+    // ── 밀치기 잠금 ──
+    /** @type {boolean} 밀치기 처리 중 여부 (중복 밀치기 방지) */
     this.isPushed = false;
 
-    // State
-    /** @type {boolean} */
+    // ── 상태 플래그 ──
+    /** @type {boolean} 생존 여부 */
     this.alive = true;
-    /** @type {boolean} */
+    /** @type {boolean} 기지 도달 여부 */
     this.reachedBase = false;
 
-    // Path progress (for targeting priority: higher = closer to base)
-    /** @type {number} */
+    // ── 경로 진행도 (타겟팅 우선순위: 높을수록 기지에 가까움) ──
+    /** @type {number} 경로 진행도 (0.0 = 스폰, 1.0 = 기지) */
     this.pathProgress = 0;
 
-    // Graphics
-    /** @type {Phaser.GameObjects.Graphics} */
+    // ── 그래픽 초기화 ──
+    /** @type {Phaser.GameObjects.Graphics} 적 도형 그래픽 */
     this.graphics = scene.add.graphics();
     this.graphics.setDepth(15);
 
-    /** @type {Phaser.GameObjects.Graphics} HP bar graphics */
+    /** @type {Phaser.GameObjects.Graphics} HP 바 그래픽 */
     this.hpBarGraphics = scene.add.graphics();
     this.hpBarGraphics.setDepth(16);
 
     this.draw();
   }
 
+  // ── 도형 렌더링 ────────────────────────────────────────────────
+
   /**
-   * Draw the enemy shape based on its type.
+   * 적 타입에 따라 도형을 그린다.
+   * 디버프 인디케이터와 HP 바도 함께 갱신한다.
    */
   draw() {
     this.graphics.clear();
@@ -161,7 +165,7 @@ export class Enemy {
       case 'splitter':
         this.graphics.fillStyle(COLORS.ENEMY_SPLITTER, 1);
         this.graphics.fillCircle(this.x, this.y, ENEMY_STATS.splitter.radius);
-        // White vertical line (split indicator)
+        // 흰색 세로선 (분열 가능 표시)
         this.graphics.lineStyle(1, 0xffffff, 0.7);
         this.graphics.lineBetween(
           this.x, this.y - ENEMY_STATS.splitter.radius + 2,
@@ -173,10 +177,10 @@ export class Enemy {
         const sz = ENEMY_STATS.armored.size;
         this.graphics.fillStyle(COLORS.ENEMY_ARMORED, 1);
         this.graphics.fillRect(this.x - sz / 2, this.y - sz / 2, sz, sz);
-        // White border
+        // 흰색 테두리 (장갑 표시)
         this.graphics.lineStyle(2, 0xffffff, 0.8);
         this.graphics.strokeRect(this.x - sz / 2, this.y - sz / 2, sz, sz);
-        // Shield icon (internal X)
+        // 방패 아이콘 (내부 X자)
         this.graphics.lineStyle(1, 0xffffff, 0.5);
         const inner = sz * 0.3;
         this.graphics.lineBetween(this.x - inner, this.y - inner, this.x + inner, this.y + inner);
@@ -188,10 +192,10 @@ export class Enemy {
         const r = VISUAL_BOSS_ARMORED_RADIUS;
         this.graphics.fillStyle(COLORS.ENEMY_ARMORED, 1);
         this.graphics.fillCircle(this.x, this.y, r);
-        // Gold border
+        // 금색 테두리 (보스 표시)
         this.graphics.lineStyle(3, COLORS.BOSS_BORDER, 1);
         this.graphics.strokeCircle(this.x, this.y, r);
-        // White shield X
+        // 흰색 방패 X자
         this.graphics.lineStyle(2, 0xffffff, 0.6);
         const ir = r * 0.4;
         this.graphics.lineBetween(this.x - ir, this.y - ir, this.x + ir, this.y + ir);
@@ -200,32 +204,33 @@ export class Enemy {
       }
     }
 
-    // Draw debuff indicators
+    // 디버프 시각 인디케이터 표시
     this._drawDebuffIndicators();
 
     this._drawHPBar();
   }
 
   /**
-   * Draw visual indicators for active debuffs (slow, burn, poison).
+   * 활성 디버프(감속, 화상, 독)의 시각 인디케이터를 그린다.
+   * 해당 디버프가 걸려 있으면 적 위에 반투명 원을 오버레이한다.
    * @private
    */
   _drawDebuffIndicators() {
     const r = this._getRadius();
 
-    // Slow indicator (blue tint)
+    // 감속 인디케이터 (파란색 틴트)
     if (this.slowTimer > 0) {
       this.graphics.fillStyle(COLORS.ICE_TOWER, 0.3);
       this.graphics.fillCircle(this.x, this.y, r);
     }
 
-    // Burn indicator (orange-red tint)
+    // 화상 인디케이터 (주황-빨간 틴트)
     if (this.burnTimer > 0) {
       this.graphics.fillStyle(COLORS.BURN_TINT, 0.25);
       this.graphics.fillCircle(this.x, this.y, r);
     }
 
-    // Poison indicator (green tint)
+    // 독 인디케이터 (초록 틴트)
     if (this.poisonTimer > 0) {
       this.graphics.fillStyle(COLORS.POISON_TINT, 0.25);
       this.graphics.fillCircle(this.x, this.y, r);
@@ -233,10 +238,10 @@ export class Enemy {
   }
 
   /**
-   * Draw a triangle centered at (x, y).
-   * @param {number} cx - Center X
-   * @param {number} cy - Center Y
-   * @param {number} size - Triangle size
+   * 지정 좌표에 삼각형을 그린다.
+   * @param {number} cx - 중심 X
+   * @param {number} cy - 중심 Y
+   * @param {number} size - 삼각형 크기
    * @private
    */
   _drawTriangle(cx, cy, size) {
@@ -249,8 +254,9 @@ export class Enemy {
   }
 
   /**
-   * Get the effective visual radius of this enemy.
-   * @returns {number}
+   * 이 적의 시각적 반지름을 반환한다.
+   * 적 타입별로 다른 크기를 사용한다.
+   * @returns {number} 시각적 반지름 (픽셀)
    * @private
    */
   _getRadius() {
@@ -267,22 +273,25 @@ export class Enemy {
     }
   }
 
+  // ── HP 바 ──────────────────────────────────────────────────────
+
   /**
-   * Draw the HP bar above the enemy.
-   * Hidden when HP is 100%.
+   * 적 상단에 HP 바를 그린다.
+   * HP가 100%이면 표시하지 않는다.
+   * 보스 타입은 더 크고 금색 테두리가 있는 HP 바를 사용한다.
    * @private
    */
   _drawHPBar() {
     this.hpBarGraphics.clear();
 
-    // Hide HP bar if full HP
+    // HP가 최대이면 바 숨김
     if (this.hp >= this.maxHp) return;
 
     const ratio = this.hp / this.maxHp;
     const r = this._getRadius();
     const isBoss = this.type === 'boss' || this.type === 'boss_armored';
 
-    // Boss types get wider + taller HP bars with gold border
+    // 보스 타입은 더 넓고 높은 HP 바 사용
     let barWidth, barHeight;
     if (this.type === 'boss_armored') {
       barWidth = VISUAL_BOSS_ARMORED_RADIUS * 2;
@@ -298,17 +307,17 @@ export class Enemy {
     const barX = this.x - barWidth / 2;
     const barY = this.y - r - VISUALS.HP_BAR_OFFSET_Y - barHeight;
 
-    // Boss gold border
+    // 보스 금색 테두리
     if (isBoss) {
       this.hpBarGraphics.lineStyle(1, COLORS.BOSS_BORDER, 0.8);
       this.hpBarGraphics.strokeRect(barX - 1, barY - 1, barWidth + 2, barHeight + 2);
     }
 
-    // Background
+    // 배경 (검정)
     this.hpBarGraphics.fillStyle(0x000000, 1);
     this.hpBarGraphics.fillRect(barX, barY, barWidth, barHeight);
 
-    // Foreground (color based on ratio)
+    // HP 비율에 따른 색상 결정: 50% 초과=초록, 25% 초과=노랑, 이하=빨강
     let barColor;
     if (ratio > 0.5) {
       barColor = COLORS.HP_BAR_GREEN;
@@ -322,19 +331,22 @@ export class Enemy {
     this.hpBarGraphics.fillRect(barX, barY, barWidth * ratio, barHeight);
   }
 
+  // ── 업데이트 ───────────────────────────────────────────────────
+
   /**
-   * Update enemy position along the path and process DoT effects.
-   * @param {number} delta - Frame delta in seconds (already scaled for game speed)
+   * 매 프레임 적의 위치를 경로를 따라 갱신하고, DoT 효과를 처리한다.
+   * @param {number} delta - 프레임 델타 (초 단위, 게임 속도 적용 후)
    */
   update(delta) {
     if (!this.alive || this.reachedBase) return;
 
-    // ── DoT Processing ──────────────────────────────────────
-    // Burn DoT (applies resistance to avoid bypassing armored enemy defense)
+    // ── DoT 처리 ─────────────────────────────────────────────
+    // 화상 DoT (장갑 적의 방어력도 적용하여 우회 방지)
     if (this.burnTimer > 0) {
       this.burnTimer -= delta;
       let burnTick = this.burnDamage * delta;
       if (this.resistance > 0) {
+        // 방어력 감소 디버프를 반영한 실효 저항 적용
         burnTick = Math.max(0.1, burnTick * (1 - this.resistance * (1 - this.armorReduction)));
       }
       this.hp -= burnTick;
@@ -351,9 +363,10 @@ export class Enemy {
       }
     }
 
-    // Poison DoT (applies resistance to avoid bypassing armored enemy defense)
+    // 독 DoT (장갑 적의 방어력도 적용하여 우회 방지)
     if (this.poisonTimer > 0) {
       this.poisonTimer -= delta;
+      // 스택 수만큼 곱한 틱 데미지 계산
       let poisonTick = this.poisonDamage * this.poisonStacks * delta;
       if (this.resistance > 0) {
         poisonTick = Math.max(0.1, poisonTick * (1 - this.resistance * (1 - this.armorReduction)));
@@ -373,7 +386,7 @@ export class Enemy {
       }
     }
 
-    // Armor reduction timer
+    // 방어력 감소 타이머 처리
     if (this.armorReductionTimer > 0) {
       this.armorReductionTimer -= delta;
       if (this.armorReductionTimer <= 0) {
@@ -381,7 +394,7 @@ export class Enemy {
       }
     }
 
-    // ── Slow Processing ─────────────────────────────────────
+    // ── 감속 처리 ────────────────────────────────────────────
     if (this.slowTimer > 0) {
       this.slowTimer -= delta;
       if (this.slowTimer <= 0) {
@@ -393,7 +406,7 @@ export class Enemy {
       }
     }
 
-    // ── Movement ────────────────────────────────────────────
+    // ── 이동 처리 ────────────────────────────────────────────
     if (this.waypointIndex >= this.path.length - 1) {
       this.reachedBase = true;
       return;
@@ -413,24 +426,24 @@ export class Enemy {
     const moveAmount = this.speed * delta;
 
     if (moveAmount >= dist) {
-      // Reached waypoint
+      // 웨이포인트 도달
       this.x = target.x;
       this.y = target.y;
       this.waypointIndex++;
       this.pathProgress = this.waypointIndex / (this.path.length - 1);
 
-      // Check if reached base
+      // 기지 도달 확인
       if (this.waypointIndex >= this.path.length - 1) {
         this.reachedBase = true;
       }
     } else {
-      // Move towards waypoint
+      // 다음 웨이포인트를 향해 이동
       const nx = dx / dist;
       const ny = dy / dist;
       this.x += nx * moveAmount;
       this.y += ny * moveAmount;
 
-      // Calculate path progress with sub-waypoint interpolation
+      // 웨이포인트 사이 보간을 포함한 경로 진행도 계산
       const remainingDist = dist - moveAmount;
       const wp1 = this.path[this.waypointIndex];
       const wp2 = this.path[this.waypointIndex + 1];
@@ -444,17 +457,20 @@ export class Enemy {
     this.draw();
   }
 
+  // ── 데미지 / 디버프 ───────────────────────────────────────────
+
   /**
-   * Apply damage to this enemy with resistance calculation.
-   * @param {number} amount - Damage amount
-   * @param {boolean} [armorPiercing=false] - If true, ignores resistance
-   * @returns {boolean} True if enemy died from this damage
+   * 이 적에게 데미지를 가한다. 방어력(resistance)이 있으면 감산한다.
+   * @param {number} amount - 데미지 양
+   * @param {boolean} [armorPiercing=false] - true이면 방어력 무시
+   * @returns {boolean} 이 데미지로 적이 사망했으면 true
    */
   takeDamage(amount, armorPiercing = false) {
     if (!this.alive) return false;
 
     let finalDamage = amount;
     if (this.resistance > 0 && !armorPiercing) {
+      // 실효 저항 = resistance * (1 - armorReduction), 최소 데미지 1 보장
       finalDamage = Math.max(1, Math.floor(amount * (1 - this.resistance * (1 - this.armorReduction))));
     }
 
@@ -470,18 +486,18 @@ export class Enemy {
   }
 
   /**
-   * Check if this enemy is immune to a given effect type.
-   * @param {string} effectType - Effect key ('slow','burn','poison','armorReduction','pushback')
-   * @returns {boolean}
+   * 특정 상태이상에 면역인지 확인한다.
+   * @param {string} effectType - 효과 키 ('slow','burn','poison','armorReduction','pushback')
+   * @returns {boolean} 면역이면 true
    */
   isImmune(effectType) {
     return this.immunities.has(effectType);
   }
 
   /**
-   * Apply slow debuff. Stronger slow overwrites weaker one.
-   * @param {number} amount - Slow percentage (0-1, e.g., 0.3 = 30% slower)
-   * @param {number} duration - Duration in seconds
+   * 감속 디버프를 적용한다. 더 강한 감속이 약한 감속을 덮어쓴다.
+   * @param {number} amount - 감속 비율 (0~1, 예: 0.3 = 30% 감속)
+   * @param {number} duration - 지속 시간 (초)
    */
   applySlow(amount, duration) {
     if (this.isImmune('slow')) return;
@@ -493,9 +509,9 @@ export class Enemy {
   }
 
   /**
-   * Apply burn DoT. Stronger burn overwrites weaker one.
-   * @param {number} damagePerSecond - Burn damage per second
-   * @param {number} duration - Burn duration in seconds
+   * 화상 DoT를 적용한다. 더 강한 화상이 약한 화상을 덮어쓴다.
+   * @param {number} damagePerSecond - 초당 화상 데미지
+   * @param {number} duration - 화상 지속 시간 (초)
    */
   applyBurn(damagePerSecond, duration) {
     if (this.isImmune('burn')) return;
@@ -506,25 +522,25 @@ export class Enemy {
   }
 
   /**
-   * Apply poison DoT with stacking support.
-   * @param {number} damagePerSecond - Poison damage per second per stack
-   * @param {number} duration - Poison duration in seconds
-   * @param {number} [maxStacks=1] - Maximum allowed stacks
+   * 독 DoT를 적용한다. 중첩(스택) 시스템을 지원한다.
+   * @param {number} damagePerSecond - 스택당 초당 독 데미지
+   * @param {number} duration - 독 지속 시간 (초)
+   * @param {number} [maxStacks=1] - 최대 허용 중첩 수
    */
   applyPoison(damagePerSecond, duration, maxStacks = 1) {
     if (this.isImmune('poison')) return;
     if (this.poisonTimer <= 0) {
-      // Fresh poison
+      // 새 독 적용
       this.poisonDamage = damagePerSecond;
       this.poisonTimer = duration;
       this.poisonStacks = 1;
     } else if (maxStacks > 1 && this.poisonStacks < maxStacks) {
-      // Add stack
+      // 스택 추가 및 타이머 갱신
       this.poisonStacks++;
-      this.poisonTimer = duration; // Refresh timer
+      this.poisonTimer = duration;
       this.poisonDamage = damagePerSecond;
     } else {
-      // Overwrite with stronger poison or refresh timer
+      // 더 강한 독으로 교체하거나 타이머만 갱신
       if (damagePerSecond >= this.poisonDamage) {
         this.poisonDamage = damagePerSecond;
         this.poisonTimer = duration;
@@ -533,9 +549,9 @@ export class Enemy {
   }
 
   /**
-   * Apply armor reduction debuff.
-   * @param {number} reductionRatio - Armor reduction (0.0-1.0)
-   * @param {number} duration - Duration in seconds
+   * 방어력 감소 디버프를 적용한다.
+   * @param {number} reductionRatio - 방어력 감소율 (0.0~1.0)
+   * @param {number} duration - 지속 시간 (초)
    */
   applyArmorReduction(reductionRatio, duration) {
     if (this.isImmune('armorReduction')) return;
@@ -546,15 +562,16 @@ export class Enemy {
   }
 
   /**
-   * Push enemy back along the path by a given pixel distance.
-   * @param {number} distance - Pushback distance in pixels
+   * 적을 경로를 따라 뒤로 밀어낸다.
+   * 밀치기 처리 중이거나, 경로 시작점에 있거나, 면역이면 무시한다.
+   * @param {number} distance - 밀치기 거리 (픽셀)
    */
   pushBack(distance) {
     if (this.isPushed || this.waypointIndex <= 0) return;
     if (this.isImmune('pushback')) return;
     this.isPushed = true;
 
-    // Calculate how many waypoint segments to rewind
+    // 웨이포인트 세그먼트를 역방향으로 되감으며 거리 차감
     let remaining = distance;
     let idx = this.waypointIndex;
 
@@ -569,7 +586,7 @@ export class Enemy {
         remaining -= segLen;
         idx--;
       } else {
-        // Partial rewind within this segment
+        // 세그먼트 내에서 부분 되감기
         const ratio = remaining / segLen;
         this.x = curr.x - segDx * ratio;
         this.y = curr.y - segDy * ratio;
@@ -578,7 +595,7 @@ export class Enemy {
     }
 
     if (remaining > 0) {
-      // Reached start of path
+      // 경로 시작점까지 도달
       idx = 0;
     }
 
@@ -592,8 +609,11 @@ export class Enemy {
     this.isPushed = false;
   }
 
+  // ── 사망 이펙트 ────────────────────────────────────────────────
+
   /**
-   * Play death particle effect.
+   * 사망 시 파티클 이펙트를 재생한다.
+   * 확장 링 + 랜덤 속도 파티클로 구성되며, 보스는 추가 링이 표시된다.
    * @private
    */
   _playDeathEffect() {
@@ -603,27 +623,27 @@ export class Enemy {
     const color = baseStats ? baseStats.color : 0xffffff;
     const isBoss = this.type === 'boss' || this.type === 'boss_armored';
 
-    // Create simple expanding ring effect
+    // 확장 링 이펙트 생성
     let elapsed = 0;
     const duration = isBoss ? 500 : VISUALS.DEATH_EFFECT_DURATION;
     const maxRadius = this._getRadius() * 2;
     const deathX = this.x;
     const deathY = this.y;
 
-    // Phase 5: More particles with random velocity vectors
+    // 랜덤 속도 벡터를 가진 파티클 생성 (보스는 12개, 일반은 8개)
     const particleCount = isBoss ? 12 : 8;
     const maxParticleSize = isBoss ? 5 : 3;
     const particles = Array.from({ length: particleCount }, () => ({
       x: deathX,
       y: deathY,
-      vx: (Math.random() - 0.5) * 120,
-      vy: (Math.random() - 0.5) * 120,
+      vx: (Math.random() - 0.5) * 120,   // 랜덤 X 속도 (-60 ~ +60)
+      vy: (Math.random() - 0.5) * 120,   // 랜덤 Y 속도 (-60 ~ +60)
       life: 1.0,
       size: 1 + Math.random() * (maxParticleSize - 1),
     }));
 
     const timer = this.scene.time.addEvent({
-      delay: 16,
+      delay: 16,  // ~60fps
       callback: () => {
         elapsed += 16;
         const progress = elapsed / duration;
@@ -635,14 +655,14 @@ export class Enemy {
         effectGraphics.lineStyle(2, color, alpha);
         effectGraphics.strokeCircle(deathX, deathY, radius);
 
-        // Phase 5: Boss extra large ring
+        // 보스 전용 대형 금색 링
         if (isBoss) {
           const bossRingRadius = 60 * progress;
           effectGraphics.lineStyle(3, COLORS.BOSS_BORDER, alpha * 0.8);
           effectGraphics.strokeCircle(deathX, deathY, bossRingRadius);
         }
 
-        // Phase 5: Enhanced particles with physics
+        // 파티클 물리 시뮬레이션
         for (const p of particles) {
           p.x += p.vx * dt;
           p.y += p.vy * dt;
@@ -663,8 +683,10 @@ export class Enemy {
     });
   }
 
+  // ── 정리 ───────────────────────────────────────────────────────
+
   /**
-   * Remove all graphics and clean up.
+   * 모든 그래픽을 제거하고 리소스를 정리한다.
    */
   destroy() {
     if (this.graphics) {

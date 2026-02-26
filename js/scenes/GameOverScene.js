@@ -1,9 +1,10 @@
 /**
- * @fileoverview GameOverScene - Displays game results, Diamond reward, saves records, and offers restart/menu.
+ * @fileoverview 게임 오버 씬(GameOverScene).
+ * 게임 결과(라운드, 킬 수), 다이아몬드 보상을 표시하고,
+ * 기록을 localStorage에 저장한 뒤 RETRY / MENU 버튼을 제공한다.
  *
- * Phase 6: Added gameStats saving to persistent stats, game history, and summary display.
- * Phase 7: UI redesign - dark panel with gold border, colored text/buttons,
- *          GAME OVER glow, gold-highlighted values, semantic button colors.
+ * 다크 패널 + 골드 테두리, GAME OVER 글로우, 골드 강조 수치,
+ * 시맨틱 버튼 컬러 적용.
  */
 
 import {
@@ -12,41 +13,51 @@ import {
   BTN_PRIMARY, BTN_DANGER, BTN_PRIMARY_CSS, BTN_DANGER_CSS,
 } from '../config.js';
 
-/** @const {number} Max game history entries to keep */
+/** @const {number} 보관하는 최대 게임 히스토리 수 */
 const MAX_HISTORY = 20;
 
+/**
+ * 게임 종료 후 결과를 표시하는 씬.
+ * GameScene에서 전달받은 데이터(라운드, 킬, 게임 통계)를 기반으로
+ * 기록 갱신, 다이아몬드 보상 계산, 누적 통계 업데이트를 수행한다.
+ * @extends Phaser.Scene
+ */
 export class GameOverScene extends Phaser.Scene {
   constructor() {
     super({ key: 'GameOverScene' });
   }
 
   /**
-   * Receive data from GameScene.
-   * @param {object} data - { round, kills, gameStats }
+   * GameScene에서 전달된 데이터를 수신하여 인스턴스 변수에 저장한다.
+   * @param {object} data - 게임 결과 데이터
+   * @param {number} data.round - 도달한 라운드
+   * @param {number} data.kills - 총 킬 수
+   * @param {object} data.gameStats - 해당 판의 세부 통계
    */
   init(data) {
-    /** @type {number} Round reached */
+    /** @type {number} 도달한 라운드 */
     this.round = data.round || 1;
 
-    /** @type {number} Total kills */
+    /** @type {number} 총 킬 수 */
     this.kills = data.kills || 0;
 
-    /** @type {object} Per-game statistics */
+    /** @type {object} 해당 판 세부 통계 */
     this.gameStats = data.gameStats || {};
   }
 
   /**
-   * Create the game over UI.
+   * 게임 오버 UI를 생성한다.
+   * 세이브 데이터 로드 -> 기록 갱신 -> 다이아몬드 보상 -> 통계 업데이트 -> 저장 -> UI 렌더링
    */
   create() {
     const centerX = GAME_WIDTH / 2;
     const centerY = GAME_HEIGHT / 2;
 
-    // Dark overlay
+    // 어두운 오버레이
     this.add.rectangle(centerX, centerY, GAME_WIDTH, GAME_HEIGHT, 0x000000)
       .setAlpha(VISUALS.OVERLAY_ALPHA);
 
-    // Load and update save data
+    // ── 세이브 데이터 로드 및 기록 갱신 ──
     const saveData = this._loadSave();
     const isNewBest = this.round > saveData.bestRound;
 
@@ -58,26 +69,26 @@ export class GameOverScene extends Phaser.Scene {
     }
     saveData.totalGames++;
 
-    // Diamond calculation
+    // ── 다이아몬드 보상 계산 ──
     const diamondEarned = calcDiamondReward(this.round);
     saveData.diamond = (saveData.diamond || 0) + diamondEarned;
     saveData.totalDiamondEarned = (saveData.totalDiamondEarned || 0) + diamondEarned;
 
-    // Phase 6: Update persistent stats
+    // 누적 통계 업데이트
     this._updateStats(saveData);
 
     this._saveToDB(saveData);
 
-    // Update registry for MenuScene
+    // MenuScene에서 참조할 수 있도록 레지스트리 갱신
     this.registry.set('saveData', saveData);
 
-    // Result panel background: dark purple-black + gold border
+    // ── 결과 패널 (어두운 보라+검정 배경, 골드 테두리) ──
     const panelW = 280;
     const panelH = 380;
     this.add.rectangle(centerX, centerY, panelW, panelH, 0x0a0820)
       .setStrokeStyle(2, BTN_PRIMARY);
 
-    // GAME OVER title with dark red + shadow glow
+    // ── GAME OVER 타이틀 (다크 레드 + 그림자 글로우) ──
     this.add.text(centerX, centerY - 165, 'GAME OVER', {
       fontSize: '28px',
       fontFamily: 'Arial, sans-serif',
@@ -92,11 +103,11 @@ export class GameOverScene extends Phaser.Scene {
       },
     }).setOrigin(0.5);
 
-    // Divider (gold tint)
+    // 구분선 (골드 틴트)
     this.add.rectangle(centerX, centerY - 138, panelW - 40, 1, BTN_PRIMARY)
       .setAlpha(0.4);
 
-    // Round reached (gold-highlighted value)
+    // ── 도달 라운드 (골드 강조) ──
     this.add.text(centerX - 40, centerY - 115, 'Round:', {
       fontSize: '18px',
       fontFamily: 'Arial, sans-serif',
@@ -110,7 +121,7 @@ export class GameOverScene extends Phaser.Scene {
       fontStyle: 'bold',
     }).setOrigin(0, 0.5);
 
-    // Kill count (gold-highlighted value)
+    // ── 킬 수 (골드 강조) ──
     this.add.text(centerX - 40, centerY - 88, 'Kills:', {
       fontSize: '16px',
       fontFamily: 'Arial, sans-serif',
@@ -124,14 +135,14 @@ export class GameOverScene extends Phaser.Scene {
       fontStyle: 'bold',
     }).setOrigin(0, 0.5);
 
-    // Best record
+    // 최고 기록
     this.add.text(centerX, centerY - 60, `Best: Round ${saveData.bestRound}`, {
       fontSize: '16px',
       fontFamily: 'Arial, sans-serif',
       color: '#ffd700',
     }).setOrigin(0.5);
 
-    // NEW BEST indicator with gold glow
+    // ── NEW BEST 표시 (골드 글로우 + 깜빡임 트윈) ──
     if (isNewBest) {
       const newBestText = this.add.text(centerX, centerY - 38, 'NEW BEST!', {
         fontSize: '18px',
@@ -147,6 +158,7 @@ export class GameOverScene extends Phaser.Scene {
         },
       }).setOrigin(0.5);
 
+      // 알파 0.3~1.0 반복으로 깜빡임 효과
       this.tweens.add({
         targets: newBestText,
         alpha: 0.3,
@@ -156,7 +168,7 @@ export class GameOverScene extends Phaser.Scene {
       });
     }
 
-    // Phase 6: Stats summary line
+    // ── 게임 통계 요약 라인 ──
     const gs = this.gameStats;
     const statsY = centerY - 15;
     this.add.text(centerX, statsY,
@@ -166,7 +178,7 @@ export class GameOverScene extends Phaser.Scene {
         color: '#b2bec3',
       }).setOrigin(0.5);
 
-    // Find top killer tower
+    // 최다 킬 타워 표시
     const topTower = this._getTopKiller(gs.killsByTower || {});
     if (topTower) {
       this.add.text(centerX, statsY + 18,
@@ -177,7 +189,7 @@ export class GameOverScene extends Phaser.Scene {
         }).setOrigin(0.5);
     }
 
-    // Diamond display with purple highlight
+    // ── 다이아몬드 표시 (퍼플 강조) ──
     const diamondY = centerY + 20;
     if (diamondEarned > 0) {
       this.add.text(centerX, diamondY, `\u25C6 +${diamondEarned} Diamond`, {
@@ -193,6 +205,7 @@ export class GameOverScene extends Phaser.Scene {
         color: '#636e72',
       }).setOrigin(0.5);
     } else {
+      // 5라운드 미만 도달 시 다이아몬드 미지급 안내
       this.add.text(centerX, diamondY, 'R5+ for Diamond', {
         fontSize: '14px',
         fontFamily: 'Arial, sans-serif',
@@ -200,7 +213,7 @@ export class GameOverScene extends Phaser.Scene {
       }).setOrigin(0.5);
     }
 
-    // RETRY button: BTN_PRIMARY (gold)
+    // ── RETRY 버튼 (BTN_PRIMARY 골드) ──
     const retryY = centerY + 75;
     const restartBg = this.add.rectangle(centerX, retryY, 160, 40, BTN_PRIMARY)
       .setInteractive({ useHandCursor: true })
@@ -220,7 +233,7 @@ export class GameOverScene extends Phaser.Scene {
     restartBg.on('pointerover', () => restartBg.setFillStyle(0xd4b440));
     restartBg.on('pointerout', () => restartBg.setFillStyle(BTN_PRIMARY));
 
-    // MENU button: BTN_DANGER (red)
+    // ── MENU 버튼 (BTN_DANGER 레드) ──
     const menuY = retryY + 50;
     const menuBg = this.add.rectangle(centerX, menuY, 160, 36, BTN_DANGER)
       .setInteractive({ useHandCursor: true })
@@ -242,8 +255,11 @@ export class GameOverScene extends Phaser.Scene {
   }
 
   /**
-   * Update persistent stats with this game's data.
-   * @param {object} saveData
+   * 이번 판의 통계를 누적 저장 데이터에 반영한다.
+   * 킬 수, 보스 킬, 타워 배치 수, 골드 수입, 피해량, 웨이브 클리어 수를 합산하고
+   * 적 유형별/타워 유형별 킬 수를 병합한다.
+   * 게임 히스토리는 FIFO(선입선출) 방식으로 최대 MAX_HISTORY개까지 보관한다.
+   * @param {object} saveData - 세이브 데이터 객체
    * @private
    */
   _updateStats(saveData) {
@@ -261,17 +277,17 @@ export class GameOverScene extends Phaser.Scene {
     stats.bestRound = saveData.bestRound;
     stats.bestKills = saveData.bestKills;
 
-    // Merge kill counts by enemy type
+    // 적 유형별 킬 수 병합
     for (const [type, count] of Object.entries(gs.killsByType || {})) {
       stats.killsByEnemyType[type] = (stats.killsByEnemyType[type] || 0) + count;
     }
 
-    // Merge kill counts by tower type
+    // 타워 유형별 킬 수 병합
     for (const [type, count] of Object.entries(gs.killsByTower || {})) {
       stats.killsByTowerType[type] = (stats.killsByTowerType[type] || 0) + count;
     }
 
-    // Add to game history (FIFO, max 20)
+    // 게임 히스토리 추가 (FIFO, 최대 20건)
     stats.gameHistory.push({
       gameNumber: stats.totalGamesPlayed,
       round: this.round,
@@ -287,9 +303,9 @@ export class GameOverScene extends Phaser.Scene {
   }
 
   /**
-   * Get the tower type with most kills.
-   * @param {Object<string, number>} killsByTower
-   * @returns {{ name: string, kills: number }|null}
+   * 가장 많은 킬을 기록한 타워 유형을 찾는다.
+   * @param {Object<string, number>} killsByTower - 타워 유형별 킬 수 맵
+   * @returns {{ name: string, kills: number }|null} 최다 킬 타워 정보 또는 null
    * @private
    */
   _getTopKiller(killsByTower) {
@@ -303,8 +319,8 @@ export class GameOverScene extends Phaser.Scene {
   }
 
   /**
-   * Load save data from localStorage.
-   * @returns {object} Save data
+   * localStorage에서 세이브 데이터를 로드하고 마이그레이션한다.
+   * @returns {object} 마이그레이션된 세이브 데이터
    * @private
    */
   _loadSave() {
@@ -312,21 +328,21 @@ export class GameOverScene extends Phaser.Scene {
       const raw = localStorage.getItem(SAVE_KEY);
       if (raw) return migrateSaveData(JSON.parse(raw));
     } catch (e) {
-      // Ignore errors
+      // localStorage 오류 시 무시
     }
     return migrateSaveData(null);
   }
 
   /**
-   * Save data to localStorage.
-   * @param {object} data - Save data
+   * 세이브 데이터를 localStorage에 저장한다.
+   * @param {object} data - 저장할 세이브 데이터
    * @private
    */
   _saveToDB(data) {
     try {
       localStorage.setItem(SAVE_KEY, JSON.stringify(data));
     } catch (e) {
-      // Ignore errors (localStorage unavailable)
+      // localStorage 사용 불가 시 무시
     }
   }
 }

@@ -1,7 +1,7 @@
 /**
- * @fileoverview Projectile - Represents a projectile fired from a tower towards an enemy.
- * Handles movement, hit detection, splash damage, slow application, DoT application,
- * armor piercing, and pushback effects.
+ * @fileoverview Projectile 엔티티 - 타워에서 적을 향해 발사되는 투사체를 나타낸다.
+ * 이동, 명중 판정, 스플래시 데미지, 감속 적용, DoT 적용,
+ * 방어력 관통, 밀치기 효과를 처리한다.
  */
 
 import {
@@ -10,103 +10,107 @@ import {
 
 export class Projectile {
   /**
-   * @param {Phaser.Scene} scene - The game scene
-   * @param {string} towerType - Type of tower that fired
-   * @param {number} startX - Starting X position
-   * @param {number} startY - Starting Y position
-   * @param {object} target - Target enemy
-   * @param {number} damage - Damage amount
-   * @param {number} speed - Projectile speed in px/s
-   * @param {object} [extra] - Extra properties for special effects
-   * @param {number} [extra.splashRadius] - Splash damage radius
-   * @param {number} [extra.slowAmount] - Slow percentage (0-1)
-   * @param {number} [extra.slowDuration] - Slow duration in seconds
-   * @param {number} [extra.burnDamage] - Burn damage per second
-   * @param {number} [extra.burnDuration] - Burn duration in seconds
-   * @param {boolean} [extra.armorPiercing] - Ignores enemy resistance
-   * @param {number} [extra.pushbackDistance] - Pushback distance in pixels
-   * @param {string} [extra.attackType] - Attack type for hit processing
+   * 투사체를 생성한다.
+   * @param {Phaser.Scene} scene - 게임 씬
+   * @param {string} towerType - 발사한 타워의 타입
+   * @param {number} startX - 시작 X 좌표
+   * @param {number} startY - 시작 Y 좌표
+   * @param {object} target - 목표 적
+   * @param {number} damage - 데미지 양
+   * @param {number} speed - 투사체 속도 (px/s)
+   * @param {object} [extra] - 특수 효과용 추가 속성
+   * @param {number} [extra.splashRadius] - 스플래시 데미지 반경
+   * @param {number} [extra.slowAmount] - 감속 비율 (0~1)
+   * @param {number} [extra.slowDuration] - 감속 지속 시간 (초)
+   * @param {number} [extra.burnDamage] - 초당 화상 데미지
+   * @param {number} [extra.burnDuration] - 화상 지속 시간 (초)
+   * @param {boolean} [extra.armorPiercing] - 방어력 관통 여부
+   * @param {number} [extra.pushbackDistance] - 밀치기 거리 (픽셀)
+   * @param {string} [extra.attackType] - 명중 처리용 공격 유형
    */
   constructor(scene, towerType, startX, startY, target, damage, speed, extra = {}) {
-    /** @type {Phaser.Scene} */
+    /** @type {Phaser.Scene} 게임 씬 참조 */
     this.scene = scene;
 
-    /** @type {string} */
+    /** @type {string} 발사 타워 타입 (도형 결정용) */
     this.towerType = towerType;
 
-    /** @type {number} */
+    /** @type {number} 현재 X 좌표 */
     this.x = startX;
 
-    /** @type {number} */
+    /** @type {number} 현재 Y 좌표 */
     this.y = startY;
 
-    /** @type {object} */
+    /** @type {object} 목표 적 참조 */
     this.target = target;
 
-    /** @type {number} */
+    /** @type {number} 데미지 양 */
     this.damage = damage;
 
-    /** @type {number} */
+    /** @type {number} 이동 속도 (px/s) */
     this.speed = speed;
 
-    /** @type {number|null} Splash radius */
+    /** @type {number|null} 스플래시 반경 (null이면 스플래시 없음) */
     this.splashRadius = extra.splashRadius || null;
 
-    /** @type {number} Slow percentage */
+    /** @type {number} 감속 비율 (0이면 감속 없음) */
     this.slowAmount = extra.slowAmount || 0;
 
-    /** @type {number} Slow duration */
+    /** @type {number} 감속 지속 시간 (초) */
     this.slowDuration = extra.slowDuration || 0;
 
-    /** @type {number} Burn damage per second */
+    /** @type {number} 초당 화상 데미지 */
     this.burnDamage = extra.burnDamage || 0;
 
-    /** @type {number} Burn duration in seconds */
+    /** @type {number} 화상 지속 시간 (초) */
     this.burnDuration = extra.burnDuration || 0;
 
-    /** @type {boolean} Armor piercing flag */
+    /** @type {boolean} 방어력 관통 플래그 */
     this.armorPiercing = extra.armorPiercing || false;
 
-    /** @type {number} Pushback distance in pixels */
+    /** @type {number} 밀치기 거리 (픽셀) */
     this.pushbackDistance = extra.pushbackDistance || 0;
 
-    /** @type {number} Armor reduction amount (0-1) */
+    /** @type {number} 방어력 감소량 (0~1) */
     this.armorReduction = extra.armorReduction || 0;
 
-    /** @type {number} Armor reduction duration in seconds */
+    /** @type {number} 방어력 감소 지속 시간 (초) */
     this.armorReductionDuration = extra.armorReductionDuration || 0;
 
-    /** @type {number} Poison damage per second */
+    /** @type {number} 초당 독 데미지 */
     this.poisonDamage = extra.poisonDamage || 0;
 
-    /** @type {number} Poison duration in seconds */
+    /** @type {number} 독 지속 시간 (초) */
     this.poisonDuration = extra.poisonDuration || 0;
 
-    /** @type {number} Max poison stacks */
+    /** @type {number} 최대 독 중첩 수 */
     this.maxPoisonStacks = extra.maxPoisonStacks || 1;
 
-    /** @type {string} Attack type for hit processing */
+    /** @type {string} 명중 처리용 공격 유형 */
     this.attackType = extra.attackType || 'single';
 
-    /** @type {boolean} Whether this projectile is still active */
+    /** @type {boolean} 투사체 활성 상태 */
     this.active = true;
 
-    /** @type {number} Last known target X */
+    /** @type {number} 마지막으로 알려진 대상 X 좌표 (대상 사망 시 사용) */
     this.targetX = target.x;
 
-    /** @type {number} Last known target Y */
+    /** @type {number} 마지막으로 알려진 대상 Y 좌표 (대상 사망 시 사용) */
     this.targetY = target.y;
 
-    // Graphics
-    /** @type {Phaser.GameObjects.Graphics} */
+    // ── 그래픽 초기화 ──
+    /** @type {Phaser.GameObjects.Graphics} 투사체 그래픽 */
     this.graphics = scene.add.graphics();
     this.graphics.setDepth(18);
 
     this.draw();
   }
 
+  // ── 도형 렌더링 ────────────────────────────────────────────────
+
   /**
-   * Draw the projectile shape based on tower type.
+   * 타워 타입에 따라 투사체 도형을 그린다.
+   * archer/mage/flame=원, ice=다이아몬드, rock=사각형, wind=원 등.
    */
   draw() {
     this.graphics.clear();
@@ -124,6 +128,7 @@ export class Projectile {
         break;
 
       case 'ice': {
+        // 다이아몬드(회전 정사각형) 형태
         const sz = size / 2;
         this.graphics.fillStyle(COLORS.PROJECTILE_ICE, 1);
         this.graphics.fillPoints([
@@ -157,33 +162,36 @@ export class Projectile {
     }
   }
 
+  // ── 업데이트 ───────────────────────────────────────────────────
+
   /**
-   * Update projectile position, check for hit.
-   * @param {number} delta - Frame delta in seconds (game-speed adjusted)
-   * @param {Enemy[]} enemies - All active enemies (for splash damage)
-   * @returns {{ hit: boolean, enemy: object|null, killed: boolean, kills: object[] }} Hit result
+   * 매 프레임 투사체 위치를 갱신하고 명중 판정을 수행한다.
+   * 대상이 사망/제거되면 마지막으로 알려진 위치로 계속 이동한다.
+   * @param {number} delta - 프레임 델타 (초 단위, 게임 속도 적용 후)
+   * @param {Enemy[]} enemies - 모든 활성 적 (스플래시 데미지용)
+   * @returns {{ hit: boolean, enemy: object|null, killed: boolean, kills: object[] }} 명중 결과
    */
   update(delta, enemies) {
     if (!this.active) {
       return { hit: false, enemy: null, killed: false, kills: [] };
     }
 
-    // If target is dead/removed, fly towards last known position
+    // 대상이 살아있으면 추적 좌표 갱신
     if (this.target && this.target.alive && !this.target.reachedBase) {
       this.targetX = this.target.x;
       this.targetY = this.target.y;
     }
 
-    // Move towards target position
+    // 대상 위치를 향해 이동
     const dx = this.targetX - this.x;
     const dy = this.targetY - this.y;
     const dist = Math.sqrt(dx * dx + dy * dy);
 
     const moveAmount = this.speed * delta;
-    const hitRadius = 8;
+    const hitRadius = 8;  // 명중 판정 반경 (픽셀)
 
     if (dist <= hitRadius || moveAmount >= dist) {
-      // Hit!
+      // 명중 처리
       this.active = false;
       this.x = this.targetX;
       this.y = this.targetY;
@@ -191,7 +199,7 @@ export class Projectile {
       return this._onHit(enemies);
     }
 
-    // Move towards target
+    // 대상을 향해 이동
     const nx = dx / dist;
     const ny = dy / dist;
     this.x += nx * moveAmount;
@@ -201,10 +209,12 @@ export class Projectile {
     return { hit: false, enemy: null, killed: false, kills: [] };
   }
 
+  // ── 명중 처리 ──────────────────────────────────────────────────
+
   /**
-   * Handle projectile hit logic based on attack type.
-   * @param {Enemy[]} enemies - All active enemies
-   * @returns {{ hit: boolean, enemy: object|null, killed: boolean, kills: object[] }}
+   * 공격 유형에 따른 명중 로직을 처리한다.
+   * @param {Enemy[]} enemies - 모든 활성 적
+   * @returns {{ hit: boolean, enemy: object|null, killed: boolean, kills: object[] }} 명중 결과
    * @private
    */
   _onHit(enemies) {
@@ -224,7 +234,7 @@ export class Projectile {
         break;
 
       default:
-        // Fallback: single target
+        // 폴백: 단일 대상 공격
         this._hitSingle(result);
         break;
     }
@@ -233,8 +243,8 @@ export class Projectile {
   }
 
   /**
-   * Single target hit with optional slow and pushback.
-   * @param {object} result - Hit result to populate
+   * 단일 대상 명중 처리. 선택적으로 감속, 밀치기, 방어력 감소를 적용한다.
+   * @param {object} result - 채울 명중 결과 객체
    * @private
    */
   _hitSingle(result) {
@@ -245,15 +255,15 @@ export class Projectile {
       result.killed = true;
       result.kills.push(this.target);
     } else {
-      // Apply slow if defined
+      // 감속 적용
       if (this.slowAmount > 0) {
         this.target.applySlow(this.slowAmount, this.slowDuration);
       }
-      // Apply pushback if defined
+      // 밀치기 적용
       if (this.pushbackDistance > 0) {
         this.target.pushBack(this.pushbackDistance);
       }
-      // Apply armor reduction if defined (Phase 4)
+      // 방어력 감소 적용
       if (this.armorReduction > 0) {
         this.target.applyArmorReduction(this.armorReduction, this.armorReductionDuration);
       }
@@ -261,9 +271,9 @@ export class Projectile {
   }
 
   /**
-   * Splash hit: damage all enemies in radius, with optional slow.
-   * @param {object} result - Hit result to populate
-   * @param {Enemy[]} enemies - All active enemies
+   * 스플래시 명중 처리: 반경 내 모든 적에게 데미지와 디버프를 적용한다.
+   * @param {object} result - 채울 명중 결과 객체
+   * @param {Enemy[]} enemies - 모든 활성 적
    * @private
    */
   _hitSplash(result, enemies) {
@@ -278,23 +288,18 @@ export class Projectile {
         if (died) {
           result.kills.push(enemy);
         } else {
-          // Apply slow if defined
           if (this.slowAmount > 0) {
             enemy.applySlow(this.slowAmount, this.slowDuration);
           }
-          // Apply burn DoT if defined
           if (this.burnDamage > 0) {
             enemy.applyBurn(this.burnDamage, this.burnDuration);
           }
-          // Apply poison DoT if defined
           if (this.poisonDamage > 0) {
             enemy.applyPoison(this.poisonDamage, this.poisonDuration, this.maxPoisonStacks);
           }
-          // Apply armor reduction if defined
           if (this.armorReduction > 0) {
             enemy.applyArmorReduction(this.armorReduction, this.armorReductionDuration);
           }
-          // Apply pushback if defined
           if (this.pushbackDistance > 0) {
             enemy.pushBack(this.pushbackDistance);
           }
@@ -305,8 +310,8 @@ export class Projectile {
   }
 
   /**
-   * DoT single hit: immediate damage + burn DoT.
-   * @param {object} result - Hit result to populate
+   * DoT 단일 명중 처리: 즉시 데미지 + 화상/독 DoT + 감속 + 방어력 감소.
+   * @param {object} result - 채울 명중 결과 객체
    * @private
    */
   _hitDotSingle(result) {
@@ -317,27 +322,30 @@ export class Projectile {
       result.killed = true;
       result.kills.push(this.target);
     } else {
-      // Apply burn DoT
+      // 화상 DoT 적용
       if (this.burnDamage > 0) {
         this.target.applyBurn(this.burnDamage, this.burnDuration);
       }
-      // Apply poison DoT
+      // 독 DoT 적용
       if (this.poisonDamage > 0) {
         this.target.applyPoison(this.poisonDamage, this.poisonDuration, this.maxPoisonStacks);
       }
-      // Apply slow
+      // 감속 적용
       if (this.slowAmount > 0) {
         this.target.applySlow(this.slowAmount, this.slowDuration);
       }
-      // Apply armor reduction if defined
+      // 방어력 감소 적용
       if (this.armorReduction > 0) {
         this.target.applyArmorReduction(this.armorReduction, this.armorReductionDuration);
       }
     }
   }
 
+  // ── 시각 이펙트 ────────────────────────────────────────────────
+
   /**
-   * Play explosion visual effect for splash projectiles.
+   * 스플래시 투사체의 폭발 시각 이펙트를 재생한다.
+   * 확장 원 + 방사형 파티클로 구성된다.
    * @private
    */
   _playExplosionEffect() {
@@ -350,7 +358,7 @@ export class Projectile {
     const x = this.x;
     const y = this.y;
 
-    // Phase 5: Radial particles (6-8)
+    // 방사형 파티클 생성 (6~8개, 랜덤 방향)
     const particleCount = 6 + Math.floor(Math.random() * 3);
     const particles = Array.from({ length: particleCount }, () => {
       const angle = Math.random() * Math.PI * 2;
@@ -366,7 +374,7 @@ export class Projectile {
     });
 
     const timer = this.scene.time.addEvent({
-      delay: 16,
+      delay: 16,  // ~60fps
       callback: () => {
         elapsed += 16;
         const progress = elapsed / duration;
@@ -376,17 +384,17 @@ export class Projectile {
 
         effectGraphics.clear();
 
-        // Original expanding circle
+        // 확장하는 폭발 원
         effectGraphics.fillStyle(COLORS.EXPLOSION, alpha);
         effectGraphics.fillCircle(x, y, radius);
         effectGraphics.lineStyle(2, COLORS.EXPLOSION, alpha * 0.5);
         effectGraphics.strokeCircle(x, y, radius);
 
-        // Phase 5: Radial particle spray
+        // 방사형 파티클 시뮬레이션
         for (const p of particles) {
           p.x += p.vx * dt;
           p.y += p.vy * dt;
-          p.life -= dt / 0.3; // 0.3s lifespan
+          p.life -= dt / 0.3; // 0.3초 수명
 
           if (p.life > 0) {
             effectGraphics.fillStyle(COLORS.EXPLOSION, p.life * 0.8);
@@ -403,15 +411,17 @@ export class Projectile {
     });
   }
 
+  // ── 오브젝트 풀 지원 ──────────────────────────────────────────
+
   /**
-   * Reset projectile state for pool reuse.
-   * @param {string} towerType
-   * @param {number} startX
-   * @param {number} startY
-   * @param {object} target
-   * @param {number} damage
-   * @param {number} speed
-   * @param {object} [extra]
+   * 오브젝트 풀 재사용을 위해 투사체 상태를 초기화한다.
+   * @param {string} towerType - 타워 타입
+   * @param {number} startX - 시작 X 좌표
+   * @param {number} startY - 시작 Y 좌표
+   * @param {object} target - 목표 적
+   * @param {number} damage - 데미지 양
+   * @param {number} speed - 이동 속도
+   * @param {object} [extra] - 특수 효과 속성
    */
   reset(towerType, startX, startY, target, damage, speed, extra = {}) {
     this.towerType = towerType;
@@ -444,7 +454,7 @@ export class Projectile {
   }
 
   /**
-   * Deactivate for pool return (hides graphics, keeps object alive).
+   * 풀 반환을 위해 비활성화한다 (그래픽 숨김, 객체는 유지).
    */
   deactivate() {
     this.active = false;
@@ -456,7 +466,7 @@ export class Projectile {
   }
 
   /**
-   * Remove all graphics and clean up.
+   * 모든 그래픽을 제거하고 리소스를 정리한다.
    */
   destroy() {
     if (this.graphics) {
