@@ -94,10 +94,15 @@ export class MergeCodexScene extends Phaser.Scene {
     // Background
     this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, COLORS.BACKGROUND);
 
+    // Block input briefly to prevent click-through from the previous scene
+    this._inputReady = false;
+
     this._buildTierData();
     this._createTopBar();
     this._buildSubTabs();
     this._buildCodexContent();
+
+    this.time.delayedCall(100, () => { this._inputReady = true; });
   }
 
   // ── Top Bar ──────────────────────────────────────────────────
@@ -232,6 +237,7 @@ export class MergeCodexScene extends Phaser.Scene {
       this._subTabContainer.add(label);
 
       bg.on('pointerdown', () => {
+        if (!this._inputReady) return;
         if (this.codexTier !== tier) {
           this.codexTier = tier;
           this.codexScrollY = 0;
@@ -362,6 +368,7 @@ export class MergeCodexScene extends Phaser.Scene {
     this.codexScrollContainer.add(tierBadge);
 
     bg.on('pointerup', () => {
+      if (!this._inputReady) return;
       if (!this.codexDragMoved && Date.now() - this._overlayClosedAt > 200) {
         this._showCodexCardOverlay(entry);
       }
@@ -515,6 +522,7 @@ export class MergeCodexScene extends Phaser.Scene {
    * @private
    */
   _onCodexPointerDown(pointer) {
+    if (!this._inputReady) return;
     if (pointer.y < CODEX_GRID_Y) return;
     this.codexDragging = true;
     this.codexDragStartY = pointer.y;
