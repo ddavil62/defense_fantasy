@@ -1,39 +1,48 @@
-/* Fantasy Tower Defense - Global Styles */
+/**
+ * Fantasy Tower Defense - 전역 스타일시트.
+ * 모바일 최적화(터치 제스처 비활성, 선택 방지)와
+ * Capacitor safe-area 대응을 포함한다.
+ */
+
+/* 브라우저 기본 여백/패딩 초기화 */
 * {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
+/* 전체 화면 채우기 + 모바일 터치 최적화 */
 html, body {
   width: 100%;
   height: 100%;
   margin: 0;
   padding: 0;
-  overflow: hidden;
-  background: #1a1a2e;
-  touch-action: none;
+  overflow: hidden;           /* 스크롤 방지 */
+  background: #1a1a2e;       /* 다크 판타지 배경색 */
+  touch-action: none;        /* 브라우저 기본 터치 동작(줌, 스크롤) 비활성 */
   -webkit-touch-callout: none;
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
-  user-select: none;
-  -webkit-tap-highlight-color: transparent;
+  user-select: none;         /* 텍스트 선택 방지 */
+  -webkit-tap-highlight-color: transparent;  /* iOS 탭 하이라이트 제거 */
 }
 
+/* Phaser 캔버스를 감싸는 컨테이너 - 중앙 정렬 + 안전 영역 패딩 */
 #game-container {
   width: 100%;
   height: 100%;
   display: flex;
   justify-content: center;
   align-items: center;
-  /* Capacitor safe area support */
+  /* Capacitor/노치 디바이스 안전 영역 대응 */
   padding-top: env(safe-area-inset-top);
   padding-bottom: env(safe-area-inset-bottom);
   padding-left: env(safe-area-inset-left);
   padding-right: env(safe-area-inset-right);
 }
 
+/* Phaser 캔버스 기본 설정 */
 canvas {
   display: block;
   touch-action: none;
