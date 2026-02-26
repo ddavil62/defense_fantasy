@@ -313,6 +313,8 @@ export class GameScene extends Phaser.Scene {
    */
   _onPointerDown(pointer) {
     if (this.isGameOver || this.isPaused) return;
+    // 타워 정보 오버레이가 열려있으면 게임 입력 무시 (오버레이가 이벤트 처리)
+    if (this.towerPanel && this.towerPanel.isOverlayOpen()) return;
 
     const { x, y } = pointer;
 
@@ -470,8 +472,9 @@ export class GameScene extends Phaser.Scene {
     // 머지 레시피 발견을 세이브 데이터에 기록 (도감용)
     this._registerMergeDiscovery(mergeResult.id);
 
-    // 머지된 타워를 선택 상태로 전환
-    this._selectPlacedTower(towerB);
+    // 머지된 타워의 사거리만 표시 (오버레이는 열지 않음 — 합성은 정보 조회 의도가 아님)
+    this._deselectAllTowers();
+    towerB.showRangeCircle();
   }
 
   /**
@@ -2282,6 +2285,8 @@ export class GameScene extends Phaser.Scene {
    * @private
    */
   _onPointerUp(pointer) {
+    // 타워 정보 오버레이가 열려있으면 게임 입력 무시
+    if (this.towerPanel && this.towerPanel.isOverlayOpen()) return;
     const wasDragging = this.towerPanel && this.towerPanel.isDragging();
     this._pendingDrag = null;
     if (wasDragging) {
@@ -2308,6 +2313,8 @@ export class GameScene extends Phaser.Scene {
    * @private
    */
   _onPointerMove(pointer) {
+    // 타워 정보 오버레이가 열려있으면 게임 입력 무시
+    if (this.towerPanel && this.towerPanel.isOverlayOpen()) return;
     // 드래그 대기 중: 이동 거리가 10px 초과하면 실제 드래그 시작
     if (this._pendingDrag) {
       const dx = pointer.x - this._pendingDrag.startX;

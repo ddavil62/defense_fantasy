@@ -539,6 +539,9 @@ export class TowerInfoOverlay {
     const scrollContainer = this.scene.add.container(0, 0);
     this._container.add(scrollContainer);
 
+    // 상위 조합 항목 텍스트 참조 배열 (호버 효과용)
+    const itemTexts = [];
+
     // 스크롤 컨테이너 내부에 항목 구성
     for (let i = 0; i < usedInList.length; i++) {
       const { resultEntry } = usedInList[i];
@@ -548,19 +551,7 @@ export class TowerInfoOverlay {
         fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#dfe6e9',
       }).setOrigin(0.5);
       scrollContainer.add(itemText);
-
-      // 투명 히트 영역 (호버/클릭용)
-      const hitArea = this.scene.add.rectangle(panelX, itemY, PANEL_W - 40, rowH, 0x000000, 0)
-        .setInteractive({ useHandCursor: true });
-      scrollContainer.add(hitArea);
-
-      hitArea.on('pointerover', () => itemText.setColor('#ffd700'));
-      hitArea.on('pointerout', () => itemText.setColor('#dfe6e9'));
-      hitArea.on('pointerdown', () => {
-        // 현재 항목을 히스토리에 저장하고 클릭한 결과 타워로 드릴다운
-        this._history.push(currentEntry);
-        this._render(resultEntry);
-      });
+      itemTexts.push({ text: itemText, entry: resultEntry, baseY: itemY });
     }
 
     // 스크롤 영역 클리핑 마스크
@@ -582,21 +573,23 @@ export class TowerInfoOverlay {
       this._usedInScrollHint = hint;
     }
 
-    // 드래그 스크롤 상태
+    // 드래그 스크롤 + 클릭 드릴다운 통합 처리
     let scrollY = 0;
     let dragging = false;
     let dragStartY = 0;
     let dragStartScroll = 0;
+    let didDrag = false; // 드래그 여부 (클릭과 구분)
 
-    // 스크롤 영역을 덮는 투명 드래그 존
+    // 스크롤 영역을 덮는 투명 드래그 존 (스크롤 + 클릭 모두 처리)
     const dragZone = this.scene.add.rectangle(
       panelX, scrollTopY + scrollH / 2,
       PANEL_W - 10, scrollH, 0x000000, 0
-    ).setInteractive();
+    ).setInteractive({ useHandCursor: true });
     this._container.add(dragZone);
 
     dragZone.on('pointerdown', (pointer) => {
       dragging = true;
+      didDrag = false;
       dragStartY = pointer.y;
       dragStartScroll = scrollY;
     });
@@ -605,6 +598,8 @@ export class TowerInfoOverlay {
     this._scrollMoveHandler = (pointer) => {
       if (!dragging) return;
       const dy = pointer.y - dragStartY;
+      // 이동 거리가 5px 초과하면 드래그로 판정
+      if (Math.abs(dy) > 5) didDrag = true;
       scrollY = Phaser.Math.Clamp(dragStartScroll - dy, 0, maxScroll);
       scrollContainer.y = -scrollY;
       // 스크롤 힌트 가시성 갱신
@@ -612,7 +607,33 @@ export class TowerInfoOverlay {
         this._usedInScrollHint.setVisible(scrollY < maxScroll - 5);
       }
     };
-    this._scrollUpHandler = () => { dragging = false; };
+    this._scrollUpHandler = (pointer) => {
+      if (!dragging) return;
+      dragging = false;
+      // 드래그 없이 짧은 클릭이면 해당 위치의 항목으로 드릴다운
+      if (!didDrag) {
+        const clickY = pointer.y + scrollY; // 스크롤 오프셋 보정
+        for (const item of itemTexts) {
+          if (Math.abs(clickY - item.baseY) <= rowH / 2) {
+            this._history.push(currentEntry);
+            this._render(item.entry);
+            return;
+          }
+        }
+      }
+    };
+
+    // 호버 효과: 포인터 위치에 따라 항목 색상 변경
+    dragZone.on('pointermove', (pointer) => {
+      if (dragging) return;
+      const hoverY = pointer.y + scrollY;
+      for (const item of itemTexts) {
+        item.text.setColor(Math.abs(hoverY - item.baseY) <= rowH / 2 ? '#ffd700' : '#dfe6e9');
+      }
+    });
+    dragZone.on('pointerout', () => {
+      for (const item of itemTexts) item.text.setColor('#dfe6e9');
+    });
 
     this.scene.input.on('pointermove', this._scrollMoveHandler);
     this.scene.input.on('pointerup', this._scrollUpHandler);

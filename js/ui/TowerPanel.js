@@ -987,6 +987,15 @@ export class TowerPanel {
     return this._isDragging;
   }
 
+  /**
+   * 타워 정보 오버레이가 열려있는지 반환한다.
+   * GameScene에서 오버레이 열린 동안 게임 입력을 차단하는 데 사용한다.
+   * @returns {boolean}
+   */
+  isOverlayOpen() {
+    return this.towerInfoOverlay && this.towerInfoOverlay.isOpen();
+  }
+
   // ── 정보 패널 관리 ─────────────────────────────────────────
 
   /**
