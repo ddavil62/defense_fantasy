@@ -2,17 +2,17 @@
  * @fileoverview MergeCodexScene - 합성 도감 (타워 레시피 카탈로그) 씬.
  * T1~T5 모든 타워를 발견 여부와 무관하게 전체 공개 형태로 표시한다.
  * GameScene(일시정지 오버레이)과 CollectionScene(도감 탭) 양쪽에서 접근 가능하다.
- * 카드 클릭 시 T1은 스탯 패널, T2+는 합성 트리 노드를 보여주며,
- * 재료 노드 클릭으로 드릴다운 탐색이 가능하다.
+ * 카드 클릭 시 TowerInfoOverlay를 통해 상세 정보를 표시한다.
  */
 
 import {
   GAME_WIDTH, GAME_HEIGHT, COLORS,
   TOWER_STATS, MERGE_RECIPES, MERGED_TOWER_STATS,
-  CODEX_TIER_BG, ATTACK_TYPE_COLORS_CSS, BTN_PRIMARY,
+  CODEX_TIER_BG, ATTACK_TYPE_COLORS_CSS,
   META_UPGRADE_TREE,
 } from '../config.js';
 import { t } from '../i18n.js';
+import { TowerInfoOverlay } from '../ui/TowerInfoOverlay.js';
 
 /** @const {string[]} T1 타워 표시 순서 */
 const TOWER_ORDER = [
@@ -62,7 +62,7 @@ export class MergeCodexScene extends Phaser.Scene {
 
   /**
    * 씬 초기 상태를 설정한다.
-   * 이전 씬 정보, 스크롤 상태, 오버레이 히스토리 등을 초기화한다.
+   * 이전 씬 정보, 스크롤 상태 등을 초기화한다.
    * @param {object} data - 씬 전환 시 전달되는 데이터
    * @param {string} [data.fromScene='CollectionScene'] - 이 도감을 호출한 씬 이름
    */
@@ -106,15 +106,6 @@ export class MergeCodexScene extends Phaser.Scene {
     /** @type {number} 스크롤 가능한 최대 오프셋 값 */
     this._codexMaxScroll = 0;
 
-    /** @type {Phaser.GameObjects.Container|null} 현재 활성 오버레이 컨테이너 */
-    this.overlay = null;
-
-    /** @type {number} 오버레이가 마지막으로 닫힌 시각 (ms, 재오픈 방지용) */
-    this._overlayClosedAt = 0;
-
-    /** @type {object[]} 오버레이 드릴다운 히스토리 스택 */
-    this._overlayHistory = [];
-
     // 세이브 데이터에서 메타 업그레이드 정보 로드
     /** @type {object} 타워별 메타 업그레이드 선택 정보 */
     const saveData = JSON.parse(localStorage.getItem('fantasyDefenceSave') || '{}');
@@ -123,7 +114,7 @@ export class MergeCodexScene extends Phaser.Scene {
 
   /**
    * 도감 UI를 생성한다.
-   * 배경, 상단 바, 서브탭, 도감 그리드를 구성하고,
+   * 배경, 상단 바, 서브탭, 도감 그리드, TowerInfoOverlay를 구성하고,
    * 이전 씬에서의 클릭 관통을 방지하기 위해 100ms 동안 입력을 차단한다.
    */
   create() {
@@ -138,8 +129,30 @@ export class MergeCodexScene extends Phaser.Scene {
     this._buildSubTabs();
     this._buildCodexContent();
 
+    // 타워 정보 오버레이 생성 (codex 모드)
+    this.towerInfoOverlay = new TowerInfoOverlay(this, {
+      mode: 'codex',
+      applyMetaUpgrades: (id, stats) => this._applyMetaUpgradesToStats(id, stats),
+    });
+
     // 100ms 후 입력 허용
     this.time.delayedCall(100, () => { this._inputReady = true; });
+
+    // 씬 종료 시 오버레이 리소스 정리
+    this.events.on('shutdown', this._onShutdown, this);
+  }
+
+  /**
+   * 씬 shutdown 시 TowerInfoOverlay를 파괴하고 리소스를 정리한다.
+   * @private
+   */
+  _onShutdown() {
+    this._cleanupCodexDrag();
+    if (this.towerInfoOverlay) {
+      this.towerInfoOverlay.destroy();
+      this.towerInfoOverlay = null;
+    }
+    this.events.off('shutdown', this._onShutdown, this);
   }
 
   // ── 상단 바 ─────────────────────────────────────────────────
@@ -416,7 +429,7 @@ export class MergeCodexScene extends Phaser.Scene {
     bg.on('pointerup', () => {
       if (!this._inputReady) return;
       // 드래그가 이동한 경우 클릭으로 취급하지 않음, 오버레이 닫기 직후 재오픈 방지 (200ms 쿨다운)
-      if (!this.codexDragMoved && Date.now() - this._overlayClosedAt > 200) {
+      if (!this.codexDragMoved && Date.now() - this.towerInfoOverlay.getClosedAt() > 200) {
         this._showCodexCardOverlay(entry);
       }
     });
@@ -425,141 +438,15 @@ export class MergeCodexScene extends Phaser.Scene {
   // ── 카드 오버레이 ──────────────────────────────────────────
 
   /**
-   * 도감 카드 클릭 시 상세 오버레이를 표시한다.
-   * T1은 스탯 패널, T2+는 합성 트리 노드를 보여준다.
-   * 드릴다운 히스토리를 초기화하고 새로운 탐색을 시작한다.
+   * 도감 카드 클릭 시 TowerInfoOverlay를 통해 상세 정보를 표시한다.
    * @param {object} entry - 티어 데이터 항목
    * @private
    */
   _showCodexCardOverlay(entry) {
-    this._overlayHistory = [];
-    this._renderOverlay(entry);
+    this.towerInfoOverlay.open(entry);
   }
 
-  /**
-   * 주어진 항목에 대한 오버레이를 렌더링(또는 재렌더링)한다.
-   * 기존 오버레이를 파괴한 뒤 T1 패널 또는 합성 트리 패널로 위임한다.
-   * 히스토리가 있으면 "뒤로" 버튼을 표시한다.
-   * @param {object} entry - 표시할 티어 데이터 항목
-   * @private
-   */
-  _renderOverlay(entry) {
-    if (this.overlay) this.overlay.destroy();
-    this.overlay = this.add.container(0, 0).setDepth(50);
-
-    // 배경막 (어둡고 거의 불투명)
-    const backdrop = this.add.rectangle(GAME_WIDTH / 2, GAME_HEIGHT / 2, GAME_WIDTH, GAME_HEIGHT, 0x050510)
-      .setAlpha(0.96)
-      .setInteractive();
-    this.overlay.add(backdrop);
-    backdrop.on('pointerdown', () => this._handleBack());
-
-    // 이 항목이 재료로 사용되는 상위 레시피 목록 계산
-    const usedInList = this._findUsedInRecipes(entry.id);
-
-    // 패널 크기 계산 - "상위 조합" 섹션이 있으면 높이 추가
-    const panelW = 300;
-    const hasUsedIn = usedInList.length > 0;
-    const usedInViewH = hasUsedIn ? 100 : 0;
-    const baseH = entry.tier >= 2 ? 300 : 200;
-    const panelH = baseH + usedInViewH;
-    const panelX = GAME_WIDTH / 2;
-    const panelY = GAME_HEIGHT / 2;
-    const panelTop = panelY - panelH / 2;
-
-    const panelBg = this.add.rectangle(panelX, panelY, panelW, panelH, COLORS.UI_PANEL)
-      .setStrokeStyle(2, BTN_PRIMARY)
-      .setInteractive();
-    this.overlay.add(panelBg);
-
-    // ── 헤더 영역 (패널 상단 0~30px) ──
-    if (this._overlayHistory.length > 0) {
-      // 뒤로 버튼 (드릴다운 탐색 시 표시)
-      const backBg = this.add.rectangle(panelX - panelW / 2 + 40, panelTop + 15, 60, 24, 0x000000, 0)
-        .setStrokeStyle(1, 0x636e72)
-        .setInteractive({ useHandCursor: true });
-      this.overlay.add(backBg);
-      const backLabel = this.add.text(panelX - panelW / 2 + 40, panelTop + 15, '< \ub4a4\ub85c', {
-        fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#ffffff',
-      }).setOrigin(0.5);
-      this.overlay.add(backLabel);
-      backBg.on('pointerdown', () => this._handleBack());
-    }
-
-    // 닫기 (X) 버튼
-    const closeX = panelX + panelW / 2 - 20;
-    const closeY = panelTop + 15;
-    const closeBg = this.add.circle(closeX, closeY, 12, COLORS.BUTTON_ACTIVE)
-      .setInteractive({ useHandCursor: true });
-    this.overlay.add(closeBg);
-    const closeText = this.add.text(closeX, closeY, 'X', {
-      fontSize: '14px', fontFamily: 'Arial, sans-serif', color: '#ffffff', fontStyle: 'bold',
-    }).setOrigin(0.5);
-    this.overlay.add(closeText);
-    closeBg.on('pointerdown', () => this._forceCloseOverlay());
-
-    // 티어에 따라 적절한 패널 렌더링
-    if (entry.tier === 1) {
-      this._renderT1Panel(entry, panelX, panelTop, panelW, usedInList);
-    } else {
-      this._renderTreePanel(entry, panelX, panelTop, panelW, usedInList);
-    }
-  }
-
-  // ── T1 스탯 패널 ───────────────────────────────────────────
-
-  /**
-   * T1 타워의 스탯 패널을 현재 오버레이 내부에 렌더링한다.
-   * 타워 이름, 색상 원, 공격 유형, 기본 스탯(메타 업그레이드 보너스 반영)을 표시한다.
-   * @param {object} entry - T1 티어 데이터 항목
-   * @param {number} panelX - 패널 중심 X 좌표
-   * @param {number} panelTop - 패널 상단 Y 좌표
-   * @param {number} panelW - 패널 너비
-   * @param {Array} usedInList - 이 타워가 재료로 사용되는 레시피 목록
-   * @private
-   */
-  _renderT1Panel(entry, panelX, panelTop, panelW, usedInList) {
-    // 타워 이름
-    const nameText = this.add.text(panelX, panelTop + 40, entry.displayName, {
-      fontSize: '16px', fontFamily: 'Arial, sans-serif', color: '#ffffff', fontStyle: 'bold',
-    }).setOrigin(0.5);
-    this.overlay.add(nameText);
-
-    // 색상 원 + 티어 배지
-    const circleG = this.add.graphics();
-    circleG.fillStyle(entry.color, 1);
-    circleG.fillCircle(panelX - 30, panelTop + 65, 14);
-    this.overlay.add(circleG);
-
-    const tierBadge = this.add.text(panelX + 5, panelTop + 65, 'T1', {
-      fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#ffd700',
-    }).setOrigin(0, 0.5);
-    this.overlay.add(tierBadge);
-
-    // 공격 유형 배지
-    const atkColor = ATTACK_TYPE_COLORS_CSS[entry.attackType] || '#b2bec3';
-    const atkText = this.add.text(panelX, panelTop + 90, this._getAttackTypeBadge(entry.attackType), {
-      fontSize: '11px', fontFamily: 'Arial, sans-serif', color: atkColor,
-    }).setOrigin(0.5);
-    this.overlay.add(atkText);
-
-    // 기본 스탯 (메타 업그레이드 보너스가 적용된 값)
-    const lv1 = TOWER_STATS[entry.id]?.levels?.[1];
-    if (lv1) {
-      const stats = { damage: lv1.damage, fireRate: lv1.fireRate, range: lv1.range };
-      this._applyMetaUpgradesToStats(entry.id, stats);
-      const statsStr = `DMG: ${stats.damage}  |  SPD: ${stats.fireRate}s  |  RNG: ${stats.range}`;
-      const statsText = this.add.text(panelX, panelTop + 110, statsStr, {
-        fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#b2bec3',
-      }).setOrigin(0.5);
-      this.overlay.add(statsText);
-    }
-
-    // ── "상위 조합" 섹션 ──
-    if (usedInList.length > 0) {
-      this._renderUsedInSection(entry, usedInList, panelX, panelTop + 130, panelW);
-    }
-  }
+  // ── 메타 업그레이드 적용 ─────────────────────────────────────
 
   /**
    * 메타 업그레이드 보너스를 일반 스탯 객체에 적용한다.
@@ -599,362 +486,6 @@ export class MergeCodexScene extends Phaser.Scene {
     }
   }
 
-  /**
-   * 주어진 타워가 재료로 사용되는 모든 합성 레시피를 찾는다.
-   * @param {string} towerId - 타워 id (T1 타입 또는 합성 타워 id)
-   * @returns {Array<{resultEntry: object, recipeKey: string}>} 결과 항목과 레시피 키 쌍의 배열
-   * @private
-   */
-  _findUsedInRecipes(towerId) {
-    const results = [];
-    for (const [recipeKey, recipe] of Object.entries(MERGE_RECIPES)) {
-      const parts = recipeKey.split('+');
-      if (parts.includes(towerId)) {
-        const resultEntry = this._buildEntryById(recipe.id);
-        if (resultEntry) results.push({ resultEntry, recipeKey });
-      }
-    }
-    // 티어 오름차순, 같은 티어 내에서는 이름 알파벳순으로 정렬
-    results.sort((a, b) => a.resultEntry.tier - b.resultEntry.tier || a.resultEntry.displayName.localeCompare(b.resultEntry.displayName));
-    return results;
-  }
-
-  /**
-   * 오버레이 내부에 스크롤 가능한 "상위 조합" 목록 섹션을 렌더링한다.
-   * 이 타워가 재료로 사용되는 상위 합성 결과를 나열하며,
-   * 각 항목 클릭 시 해당 타워의 상세 오버레이로 드릴다운한다.
-   * @param {object} currentEntry - 현재 표시 중인 항목 (히스토리 push용)
-   * @param {Array} usedInList - _findUsedInRecipes의 결과
-   * @param {number} panelX - 패널 중심 X 좌표
-   * @param {number} startY - 섹션 렌더링 시작 Y 좌표
-   * @param {number} panelW - 패널 너비
-   * @private
-   */
-  _renderUsedInSection(currentEntry, usedInList, panelX, startY, panelW) {
-    const viewH = 100;
-    const rowH = 22;
-    const headerH = 18;
-    let y = startY + 6;
-
-    // 구분선
-    const divider = this.add.graphics();
-    divider.lineStyle(1, 0x636e72, 0.5);
-    divider.lineBetween(panelX - panelW / 2 + 20, y, panelX + panelW / 2 - 20, y);
-    this.overlay.add(divider);
-    y += 8;
-
-    // 섹션 헤더 (스크롤 영역 바깥 고정)
-    const header = this.add.text(panelX, y, t('codex.usedIn') || '상위 조합', {
-      fontSize: '10px', fontFamily: 'Arial, sans-serif', color: '#636e72',
-    }).setOrigin(0.5);
-    this.overlay.add(header);
-    y += headerH;
-
-    // 스크롤 뷰포트 영역
-    const scrollTopY = y;
-    const scrollH = viewH - headerH - 14;
-    const contentH = usedInList.length * rowH;
-    const maxScroll = Math.max(0, contentH - scrollH);
-
-    // 스크롤 가능 컨테이너
-    const scrollContainer = this.add.container(0, 0);
-    this.overlay.add(scrollContainer);
-
-    // 스크롤 컨테이너 내부에 항목 구성
-    for (let i = 0; i < usedInList.length; i++) {
-      const { resultEntry } = usedInList[i];
-      const itemY = scrollTopY + i * rowH + rowH / 2;
-      const label = `T${resultEntry.tier} ${resultEntry.displayName}`;
-      const itemText = this.add.text(panelX, itemY, label, {
-        fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#dfe6e9',
-      }).setOrigin(0.5);
-      scrollContainer.add(itemText);
-
-      // 투명 히트 영역 (호버/클릭용)
-      const hitArea = this.add.rectangle(panelX, itemY, panelW - 40, rowH, 0x000000, 0)
-        .setInteractive({ useHandCursor: true });
-      scrollContainer.add(hitArea);
-
-      hitArea.on('pointerover', () => itemText.setColor('#ffd700'));
-      hitArea.on('pointerout', () => itemText.setColor('#dfe6e9'));
-      hitArea.on('pointerdown', () => {
-        if (!this._inputReady) return;
-        // 현재 항목을 히스토리에 저장하고 클릭한 결과 타워로 드릴다운
-        this._overlayHistory.push(currentEntry);
-        this._renderOverlay(resultEntry);
-      });
-    }
-
-    // 스크롤 영역 클리핑 마스크
-    const maskShape = this.add.rectangle(panelX, scrollTopY + scrollH / 2, panelW - 10, scrollH, 0x000000)
-      .setVisible(false);
-    this.overlay.add(maskShape);
-    scrollContainer.setMask(maskShape.createGeometryMask());
-
-    // 스크롤 힌트 (콘텐츠가 넘칠 때만 하단 화살표 표시)
-    if (maxScroll > 0) {
-      const hint = this.add.text(panelX + panelW / 2 - 28, scrollTopY + scrollH - 2, '\u25BC', {
-        fontSize: '9px', fontFamily: 'Arial, sans-serif', color: '#636e72',
-      }).setOrigin(0.5);
-      this.overlay.add(hint);
-      this._usedInScrollHint = hint;
-    }
-
-    // 드래그 스크롤 상태
-    let scrollY = 0;
-    let dragging = false;
-    let dragStartY = 0;
-    let dragStartScroll = 0;
-
-    // 스크롤 영역을 덮는 투명 드래그 존
-    const dragZone = this.add.rectangle(panelX, scrollTopY + scrollH / 2, panelW - 10, scrollH, 0x000000, 0)
-      .setInteractive();
-    this.overlay.add(dragZone);
-
-    dragZone.on('pointerdown', (pointer) => {
-      dragging = true;
-      dragStartY = pointer.y;
-      dragStartScroll = scrollY;
-    });
-
-    this.input.on('pointermove', (pointer) => {
-      if (!dragging) return;
-      const dy = pointer.y - dragStartY;
-      scrollY = Phaser.Math.Clamp(dragStartScroll - dy, 0, maxScroll);
-      scrollContainer.y = -scrollY;
-      // 스크롤 힌트 가시성 갱신 (끝까지 스크롤하면 숨김)
-      if (this._usedInScrollHint) {
-        this._usedInScrollHint.setVisible(scrollY < maxScroll - 5);
-      }
-    });
-
-    this.input.on('pointerup', () => { dragging = false; });
-  }
-
-  // ── T2+ 합성 트리 패널 ─────────────────────────────────────
-
-  /**
-   * T2+ 항목의 합성 트리 노드 패널을 렌더링한다.
-   * 결과 노드(상단)와 두 재료 노드(하단 좌/우)를 Y자 연결선으로 표시한다.
-   * 재료 노드 클릭 시 해당 타워로 드릴다운할 수 있다.
-   * @param {object} entry - T2+ 티어 데이터 항목
-   * @param {number} panelX - 패널 중심 X 좌표
-   * @param {number} panelTop - 패널 상단 Y 좌표
-   * @param {number} panelW - 패널 너비
-   * @param {Array} usedInList - 이 타워가 재료로 사용되는 레시피 목록
-   * @private
-   */
-  _renderTreePanel(entry, panelX, panelTop, panelW, usedInList) {
-    // 레시피 키에서 두 재료를 추출
-    const parts = entry.recipeKey ? entry.recipeKey.split('+') : [];
-    const matAEntry = parts[0] ? this._buildEntryById(parts[0]) : null;
-    const matBEntry = parts[1] ? this._buildEntryById(parts[1]) : null;
-
-    // ── 결과 노드 (상단 중앙) ──
-    const resultY = panelTop + 90;
-    const resultR = 28;
-
-    const resultCircle = this.add.graphics();
-    resultCircle.fillStyle(entry.color, 1);
-    resultCircle.fillCircle(panelX, resultY, resultR);
-    resultCircle.lineStyle(2, BTN_PRIMARY, 1);
-    resultCircle.strokeCircle(panelX, resultY, resultR);
-    this.overlay.add(resultCircle);
-
-    const resultName = this.add.text(panelX, panelTop + 128, entry.displayName, {
-      fontSize: '12px', fontFamily: 'Arial, sans-serif', color: '#ffffff', fontStyle: 'bold',
-    }).setOrigin(0.5);
-    this.overlay.add(resultName);
-
-    const resultTier = this.add.text(panelX, panelTop + 144, `T${entry.tier}`, {
-      fontSize: '10px', fontFamily: 'Arial, sans-serif', color: '#ffd700',
-    }).setOrigin(0.5);
-    this.overlay.add(resultTier);
-
-    // ── Y자 연결선 ──
-    const forkY = panelTop + 175;
-    const matY = panelTop + 210;
-    const matR = 20;
-    const matOffsetX = 55;
-    const matAX = panelX - matOffsetX;
-    const matBX = panelX + matOffsetX;
-
-    const lines = this.add.graphics();
-    this._renderConnectorLines(lines, { x: panelX, y: panelTop + 155 }, forkY, { x: matAX, y: matY }, { x: matBX, y: matY });
-    this.overlay.add(lines);
-
-    // ── 재료 노드 (좌/우) ──
-    if (matAEntry) this._renderMaterialNode(matAEntry, matAX, matY, matR, panelTop, entry);
-    if (matBEntry) this._renderMaterialNode(matBEntry, matBX, matY, matR, panelTop, entry);
-
-    // ── 트리 아래 스탯 표시 ──
-    let nextY = panelTop + 270;
-    const mergedStats = MERGED_TOWER_STATS[entry.id];
-    if (mergedStats) {
-      const divider = this.add.graphics();
-      divider.lineStyle(1, 0x636e72, 0.5);
-      divider.lineBetween(panelX - panelW / 2 + 20, nextY, panelX + panelW / 2 - 20, nextY);
-      this.overlay.add(divider);
-      nextY += 14;
-
-      const statsStr = `DMG: ${mergedStats.damage}  |  SPD: ${mergedStats.fireRate}s  |  RNG: ${mergedStats.range}`;
-      const statsText = this.add.text(panelX, nextY, statsStr, {
-        fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#b2bec3',
-      }).setOrigin(0.5);
-      this.overlay.add(statsText);
-      nextY += 16;
-    }
-
-    // ── "상위 조합" 섹션 ──
-    if (usedInList.length > 0) {
-      this._renderUsedInSection(entry, usedInList, panelX, nextY, panelW);
-    }
-  }
-
-  /**
-   * 재료 노드 하나를 렌더링한다 (색상 원 + 이름 + 티어 배지).
-   * 클릭 시 해당 재료 타워의 상세 정보로 드릴다운한다.
-   * T2+ 재료는 금색 테두리, T1 재료는 은색 테두리로 구분한다.
-   * @param {object} matEntry - 재료 타워의 티어 데이터 항목
-   * @param {number} cx - 노드 중심 X 좌표
-   * @param {number} cy - 노드 중심 Y 좌표 (원 위치)
-   * @param {number} r - 원 반지름
-   * @param {number} panelTop - 패널 상단 Y 좌표 (텍스트 배치용)
-   * @param {object} currentEntry - 현재 결과 항목 (히스토리 push용)
-   * @private
-   */
-  _renderMaterialNode(matEntry, cx, cy, r, panelTop, currentEntry) {
-    const circle = this.add.graphics();
-    circle.fillStyle(matEntry.color, 1);
-    circle.fillCircle(cx, cy, r);
-    // T2+ 재료는 금색 테두리로 드릴다운 가능함을 시각적으로 표시
-    const borderColor = matEntry.tier >= 2 ? BTN_PRIMARY : 0x636e72;
-    circle.lineStyle(2, borderColor, 1);
-    circle.strokeCircle(cx, cy, r);
-    this.overlay.add(circle);
-
-    // 재료 이름 (공간 절약을 위해 6자 초과 시 말줄임)
-    const displayName = matEntry.displayName.length > 6
-      ? matEntry.displayName.substring(0, 5) + '..'
-      : matEntry.displayName;
-    const nameText = this.add.text(cx, panelTop + 238, displayName, {
-      fontSize: '10px', fontFamily: 'Arial, sans-serif', color: '#ffffff',
-    }).setOrigin(0.5);
-    this.overlay.add(nameText);
-
-    const tierBadge = this.add.text(cx, panelTop + 252, `T${matEntry.tier}`, {
-      fontSize: '9px', fontFamily: 'Arial, sans-serif', color: '#ffd700',
-    }).setOrigin(0.5);
-    this.overlay.add(tierBadge);
-
-    // 투명 히트 영역 (노드 영역을 덮는 클릭 가능 사각형)
-    const hitArea = this.add.rectangle(cx, cy + 10, r * 2 + 10, 70, 0x000000, 0)
-      .setInteractive({ useHandCursor: true });
-    this.overlay.add(hitArea);
-
-    hitArea.on('pointerdown', () => {
-      if (!this._inputReady) return;
-      // 현재 항목을 히스토리에 저장하고 재료 타워로 드릴다운
-      this._overlayHistory.push(currentEntry);
-      this._renderOverlay(matEntry);
-    });
-  }
-
-  /**
-   * 결과 노드에서 두 재료 노드로 이어지는 Y자 연결선을 렌더링한다.
-   * 수직선(결과 -> 분기점) + 수평선(좌재료 <-> 우재료) + 수직선 2개(분기점 -> 각 재료).
-   * @param {Phaser.GameObjects.Graphics} graphics - 그리기 대상 그래픽 오브젝트
-   * @param {object} resultPos - 결과 노드 하단 좌표 { x, y }
-   * @param {number} forkY - 분기점 Y 좌표
-   * @param {object} matAPos - 재료 A 노드 상단 좌표 { x, y }
-   * @param {object} matBPos - 재료 B 노드 상단 좌표 { x, y }
-   * @private
-   */
-  _renderConnectorLines(graphics, resultPos, forkY, matAPos, matBPos) {
-    graphics.lineStyle(2, 0x636e72, 0.8);
-
-    // 결과 노드에서 분기점까지 수직선
-    graphics.beginPath();
-    graphics.moveTo(resultPos.x, resultPos.y);
-    graphics.lineTo(resultPos.x, forkY);
-    graphics.strokePath();
-
-    // 분기점에서의 수평선
-    graphics.beginPath();
-    graphics.moveTo(matAPos.x, forkY);
-    graphics.lineTo(matBPos.x, forkY);
-    graphics.strokePath();
-
-    // 분기점에서 재료 A까지 수직선
-    graphics.beginPath();
-    graphics.moveTo(matAPos.x, forkY);
-    graphics.lineTo(matAPos.x, matAPos.y - 20);
-    graphics.strokePath();
-
-    // 분기점에서 재료 B까지 수직선
-    graphics.beginPath();
-    graphics.moveTo(matBPos.x, forkY);
-    graphics.lineTo(matBPos.x, matBPos.y - 20);
-    graphics.strokePath();
-  }
-
-  // ── 오버레이 내비게이션 ─────────────────────────────────────
-
-  /**
-   * 뒤로가기를 처리한다.
-   * 히스토리에 이전 항목이 있으면 되돌아가고, 없으면 오버레이를 닫는다.
-   * @private
-   */
-  _handleBack() {
-    if (this._overlayHistory.length > 0) {
-      const prevEntry = this._overlayHistory.pop();
-      this._renderOverlay(prevEntry);
-    } else {
-      this._forceCloseOverlay();
-    }
-  }
-
-  /**
-   * 히스토리를 무시하고 오버레이를 즉시 완전히 닫는다.
-   * 닫힌 시각을 기록하여 즉시 재오픈을 방지한다.
-   * @private
-   */
-  _forceCloseOverlay() {
-    if (this.overlay) {
-      this.overlay.destroy();
-      this.overlay = null;
-      this._overlayHistory = [];
-      this._overlayClosedAt = Date.now();
-    }
-  }
-
-  /**
-   * 오버레이를 닫는다 (히스토리 기반 뒤로가기 지원).
-   * @private
-   */
-  _closeOverlay() {
-    this._handleBack();
-  }
-
-  /**
-   * 타워/합성 ID로 티어 데이터 항목을 조회한다.
-   * 모든 티어(T1~T5)의 캐시를 순회하여 일치하는 항목을 반환한다.
-   * @param {string} id - 타워 또는 합성 타워 ID
-   * @returns {object|null} 일치하는 티어 데이터 항목, 없으면 null
-   * @private
-   */
-  _buildEntryById(id) {
-    if (!this._tierDataCache) return null;
-    for (let tier = 1; tier <= 5; tier++) {
-      const entries = this._tierDataCache[tier];
-      if (!entries) continue;
-      for (const entry of entries) {
-        if (entry.id === id) return entry;
-      }
-    }
-    return null;
-  }
-
   // ── 드래그 스크롤 ──────────────────────────────────────────
 
   /**
@@ -975,7 +506,8 @@ export class MergeCodexScene extends Phaser.Scene {
    */
   _onCodexPointerDown(pointer) {
     if (!this._inputReady) return;
-    if (this.overlay) return;
+    // 오버레이가 열려 있으면 도감 그리드 드래그 차단
+    if (this.towerInfoOverlay && this.towerInfoOverlay.isOpen()) return;
     if (pointer.y < CODEX_GRID_Y) return;
     this.codexDragging = true;
     this.codexDragStartY = pointer.y;

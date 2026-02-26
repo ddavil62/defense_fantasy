@@ -4,6 +4,84 @@
 
 ---
 
+## 2026-02-27 -- 타워 정보 오버레이 통합 (TowerInfoOverlay)
+
+### 배경
+
+인게임 타워 클릭 모달(`TowerPanel._showTowerModal`)과 합성도감 카드 오버레이(`MergeCodexScene._renderOverlay`)가 타워 이름, 색상, 티어, 스탯, 합성 트리, 상위 조합 섹션을 공통으로 표시하지만 코드가 완전히 중복되어 유지보수 비용이 컸다. 두 오버레이를 `TowerInfoOverlay` 단일 클래스로 통합하고, 인게임 모달에도 Y자 트리/드릴다운/상위 조합 기능을 추가했다.
+
+### 추가
+
+- **`js/ui/TowerInfoOverlay.js`** -- 공용 타워 정보 오버레이 컴포넌트 신규 생성
+  - `mode` 옵션으로 `'game'` / `'codex'` 두 가지 동작 지원
+  - 공통 레이아웃: 반투명 배경막 (alpha 0.96), 300px 패널, 닫기(X)/뒤로 버튼
+  - T1: 색상 원, 이름, T1 배지, 공격 유형, DMG/SPD/RNG 스탯
+  - T2+: Y자 트리 노드 (결과 r=28 금테, 재료 r=20), 연결선, 스탯
+  - 상위 조합 섹션: 구분선, 헤더, 드래그 스크롤 목록 (GeometryMask)
+  - 드릴다운: 재료 노드/상위 조합 항목 클릭 -> 해당 타워 오버레이 전환 + 히스토리
+  - game 모드 전용: 강화 버튼 (200x32, BTN_PRIMARY), 판매 버튼 (200x32, BTN_DANGER), 최대 강화 텍스트
+  - game 모드 드릴다운 중 강화/판매 버튼 숨김, 원래 타워 복귀 시 재표시
+  - game 모드 depth 100, codex 모드 depth 50
+  - 공개 API: `open()`, `close()`, `isOpen()`, `getClosedAt()`, `destroy()`
+  - `_buildEntryFromTower()`: Tower 인스턴스 -> entry 변환 (game 모드)
+  - `_buildEntryFromConfig()`: config 데이터 -> entry 변환 (드릴다운)
+  - `_findUsedInRecipes()`: 상위 조합 레시피 검색 (MergeCodexScene에서 이전)
+  - `_removeScrollListeners()`: 스크롤 리스너 정리 (누수 방지)
+  - 한국어 주석 규약 준수 (@fileoverview, JSDoc, 인라인 주석)
+
+### 변경
+
+- **`js/ui/TowerPanel.js`** -- 모달 관련 코드 제거, TowerInfoOverlay 연동
+  - 삭제: `_showTowerModal()`, `_buildModalMergeList()`, `_hideTowerModal()`, `_buildMergeList()` 메서드
+  - 삭제: `showTowerInfo()` 내 `infoContainer` 생성 로직 (간이 정보 한 줄)
+  - 추가: constructor에서 `TowerInfoOverlay` 인스턴스 생성 (`mode: 'game'`, onEnhance/onSell 콜백)
+  - 수정: `showTowerInfo()` -> `towerInfoOverlay.open(tower)` 호출
+  - 수정: `_hideInfo()` -> `towerInfoOverlay.close()` 호출
+  - 수정: `destroy()` -> `towerInfoOverlay.destroy()` 호출
+  - 유지: `sellBg` 판매 단축 버튼, `_flashMergeTargets()` 합성 파트너 깜빡이기
+  - 정리: 미사용 import 제거 (`CELL_SIZE`, `MAX_ENHANCE_LEVEL`, `GAME_HEIGHT`)
+- **`js/scenes/MergeCodexScene.js`** -- 오버레이 관련 코드 제거, TowerInfoOverlay 연동
+  - 삭제: `_renderOverlay()`, `_renderT1Panel()`, `_renderTreePanel()`, `_renderMaterialNode()`, `_renderConnectorLines()`, `_renderUsedInSection()`, `_handleBack()`, `_forceCloseOverlay()`, `_closeOverlay()`, `_findUsedInRecipes()`, `_buildEntryById()` (약 490줄)
+  - 삭제: `init()` 내 `this.overlay`, `this._overlayHistory`, `this._overlayClosedAt` 초기화
+  - 추가: `create()`에서 `TowerInfoOverlay` 인스턴스 생성 (`mode: 'codex'`, applyMetaUpgrades 옵션 주입)
+  - 추가: `_onShutdown()` 메서드 + shutdown 이벤트 핸들러 등록 (오버레이 파괴, 드래그 리스너 정리, 자기 해제)
+  - 수정: `_showCodexCardOverlay()` -> `towerInfoOverlay.open(entry)` 호출
+  - 수정: `_onCodexPointerDown()` -> `towerInfoOverlay.isOpen()` 사용
+  - 수정: 카드 클릭 재오픈 방지 -> `towerInfoOverlay.getClosedAt()` 사용
+  - 유지: `_applyMetaUpgradesToStats()` (옵션 주입으로 처리)
+  - 정리: 미사용 import 제거 (`BTN_PRIMARY`)
+
+### 수정 (QA R1 버그 수정)
+
+- **BUG-1 (HIGH)**: `_renderUsedInSection()`에서 `scene.input.on()`으로 등록한 스크롤 리스너가 익명 함수여서 제거 불가 -> `_scrollMoveHandler`/`_scrollUpHandler` 인스턴스 변수에 참조 저장 + `_removeScrollListeners()` 메서드 추가, `_render()` 및 `_forceClose()` 시 호출
+- **BUG-2 (MEDIUM)**: `_buildMergeList()` dead code 제거 (`this.infoContainer` 참조가 undefined 상태에서 TypeError 발생 가능)
+- **BUG-3 (MEDIUM)**: MergeCodexScene에 shutdown 핸들러 미등록 -> `_onShutdown()` 메서드 추가 (towerInfoOverlay.destroy() + 드래그 리스너 정리 + 자기 해제)
+- **BUG-4 (LOW)**: `t('ui.maxEnhance') === t('ui.maxEnhance') ? '' : ''` 무의미한 삼항 연산 제거, `+${info.enhanceLevel}` 단순화
+
+### 알려진 제약
+
+- `_getAttackTypeBadge` 메서드가 `TowerInfoOverlay.js`와 `MergeCodexScene.js`에 동일하게 존재 (도감 카드 생성용). 공용 유틸로 분리 가능하나 기능에 영향 없음
+- 기존 테스트 `merge-preview-ui.spec.js`에서 삭제된 `_buildMergeList`를 참조하는 테스트가 실패할 수 있음 (별도 정리 필요)
+
+### QA 결과
+
+- **판정**: PASS (R2)
+- R1: 36개 중 34개 통과, 2건 FAIL (이벤트 리스너 누수)
+- R2: 전체 65개 통과 (R1 36 + R2 29), 시각적 검증 스크린샷 11건 확인
+- 수용 기준 AC1~AC19 전체 PASS
+- 수정 전 4건(BUG-1~4) 전체 수정 확인
+
+### 참고 문서
+
+- 스펙: `.claude/specs/2026-02-27-tower-info-overlay.md`
+- 구현 리포트: `.claude/specs/2026-02-27-tower-info-overlay-report.md`
+- 수정 리포트: `.claude/specs/2026-02-27-tower-info-overlay-fix-report.md`
+- QA R1: `.claude/specs/2026-02-27-tower-info-overlay-qa.md`
+- QA R2: `.claude/specs/2026-02-27-tower-info-overlay-qa-r2.md`
+- 테스트: `tests/tower-info-overlay.spec.js`, `tests/tower-info-overlay-r2.spec.js`
+
+---
+
 ## 2026-02-26 -- 월드/맵 시스템 Phase 5 (나머지 맵 완성 + 씬 전환 페이드 + EndlessMapSelectScene)
 
 ### 배경

@@ -1,23 +1,25 @@
 /**
  * @fileoverview TowerPanel - 하단 타워 선택 및 조작 패널.
- * 2행 5열 레이아웃의 타워 선택 버튼, 배치된 타워 정보 모달,
- * 합성(드래그&드롭) 기능, 판매 버튼, 배속 토글을 제공한다.
+ * 2행 5열 레이아웃의 타워 선택 버튼, 합성(드래그&드롭) 기능,
+ * 판매 버튼, 배속 토글을 제공한다.
+ * 타워 상세 정보 모달은 TowerInfoOverlay로 위임한다.
  */
 
 import {
-  GAME_WIDTH, GAME_HEIGHT, PANEL_Y, PANEL_HEIGHT, COLORS, VISUALS,
-  TOWER_STATS, TOWER_SHAPE_SIZE, GOLD_TEXT_CSS, CELL_SIZE,
+  GAME_WIDTH, PANEL_Y, PANEL_HEIGHT, COLORS, VISUALS,
+  TOWER_STATS, TOWER_SHAPE_SIZE, GOLD_TEXT_CSS,
   SPEED_NORMAL, SPEED_FAST, SPEED_TURBO, LONG_PRESS_MS,
-  MAX_ENHANCE_LEVEL,
   BTN_PRIMARY, BTN_DANGER, BTN_SELL,
   isMergeable, getMergeResult, MERGE_RECIPES, pixelToGrid, GRID_COLS, GRID_ROWS, HUD_HEIGHT,
 } from '../config.js';
 import { t } from '../i18n.js';
+import { TowerInfoOverlay } from './TowerInfoOverlay.js';
 
 /**
  * 게임 하단 타워 패널 UI 클래스.
- * 타워 배치 선택, 배치된 타워 상세 정보 모달, 합성 드래그&드롭,
- * 판매, 게임 속도 조절 등 핵심 조작 인터페이스를 담당한다.
+ * 타워 배치 선택, 합성 드래그&드롭, 판매, 게임 속도 조절 등
+ * 핵심 조작 인터페이스를 담당한다.
+ * 배치된 타워 상세 정보 모달은 TowerInfoOverlay로 위임한다.
  */
 export class TowerPanel {
   /**
@@ -57,11 +59,20 @@ export class TowerPanel {
     /** @type {object[]} 타워 선택 버튼 데이터 배열 */
     this.towerButtons = [];
 
-    /** @type {Phaser.GameObjects.Container|null} 타워 간이 정보 컨테이너 */
-    this.infoContainer = null;
-
-    /** @type {Phaser.GameObjects.Container|null} 타워 상세 모달 컨테이너 */
-    this.modalContainer = null;
+    /** @type {TowerInfoOverlay} 타워 상세 정보 오버레이 */
+    this.towerInfoOverlay = new TowerInfoOverlay(scene, {
+      mode: 'game',
+      onEnhance: (tower) => {
+        if (this.callbacks.onEnhance) {
+          this.callbacks.onEnhance(tower);
+        }
+      },
+      onSell: (tower) => {
+        if (this.callbacks.onSell) {
+          this.callbacks.onSell(tower);
+        }
+      },
+    });
 
     // ── 드래그 & 드롭 상태 ──
     /** @type {boolean} 현재 드래그 진행 중 여부 */
@@ -659,8 +670,8 @@ export class TowerPanel {
   // ── 타워 정보 표시 ─────────────────────────────────────────
 
   /**
-   * 배치된 타워의 간이 정보를 패널 하단에 표시하고, 상세 모달을 연다.
-   * 합성 시스템이 업그레이드를 대체하므로 A/B 업그레이드 버튼은 없다.
+   * 배치된 타워의 상세 정보 오버레이를 연다.
+   * TowerInfoOverlay에 타워 인스턴스를 전달하여 스탯, 트리, 강화/판매 UI를 표시한다.
    * @param {object} tower - 배치된 타워 인스턴스
    */
   showTowerInfo(tower) {
@@ -669,374 +680,14 @@ export class TowerPanel {
     this._updateButtonHighlights();
     this._hideInfo();
 
-    const info = tower.getInfo();
-
-    // 패널 하단에 한 줄 간이 정보 표시
-    this.infoContainer = this.scene.add.container(0, 0).setDepth(31);
-
-    const infoY = PANEL_Y + PANEL_HEIGHT - 18;
-    const rangeInTiles = (info.range / CELL_SIZE).toFixed(1);
-    const tierStr = info.tier > 1 ? ` T${info.tier}` : '';
-    const enhStr = info.enhanceLevel > 0 ? `+${info.enhanceLevel}` : '';
-    const nameStr = `${info.name}${tierStr}${enhStr}`;
-    const infoText = this.scene.add.text(
-      10, infoY,
-      `${nameStr}  ATK:${info.damage}  SPD:${info.fireRate}s  RNG:${rangeInTiles}`,
-      {
-        fontSize: '10px',
-        fontFamily: 'Arial, sans-serif',
-        color: '#ffffff',
-      }
-    );
-    this.infoContainer.add(infoText);
-
     // 판매 버튼 활성화 (불투명도 복원)
     this.sellBg.setAlpha(1);
 
-    // 상세 모달 열기
-    this._showTowerModal(tower);
+    // 타워 상세 오버레이 열기
+    this.towerInfoOverlay.open(tower);
   }
 
-  // ── 타워 상세 모달 ─────────────────────────────────────────
-
-  /**
-   * 화면 중앙에 타워 상세 모달 오버레이를 표시한다.
-   * 타워 이름, 스탯, 합성 레시피, 강화 버튼, 판매 버튼을 포함한다.
-   * @param {object} tower - 타워 인스턴스
-   * @private
-   */
-  _showTowerModal(tower) {
-    this._hideTowerModal();
-
-    const info = tower.getInfo();
-    const modalW = 300;
-    const modalH = 350;
-    const cx = GAME_WIDTH / 2;
-    const cy = GAME_HEIGHT / 2;
-
-    this.modalContainer = this.scene.add.container(0, 0).setDepth(100);
-
-    // ── 반투명 오버레이 배경 ──
-    const overlay = this.scene.add.rectangle(
-      GAME_WIDTH / 2, GAME_HEIGHT / 2,
-      GAME_WIDTH, GAME_HEIGHT,
-      0x000000
-    ).setAlpha(0.7).setInteractive();
-    this.modalContainer.add(overlay);
-
-    // 모달 영역 밖 클릭 시 닫기
-    overlay.on('pointerdown', (pointer) => {
-      const dx = Math.abs(pointer.x - cx);
-      const dy = Math.abs(pointer.y - cy);
-      if (dx > modalW / 2 || dy > modalH / 2) {
-        this._hideTowerModal();
-        this.clearSelection();
-      }
-    });
-
-    // ── 모달 패널 ──
-    const panel = this.scene.add.rectangle(cx, cy, modalW, modalH, 0x0a0820)
-      .setStrokeStyle(2, BTN_PRIMARY);
-    this.modalContainer.add(panel);
-
-    // ── 닫기 버튼 (X) ──
-    const closeX = cx + modalW / 2 - 18;
-    const closeY = cy - modalH / 2 + 18;
-    const closeBg = this.scene.add.rectangle(closeX, closeY, 24, 24, 0x0a0820)
-      .setStrokeStyle(1, 0x636e72)
-      .setInteractive({ useHandCursor: true });
-    this.modalContainer.add(closeBg);
-    const closeText = this.scene.add.text(closeX, closeY, 'X', {
-      fontSize: '14px',
-      fontFamily: 'Arial, sans-serif',
-      color: '#ffffff',
-      fontStyle: 'bold',
-    }).setOrigin(0.5);
-    this.modalContainer.add(closeText);
-    closeBg.on('pointerdown', () => {
-      this._hideTowerModal();
-      this.clearSelection();
-    });
-
-    // ── 타워 이름 (티어, 강화 레벨 포함) ──
-    const rangeInTiles = (info.range / CELL_SIZE).toFixed(1);
-    const tierStr = info.tier > 1 ? ` T${info.tier}` : '';
-    const enhStr = info.enhanceLevel > 0 ? `+${info.enhanceLevel}` : '';
-    const nameStr = `${info.name}${tierStr}${enhStr}`;
-
-    const towerColor = TOWER_STATS[info.type] ? TOWER_STATS[info.type].color : BTN_PRIMARY;
-    const towerColorCSS = '#' + towerColor.toString(16).padStart(6, '0');
-
-    let curY = cy - modalH / 2 + 30;
-
-    const nameText = this.scene.add.text(cx, curY, nameStr, {
-      fontSize: '18px',
-      fontFamily: 'Arial, sans-serif',
-      color: '#ffd700',
-      fontStyle: 'bold',
-    }).setOrigin(0.5);
-    this.modalContainer.add(nameText);
-    curY += 30;
-
-    // ── 스탯 (공격력, 속도, 사거리) ──
-    const statLabels = [
-      { label: 'ATK', value: `${info.damage}` },
-      { label: 'SPD', value: `${info.fireRate}s` },
-      { label: 'RNG', value: `${rangeInTiles}` },
-    ];
-
-    for (const stat of statLabels) {
-      const labelText = this.scene.add.text(cx - 60, curY, stat.label, {
-        fontSize: '13px',
-        fontFamily: 'Arial, sans-serif',
-        color: '#a0a0a0',
-      }).setOrigin(0, 0.5);
-      this.modalContainer.add(labelText);
-
-      const valueText = this.scene.add.text(cx + 60, curY, stat.value, {
-        fontSize: '13px',
-        fontFamily: 'Arial, sans-serif',
-        color: '#ffffff',
-        fontStyle: 'bold',
-      }).setOrigin(1, 0.5);
-      this.modalContainer.add(valueText);
-      curY += 22;
-    }
-
-    curY += 6;
-
-    // ── 합성 레시피 목록 (강화되지 않은 합성 가능 타워만) ──
-    const hasRecipes = Object.keys(MERGE_RECIPES).length > 0;
-    if (hasRecipes && info.isMergeable && info.enhanceLevel === 0) {
-      curY = this._buildModalMergeList(tower, cx, curY, modalW);
-    }
-
-    // ── 강화 버튼 ──
-    if (info.canEnhance) {
-      const enhBtnW = 200;
-      const enhBtnH = 32;
-      const enhBtn = this.scene.add.rectangle(cx, curY, enhBtnW, enhBtnH, BTN_PRIMARY)
-        .setStrokeStyle(1, 0xffd700)
-        .setInteractive({ useHandCursor: true });
-      this.modalContainer.add(enhBtn);
-
-      const enhLabel = t('ui.enhance').replace('{level}', info.enhanceLevel + 1).replace('{cost}', info.enhanceCost);
-      const enhText = this.scene.add.text(cx, curY, `\u2B06 ${enhLabel}`, {
-        fontSize: '12px',
-        fontFamily: 'Arial, sans-serif',
-        color: '#ffffff',
-        fontStyle: 'bold',
-      }).setOrigin(0.5);
-      this.modalContainer.add(enhText);
-
-      enhBtn.on('pointerdown', () => {
-        if (this.callbacks.onEnhance) {
-          this.callbacks.onEnhance(tower);
-          // onEnhance는 _selectPlacedTower를 호출하여 갱신된 정보로 모달을 다시 연다
-        }
-      });
-
-      curY += enhBtnH + 8;
-    }
-
-    // 최대 강화 레벨 도달 시 표시
-    if (!info.canEnhance && info.enhanceLevel >= MAX_ENHANCE_LEVEL) {
-      const maxText = this.scene.add.text(cx, curY, `\u2B50 ${t('ui.maxEnhance')}`, {
-        fontSize: '12px',
-        fontFamily: 'Arial, sans-serif',
-        color: '#ffd700',
-        fontStyle: 'bold',
-      }).setOrigin(0.5);
-      this.modalContainer.add(maxText);
-      curY += 24;
-    }
-
-    // ── 판매 버튼 ──
-    const sellBtnW = 200;
-    const sellBtnH = 32;
-    const sellBtn = this.scene.add.rectangle(cx, curY, sellBtnW, sellBtnH, BTN_DANGER)
-      .setStrokeStyle(1, 0x636e72)
-      .setInteractive({ useHandCursor: true });
-    this.modalContainer.add(sellBtn);
-
-    const sellText = this.scene.add.text(cx, curY, `Sell ${info.sellPrice}G`, {
-      fontSize: '12px',
-      fontFamily: 'Arial, sans-serif',
-      color: '#ffffff',
-      fontStyle: 'bold',
-    }).setOrigin(0.5);
-    this.modalContainer.add(sellText);
-
-    sellBtn.on('pointerdown', () => {
-      if (this.callbacks.onSell) {
-        this.callbacks.onSell(tower);
-      }
-      this._hideTowerModal();
-    });
-  }
-
-  /**
-   * 모달 내부에 합성 레시피 목록을 구성한다.
-   * 해당 타워가 재료로 사용되는 레시피를 최대 5개까지 표시한다.
-   * @param {object} tower - 타워 인스턴스
-   * @param {number} cx - 모달 중심 X 좌표
-   * @param {number} startY - 시작 Y 좌표
-   * @param {number} modalW - 모달 너비
-   * @returns {number} 목록 렌더링 후 갱신된 Y 좌표
-   * @private
-   */
-  _buildModalMergeList(tower, cx, startY, modalW) {
-    const selfId = tower.mergeId || tower.type;
-    let curY = startY;
-
-    // 이 타워가 재료로 포함된 레시피 수집
-    const matches = [];
-    for (const [key, result] of Object.entries(MERGE_RECIPES)) {
-      const parts = key.split('+');
-      if (parts.includes(selfId)) {
-        const partnerType = parts[0] === selfId ? parts[1] : parts[0];
-        matches.push({ partnerType, result });
-      }
-    }
-
-    if (matches.length === 0) return curY;
-
-    // 섹션 헤더
-    const header = this.scene.add.text(cx - modalW / 2 + 20, curY, t('ui.mergeList.header'), {
-      fontSize: '10px',
-      fontFamily: 'Arial, sans-serif',
-      color: '#b2bec3',
-    });
-    this.modalContainer.add(header);
-    curY += 16;
-
-    // 최대 5개 레시피 표시
-    const maxShow = Math.min(matches.length, 5);
-    for (let i = 0; i < maxShow; i++) {
-      const { partnerType, result } = matches[i];
-      const partnerName = t(`tower.${partnerType}.name`) || partnerType;
-      const resultName = t(`tower.${result.id}.name`) || result.displayName;
-      const colorCSS = '#' + result.color.toString(16).padStart(6, '0');
-
-      const itemText = this.scene.add.text(cx - modalW / 2 + 20, curY,
-        `+${partnerName} \u2192 ${resultName}(T${result.tier})`, {
-        fontSize: '10px',
-        fontFamily: 'Arial, sans-serif',
-        color: colorCSS,
-      });
-      this.modalContainer.add(itemText);
-      curY += 14;
-    }
-
-    // 초과분 안내 텍스트
-    const overflow = matches.length - maxShow;
-    if (overflow > 0) {
-      const moreText = this.scene.add.text(cx - modalW / 2 + 20, curY,
-        t('ui.mergeList.more').replace('{n}', overflow), {
-        fontSize: '10px',
-        fontFamily: 'Arial, sans-serif',
-        color: '#636e72',
-      });
-      this.modalContainer.add(moreText);
-      curY += 14;
-    }
-
-    curY += 6;
-    return curY;
-  }
-
-  /**
-   * 타워 상세 모달을 파괴하고 숨긴다.
-   * @private
-   */
-  _hideTowerModal() {
-    if (this.modalContainer) {
-      this.modalContainer.destroy();
-      this.modalContainer = null;
-    }
-  }
-
-  // ── 합성 레시피 목록 (패널 내 인라인) ──────────────────────
-
-  /**
-   * 선택된 타워의 합성 레시피 목록을 infoContainer에 추가한다.
-   * 각 레시피 항목을 클릭하면 맵에서 해당 파트너 타워를 깜빡여 강조한다.
-   * @param {object} tower - 타워 인스턴스
-   * @param {number} startY - 렌더링 시작 Y 좌표
-   * @returns {number} 사용한 높이 (px)
-   * @private
-   */
-  _buildMergeList(tower, startY) {
-    const selfId = tower.mergeId || tower.type;
-
-    // 이 타워가 포함된 레시피 수집
-    const matches = [];
-    for (const [key, result] of Object.entries(MERGE_RECIPES)) {
-      const parts = key.split('+');
-      if (parts.includes(selfId)) {
-        const partnerType = parts[0] === selfId ? parts[1] : parts[0];
-        matches.push({ partnerType, result });
-      }
-    }
-
-    if (matches.length === 0) return 0;
-
-    // 남은 공간에 맞춰 표시 항목 수를 동적으로 계산
-    const available = (PANEL_Y + PANEL_HEIGHT) - startY - 30;
-    const maxShow = Math.max(3, Math.min(5, Math.floor(available / 12)));
-
-    let usedHeight = 0;
-
-    // 섹션 헤더
-    const header = this.scene.add.text(10, startY, t('ui.mergeList.header'), {
-      fontSize: '9px',
-      fontFamily: 'Arial, sans-serif',
-      color: '#b2bec3',
-    });
-    this.infoContainer.add(header);
-    usedHeight += 13;
-
-    // 레시피 항목 표시 (최대 maxShow개)
-    const showCount = Math.min(matches.length, maxShow);
-    for (let i = 0; i < showCount; i++) {
-      const { partnerType, result } = matches[i];
-      const partnerName = t(`tower.${partnerType}.name`) || partnerType;
-      const resultName = t(`tower.${result.id}.name`) || result.displayName;
-      const colorCSS = '#' + result.color.toString(16).padStart(6, '0');
-      const itemY = startY + usedHeight;
-
-      const itemText = this.scene.add.text(10, itemY,
-        `+${partnerName} \u2192 ${resultName}(T${result.tier})`, {
-        fontSize: '9px',
-        fontFamily: 'Arial, sans-serif',
-        color: colorCSS,
-      }).setInteractive({ useHandCursor: true });
-
-      // 클릭 시 맵에서 파트너 타워를 깜빡여 강조
-      const pt = partnerType;
-      itemText.on('pointerdown', () => {
-        this._flashMergeTargets(pt);
-      });
-
-      this.infoContainer.add(itemText);
-      usedHeight += 12;
-    }
-
-    // 초과분 안내 텍스트
-    const overflow = matches.length - showCount;
-    if (overflow > 0) {
-      const moreText = this.scene.add.text(10, startY + usedHeight,
-        t('ui.mergeList.more').replace('{n}', overflow), {
-        fontSize: '9px',
-        fontFamily: 'Arial, sans-serif',
-        color: '#636e72',
-      });
-      this.infoContainer.add(moreText);
-      usedHeight += 12;
-    }
-
-    return usedHeight;
-  }
+  // ── 합성 파트너 강조 ──────────────────────────────────────────
 
   /**
    * 맵 위에서 파트너 타입에 해당하는 타워들을 금색 원으로 깜빡여 강조한다.
@@ -1339,15 +990,11 @@ export class TowerPanel {
   // ── 정보 패널 관리 ─────────────────────────────────────────
 
   /**
-   * 타워 정보 패널(간이 정보 + 모달)을 숨기고 판매 버튼을 비활성화한다.
+   * 타워 정보 오버레이를 닫고 판매 버튼을 비활성화한다.
    * @private
    */
   _hideInfo() {
-    if (this.infoContainer) {
-      this.infoContainer.destroy();
-      this.infoContainer = null;
-    }
-    this._hideTowerModal();
+    this.towerInfoOverlay.close();
     if (this.sellBg) {
       this.sellBg.setAlpha(0.5);
     }
@@ -1389,14 +1036,14 @@ export class TowerPanel {
 
   /**
    * 패널의 모든 요소를 정리하고 메모리를 해제한다.
-   * 설명 팝업, 긴 누르기 타이머, 정보 패널, 모달, 드래그 고스트,
+   * 설명 팝업, 긴 누르기 타이머, 정보 오버레이, 드래그 고스트,
    * 합성 하이라이트, 미리보기 버블, 메인 컨테이너를 모두 파괴한다.
    */
   destroy() {
     this._hideDescription();
     this._cancelLongPress();
     this._hideInfo();
-    this._hideTowerModal();
+    this.towerInfoOverlay.destroy();
     if (this._dragGhost) {
       this._dragGhost.destroy();
       this._dragGhost = null;

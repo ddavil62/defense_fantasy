@@ -38,7 +38,7 @@ Phaser.js 3 기반 판타지 타워 디펜스 게임. 도형 기반 프로토타
 | `js/scenes/LevelSelectScene.js` | 레벨 선택 씬 (6개 맵 카드, 세이브 데이터 기반 별점/해금, START -> GameScene) |
 | `js/scenes/EndlessMapSelectScene.js` | 엔드리스 맵 선택 씬 (6탭: 클래식+5월드, 맵 카드, GameScene endless 모드 시작) |
 | `js/scenes/CollectionScene.js` | 컬렉션 모드 -- 이중 탭: (1) 메타업그레이드 (타워 카드 그리드, 메타 업그레이드 트리, 유틸리티 업그레이드, 범용 타워 해금), (2) 합성도감 탭 클릭 시 MergeCodexScene으로 전환 |
-| `js/scenes/MergeCodexScene.js` | 합성도감 전용 씬 -- T1~T5 서브탭, 전체 112종 타워 카드(발견 여부 무관 전부 공개), 카드 클릭 시 노드 트리 오버레이(T2+: 결과+Y자 연결선+재료 2개+DMG/SPD/RNG 스탯, T1: 스탯 패널(메타 업그레이드 반영)), 상위 조합 드래그 스크롤 리스트(GeometryMask, 드릴다운), 패널 높이 동적 계산(T1:200/T2+:300, 상위 조합 시+100px), 재료 노드 드릴다운 + 히스토리 뒤로가기, 드래그 스크롤. GameScene(Pause)과 CollectionScene 양쪽에서 진입 |
+| `js/scenes/MergeCodexScene.js` | 합성도감 전용 씬 -- T1~T5 서브탭, 전체 112종 타워 카드(발견 여부 무관 전부 공개), 카드 클릭 시 TowerInfoOverlay(codex 모드)로 상세 정보 표시, 드래그 스크롤, shutdown 핸들러로 리소스 정리. GameScene(Pause)과 CollectionScene 양쪽에서 진입 |
 | `js/scenes/StatsScene.js` | 통계 표시 (스크롤 가능 UI, killsByType/killsByTower/goldEarned/damageDealt, 게임 히스토리) |
 | `js/entities/Tower.js` | 타워 배치/공격/판매/사거리 표시/강화(+1~+10)/머지(tier, mergeId, applyMergeResult) |
 | `js/entities/Enemy.js` | 적 이동/피격/슬로우/화상/독/방어력 감소/밀치기/분열/HP바 |
@@ -57,9 +57,10 @@ Phaser.js 3 기반 판타지 타워 디펜스 게임. 도형 기반 프로토타
 | `js/managers/SoundManager.js` | Web Audio API 프로시저럴 SFX/BGM |
 | `js/i18n.js` | 다국어 지원 (한국어/영어), 모든 UI 텍스트 번역 키 관리 |
 | `js/ui/HUD.js` | 상단 HUD (Wave/Gold/HP, HP 위험 깜빡임, 웨이브 카운트다운, 적 프리뷰, 캠페인 Wave X/Y 표시) |
-| `js/ui/TowerPanel.js` | 하단 타워 선택(2줄 5열)/정보/판매/강화/드래그&드롭 머지 UI/머지 프리뷰(조합 목록+드래그 하이라이트+호버 말풍선)/3단 속도(1x/2x/3x) 패널 |
+| `js/ui/TowerPanel.js` | 하단 타워 선택(2줄 5열)/판매/강화/드래그&드롭 머지 UI/머지 프리뷰(드래그 하이라이트+호버 말풍선)/3단 속도(1x/2x/3x) 패널. 타워 상세 모달은 TowerInfoOverlay로 위임 |
+| `js/ui/TowerInfoOverlay.js` | 공용 타워 정보 오버레이 (game/codex 모드). T1 스탯 패널, T2+ Y자 합성 트리, 상위 조합 드래그 스크롤, 드릴다운, game 모드 강화/판매 버튼 |
 
-**총 31개 JS 파일** (+ 맵 데이터 5개 파일)
+**총 32개 JS 파일** (+ 맵 데이터 5개 파일)
 
 ## Phaser 씬 구조
 
@@ -290,6 +291,7 @@ npx cap open android  # 또는 npx cap open ios
 - 월드맵 Phase 3: Playwright 테스트 56개 (정상 42 + 예외 14) + 시각적 검증 5건 QA PASS
 - 월드맵 Phase 4: Playwright 테스트 40개 + 시각적 검증 6건, QA PASS (R1 BUG-1 수정 후 PASS)
 - 월드맵 Phase 5: Playwright 테스트 30개 (R2 20 + 원본 10) + Node.js 맵 검증 30개 + 시각적 검증 2건, QA PASS (R2)
+- 타워 정보 오버레이 통합: Playwright 테스트 65개 (R1 36 + R2 29) + 시각적 검증 11건, QA PASS (R2, R1 이벤트 리스너 누수 등 4건 수정 후 PASS)
 
 ## 시스템별 상세 문서
 
@@ -300,7 +302,7 @@ npx cap open android  # 또는 npx cap open ios
 | [systems/wave.md](systems/wave.md) | R1~R20 정의, R21+ 스케일링, 보스 라운드 |
 | [systems/economy.md](systems/economy.md) | Gold, Diamond, 메타 업그레이드, 컬렉션, 골드 싱크 |
 | [systems/sound.md](systems/sound.md) | SFX 8종, BGM 3종, Web Audio API |
-| [systems/ui.md](systems/ui.md) | HUD(캠페인 Wave X/Y), TowerPanel, 머지 프리뷰, 일시정지(합성도감 버튼 포함), 게임속도, 골드 싱크 UI, 컬렉션(이중 탭), MergeCodexScene(노드 트리), MapClearScene(차액 보상/세이브 갱신), WorldSelectScene(세이브 기반 해금), LevelSelectScene(세이브 기반 해금), MenuScene(CAMPAIGN/ENDLESS 조건부 활성), EndlessMapSelectScene(6탭 맵 선택), GameOverScene(캠페인 3버튼), 씬 전환 페이드(fadeIn/fadeOut), 모바일 |
+| [systems/ui.md](systems/ui.md) | HUD(캠페인 Wave X/Y), TowerPanel, TowerInfoOverlay(타워 정보 오버레이, game/codex 모드), 머지 프리뷰, 일시정지(합성도감 버튼 포함), 게임속도, 골드 싱크 UI, 컬렉션(이중 탭), MergeCodexScene(TowerInfoOverlay 연동), MapClearScene(차액 보상/세이브 갱신), WorldSelectScene(세이브 기반 해금), LevelSelectScene(세이브 기반 해금), MenuScene(CAMPAIGN/ENDLESS 조건부 활성), EndlessMapSelectScene(6탭 맵 선택), GameOverScene(캠페인 3버튼), 씬 전환 페이드(fadeIn/fadeOut), 모바일 |
 
 ## 향후 계획
 
