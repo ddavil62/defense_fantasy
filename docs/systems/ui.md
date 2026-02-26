@@ -313,12 +313,12 @@ T1~T5 전체 112종(기본 10 + 합성 102) 타워를 발견 여부와 무관하
 
 ### 카드 클릭 상세 오버레이 (노드 트리 UI)
 
-패널: 300x300px, 화면 중앙 (depth 50). 다크 판타지 테마 (UI_PANEL 배경, BTN_PRIMARY 금색 테두리).
+패널: 300x(200~400)px (동적 높이), 화면 중앙 (depth 50). 다크 판타지 테마 (UI_PANEL 배경, BTN_PRIMARY 금색 테두리).
 
 | 티어 | 표시 내용 |
 |---|---|
-| T1 | 스탯 패널: 타워 이름, 색상 원(r=18), attackType, DMG/SPD/RNG, Tier 1 뱃지 |
-| T2~T5 | 노드 트리: 결과 노드(상단) + Y자 연결선 + 재료 2개 노드(하단 좌/우) |
+| T1 | 스탯 패널: 타워 이름, 색상 원(r=18), attackType, DMG/SPD/RNG(메타 업그레이드 반영), Tier 1 뱃지, 상위 조합(해당 시) |
+| T2~T5 | 노드 트리: 결과 노드(상단) + Y자 연결선 + 재료 2개 노드(하단 좌/우) + DMG/SPD/RNG 스탯 + 상위 조합(해당 시) |
 
 #### 노드 트리 레이아웃 (상향식)
 
@@ -353,14 +353,76 @@ T1~T5 전체 112종(기본 10 + 합성 102) 타워를 발견 여부와 무관하
 - 최대 드릴다운 깊이: T5->T4->T3->T2->T1 (4단계)
 - 오버레이 닫기 후 200ms 이내 재클릭 방지 (`_overlayClosedAt` 타임스탬프)
 
+#### 패널 높이 동적 계산
+
+| 조건 | baseH | usedInViewH | panelH |
+|---|---|---|---|
+| T1, 상위 조합 없음 | 200px | 0 | 200px |
+| T1, 상위 조합 있음 | 200px | 100px | 300px |
+| T2+, 상위 조합 없음 | 300px | 0 | 300px |
+| T2+, 상위 조합 있음 | 300px | 100px | 400px |
+
+- 패널 크기: `panelW=300`, `panelH = baseH + usedInViewH`
+- 패널 위치: 화면 중앙 (`GAME_WIDTH/2`, `GAME_HEIGHT/2`)
+
+#### T1 스탯 패널 -- 메타 업그레이드 반영
+
+T1 카드 오버레이에서 DMG/SPD/RNG 표시 시, `saveData.towerUpgrades`에 저장된 메타 업그레이드 보너스를 적용한 값을 보여준다.
+
+- `_applyMetaUpgradesToStats(towerType, stats)`: `META_UPGRADE_TREE`의 tier1~tier3 선택지 effects를 순차 적용
+  - `multiply` 타입: `stats[stat] *= value` (damage, range 등 정수 스탯은 `Math.round` 처리)
+  - `add` 타입: `stats[stat] += value`
+- 메타 업그레이드가 없으면 기본 `TOWER_STATS[type].levels[1]` 값 그대로 표시
+- 표시 형식: `DMG: {damage}  |  SPD: {fireRate}s  |  RNG: {range}` (panelTop+110px)
+
+#### T2+ 노드 트리 -- 스탯 표시
+
+T2+ 카드 오버레이의 노드 트리 하단에 `MERGED_TOWER_STATS`의 스탯을 표시한다.
+
+- 위치: panelTop+270px에 구분선 (0x636e72, alpha 0.5), 그 아래 14px에 스탯 텍스트
+- 표시 형식: `DMG: {damage}  |  SPD: {fireRate}s  |  RNG: {range}` (11px, #b2bec3)
+- `MERGED_TOWER_STATS[entry.id]`가 없으면 스탯 섹션 미표시
+
+#### "상위 조합" 섹션
+
+해당 타워를 재료로 사용하는 상위 레시피를 스크롤 가능한 리스트로 표시한다. T1/T2+ 패널 모두에서 공통으로 사용된다.
+
+##### 데이터 조회
+
+- `_findUsedInRecipes(towerId)`: `MERGE_RECIPES`의 모든 레시피 키를 `+`로 split하여 해당 towerId가 재료에 포함된 항목 검색
+- 결과 정렬: tier 오름차순, 동일 tier 내 displayName 알파벳순
+- 반환: `[{ resultEntry, recipeKey }]` 배열
+
+##### 렌더링 (`_renderUsedInSection`)
+
+| 요소 | 위치/크기 | 스타일 |
+|---|---|---|
+| 구분선 | startY+6px, 패널 좌우 20px 안쪽 | 0x636e72, alpha 0.5 |
+| 섹션 헤더 | 구분선+8px | i18n `codex.usedIn`, 10px, #636e72 |
+| 스크롤 리스트 | 헤더 아래 | 뷰포트 약 68px (100px - 헤더 - 여백) |
+| 리스트 항목 | 22px 행 높이 | "T{tier} {displayName}", 11px, #dfe6e9 |
+
+- 드래그 스크롤: 투명 드래그 존 위에서 포인터 드래그 시 스크롤. `Phaser.Math.Clamp`로 범위 제한
+- GeometryMask: 스크롤 영역을 뷰포트 내로 클리핑
+- 스크롤 힌트: 콘텐츠가 뷰포트를 초과하면 우하단에 `▼` 표시, 끝까지 스크롤하면 숨김
+- 항목 hover: 텍스트 색상 #dfe6e9 -> #ffd700 (금색)
+- 항목 클릭: 현재 entry를 `_overlayHistory`에 push, 클릭한 상위 타워로 드릴다운
+- 상위 조합이 없으면 섹션 자체 미표시
+
 #### 메서드 구조
 
 ```
 카드 클릭 -> _showCodexCardOverlay(entry)
   |- _overlayHistory = []
   +-> _renderOverlay(entry)
-        |- tier === 1 -> _renderT1Panel(entry)
-        +- tier >= 2 -> _renderTreePanel(entry)
+        |- _findUsedInRecipes(entry.id) -> usedInList
+        |- panelH = (tier>=2 ? 300 : 200) + (usedInList.length>0 ? 100 : 0)
+        |- tier === 1 -> _renderT1Panel(entry, ..., usedInList)
+        |                 |- 스탯 표시 (메타 업그레이드 반영)
+        |                 +- usedInList.length>0 -> _renderUsedInSection(...)
+        +- tier >= 2 -> _renderTreePanel(entry, ..., usedInList)
+                          |- 노드 트리 + 스탯 표시
+                          |- usedInList.length>0 -> _renderUsedInSection(...)
                           +- 재료 클릭 -> push(현재) -> _renderOverlay(재료)
 
 뒤로가기 (히스토리 있음) -> _renderOverlay(_overlayHistory.pop())
@@ -380,6 +442,7 @@ T1~T5 전체 112종(기본 10 + 합성 102) 타워를 발견 여부와 무관하
 |---|---|---|
 | `codex.title` | 합성도감 | Merge Codex |
 | `codex.progress` | T{n}: {total}종 | T{n}: {total} towers |
+| `codex.usedIn` | 상위 조합 | Used In |
 | `ui.mergeCodex` | 합성도감 | Merge Codex |
 
 ## 타워 설명 팝업
