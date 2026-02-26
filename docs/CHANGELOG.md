@@ -4,6 +4,64 @@
 
 ---
 
+## 2026-02-26 -- 합성도감 노드 트리 UI (Merge Tree UI)
+
+### 배경
+
+MergeCodexScene의 타워 카드 클릭 오버레이가 텍스트 레시피 목록(`재료A + 재료B -> 결과`) 형식이어서 합성 경로를 직관적으로 파악하기 어려웠다. 상향식 그래픽 노드 트리로 교체하여 시각적 이해도와 탐색성을 개선했다.
+
+### 변경
+
+- **`js/scenes/MergeCodexScene.js`** -- 카드 클릭 오버레이 전체 교체
+  - 텍스트 레시피 목록 -> 상향식 노드 트리 UI (결과 타워 상단, 재료 2개 하단, Y자 연결선)
+  - 추가된 메서드 8개:
+    - `_renderOverlay(entry)`: 오버레이 컨테이너 생성, T1/T2+ 분기
+    - `_renderT1Panel(entry, panelX, panelTop, panelW)`: T1 스탯 패널 (이름, 색상 원, attackType, DMG/SPD/RNG, 티어 뱃지)
+    - `_renderTreePanel(entry, panelX, panelTop, panelW)`: 결과 노드 + Y자 연결선 + 재료 2개
+    - `_renderMaterialNode(matEntry, cx, cy, r, panelTop, currentEntry)`: 재료 노드 렌더링 + 클릭 드릴다운
+    - `_renderConnectorLines(graphics, resultPos, forkY, matAPos, matBPos)`: Y자 연결선 그리기
+    - `_handleBack()`: 히스토리 pop 또는 완전 닫기
+    - `_forceCloseOverlay()`: 히스토리 무시 즉시 닫기
+    - `_buildEntryById(id)`: _tierDataCache에서 ID로 entry 검색
+  - 수정된 메서드 2개:
+    - `_showCodexCardOverlay(entry)`: 히스토리 초기화 후 `_renderOverlay` 호출로 변경 (시그니처 유지)
+    - `_closeOverlay()`: `_handleBack()` 위임으로 변경 (기존 호출부 호환)
+  - 노드 트리 레이아웃 (패널 300x300, 상향식):
+    - 결과 노드: panelTop+90px, 반지름 28px, BTN_PRIMARY 테두리
+    - 결과 타워명: panelTop+128px, 티어 뱃지: panelTop+144px
+    - 연결선 시작: panelTop+155px, 분기점: panelTop+175px
+    - 재료 노드: panelTop+210px, 반지름 20px, 좌우 +-55px
+    - 재료 타워명: panelTop+238px, 티어 뱃지: panelTop+252px
+  - 재료 노드 테두리: T2+=금색(BTN_PRIMARY), T1=회색(0x636e72)
+  - 드릴다운: 재료 노드 클릭 시 히스토리 스택에 현재 entry push -> 재료 entry 렌더링
+  - `< 뒤로` 버튼: 히스토리가 있을 때만 표시, 클릭 시 이전 트리 복귀
+  - X 버튼: 히스토리 무시, 즉시 닫기 (`_forceCloseOverlay()`)
+  - 배경(backdrop) 클릭: `_handleBack()` (히스토리 있으면 뒤로, 없으면 닫기)
+  - T1 카드 클릭 시 기존 T1 스탯 패널 표시 (노드 트리 없음)
+  - `_overlayHistory` 배열: 드릴다운 히스토리 스택 관리
+  - `_overlayClosedAt` 타임스탬프: 오버레이 닫기 후 200ms 이내 재클릭 방지
+
+### 알려진 제약
+
+- **LOW**: `_closeOverlay()`가 `_handleBack()` 위임으로 변경됨. 외부에서 `_closeOverlay()` 호출 시 히스토리가 있으면 완전 닫기가 아닌 뒤로가기로 동작함. 현재 외부 호출처 없음
+- 기존 테스트 `merge-codex-scene.spec.js`의 3개 테스트가 텍스트 레시피 형식을 검증하므로 의도된 실패 발생 (노드 트리로 교체됨). 별도 업데이트 필요
+
+### QA 결과
+
+- **판정**: PASS
+- Playwright 테스트 52개 전체 통과 (정상 30개 + 예외 22개)
+- 시각적 검증 스크린샷 11건 확인
+- 수용 기준 9/9 충족, 전체 102개 T2~T5 레시피 재료 ID 전수 확인
+
+### 참고 문서
+
+- 스펙: `.claude/specs/2026-02-26-merge-tree-ui.md`
+- 구현 리포트: `.claude/specs/2026-02-26-merge-tree-ui-report.md`
+- QA 리포트: `.claude/specs/2026-02-26-merge-tree-ui-qa.md`
+- 테스트: `tests/merge-tree-ui.spec.js`
+
+---
+
 ## 2026-02-25 -- 문서 수치 정합성 교정
 
 ### 배경

@@ -311,17 +311,61 @@ T1~T5 전체 112종(기본 10 + 합성 102) 타워를 발견 여부와 무관하
 
 - 티어별 테두리 색상: T1/T2=0xb2bec3, T3/T5=0xffd700, T4=0xa29bfe
 
-### 카드 클릭 상세 오버레이
+### 카드 클릭 상세 오버레이 (노드 트리 UI)
 
-패널: 280x200px, 화면 중앙. X 버튼 또는 배경 탭으로 닫기.
+패널: 300x300px, 화면 중앙 (depth 50). 다크 판타지 테마 (UI_PANEL 배경, BTN_PRIMARY 금색 테두리).
 
 | 티어 | 표시 내용 |
 |---|---|
-| T1 | 타워 이름, 색상 원, attackType, DMG/SPD/RNG |
-| T2~T5 | 타워 이름, 재료A + 재료B -> 결과이름, attackType, Tier 뱃지 |
+| T1 | 스탯 패널: 타워 이름, 색상 원(r=18), attackType, DMG/SPD/RNG, Tier 1 뱃지 |
+| T2~T5 | 노드 트리: 결과 노드(상단) + Y자 연결선 + 재료 2개 노드(하단 좌/우) |
 
-- T4/T5도 레시피 전부 공개 (기존 레시피 비공개 처리 없음)
-- 재료명: `_getDisplayNameById()`로 i18n 기반 조회
+#### 노드 트리 레이아웃 (상향식)
+
+```
++----------------------------------+  panelTop
+|  [< 뒤로]              [X]       |  +15px (헤더, 뒤로는 히스토리 있을 때만)
+|                                  |
+|          ● (결과, r=28)          |  +90px
+|        결과 타워명                |  +128px
+|           T{n}                   |  +144px
+|            |                     |  +155px (연결선 시작)
+|      ------+------               |  +175px (분기점)
+|      |            |              |
+|    ● (재료A)   ● (재료B)         |  +210px (재료, r=20, +-55px)
+|    재료A명     재료B명            |  +238px
+|     T{n}       T{n}             |  +252px
++----------------------------------+
+```
+
+- 결과 노드: 반지름 28px, 타워 색상 원 + BTN_PRIMARY 테두리
+- 재료 노드: 반지름 20px, 타워 색상 원
+  - T2+ 재료: 금색(BTN_PRIMARY) 테두리, 클릭 시 해당 타워 트리로 드릴다운
+  - T1 재료: 회색(0x636e72) 테두리, 클릭 시 T1 스탯 패널 표시
+- 히트 영역: 재료 노드 중심 기준 (r*2+10) x 70px 투명 사각형
+
+#### 드릴다운 & 히스토리
+
+- 재료 노드 클릭 시 현재 entry를 `_overlayHistory` 스택에 push -> 재료 entry로 오버레이 재렌더링
+- `< 뒤로` 버튼: 히스토리가 있을 때만 표시, 클릭 시 `_overlayHistory.pop()` -> 이전 entry 복원
+- X 버튼: `_forceCloseOverlay()` -- 히스토리 무시, 즉시 닫기
+- 배경(backdrop) 클릭: `_handleBack()` -- 히스토리 있으면 뒤로가기, 없으면 닫기
+- 최대 드릴다운 깊이: T5->T4->T3->T2->T1 (4단계)
+- 오버레이 닫기 후 200ms 이내 재클릭 방지 (`_overlayClosedAt` 타임스탬프)
+
+#### 메서드 구조
+
+```
+카드 클릭 -> _showCodexCardOverlay(entry)
+  |- _overlayHistory = []
+  +-> _renderOverlay(entry)
+        |- tier === 1 -> _renderT1Panel(entry)
+        +- tier >= 2 -> _renderTreePanel(entry)
+                          +- 재료 클릭 -> push(현재) -> _renderOverlay(재료)
+
+뒤로가기 (히스토리 있음) -> _renderOverlay(_overlayHistory.pop())
+닫기 (히스토리 없음) -> _forceCloseOverlay()
+```
 
 ### 데이터 소스
 

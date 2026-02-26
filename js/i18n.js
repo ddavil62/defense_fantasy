@@ -323,6 +323,7 @@ const STRINGS = {
     // 합성도감 전용 씬
     'codex.title': '합성도감',
     'codex.progress': 'T{n}: {total}종',
+    'codex.usedIn': '상위 조합',
     'ui.mergeCodex': '합성도감',
   },
   en: {
@@ -618,6 +619,7 @@ const STRINGS = {
     // Merge Codex standalone scene
     'codex.title': 'Merge Codex',
     'codex.progress': 'T{n}: {total} towers',
+    'codex.usedIn': 'Used In',
     'ui.mergeCodex': 'Merge Codex',
   },
 };

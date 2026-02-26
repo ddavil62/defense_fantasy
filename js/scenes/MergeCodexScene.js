@@ -8,6 +8,7 @@ import {
   GAME_WIDTH, GAME_HEIGHT, COLORS,
   TOWER_STATS, MERGE_RECIPES, MERGED_TOWER_STATS,
   CODEX_TIER_BG, ATTACK_TYPE_COLORS_CSS, BTN_PRIMARY,
+  META_UPGRADE_TREE,
 } from '../config.js';
 import { t } from '../i18n.js';
 
@@ -85,6 +86,13 @@ export class MergeCodexScene extends Phaser.Scene {
 
     /** @type {number} Timestamp when overlay was last closed */
     this._overlayClosedAt = 0;
+
+    /** @type {object[]} Overlay drill-down history stack */
+    this._overlayHistory = [];
+
+    /** @type {object} Meta upgrade choices from save data */
+    const saveData = JSON.parse(localStorage.getItem('fantasyDefenceSave') || '{}');
+    this._towerMetaUpgrades = saveData.towerUpgrades || {};
   }
 
   /**
@@ -379,11 +387,23 @@ export class MergeCodexScene extends Phaser.Scene {
 
   /**
    * Show an overlay with info for a codex card.
-   * All tiers show full recipe information (no hidden recipes).
+   * T1 entries show a stat panel; T2+ entries show a node tree.
+   * Resets drill-down history on each fresh open.
    * @param {object} entry - The tier data entry
    * @private
    */
   _showCodexCardOverlay(entry) {
+    this._overlayHistory = [];
+    this._renderOverlay(entry);
+  }
+
+  /**
+   * Render (or re-render) the overlay for the given entry.
+   * Destroys any existing overlay first, then delegates to T1 or tree panel.
+   * @param {object} entry - The tier data entry to display
+   * @private
+   */
+  _renderOverlay(entry) {
     if (this.overlay) this.overlay.destroy();
     this.overlay = this.add.container(0, 0).setDepth(50);
 
@@ -392,20 +412,41 @@ export class MergeCodexScene extends Phaser.Scene {
       .setAlpha(0.96)
       .setInteractive();
     this.overlay.add(backdrop);
-    backdrop.on('pointerdown', () => this._closeOverlay());
+    backdrop.on('pointerdown', () => this._handleBack());
 
-    // Panel with gold border
-    const panelW = 280;
-    const panelH = 200;
+    // Compute "used in" recipes for this entry
+    const usedInList = this._findUsedInRecipes(entry.id);
+
+    // Panel dimensions — fixed with scrollable "used in" area
+    const panelW = 300;
+    const hasUsedIn = usedInList.length > 0;
+    const usedInViewH = hasUsedIn ? 100 : 0;
+    const baseH = entry.tier >= 2 ? 300 : 200;
+    const panelH = baseH + usedInViewH;
     const panelX = GAME_WIDTH / 2;
     const panelY = GAME_HEIGHT / 2;
     const panelTop = panelY - panelH / 2;
 
     const panelBg = this.add.rectangle(panelX, panelY, panelW, panelH, COLORS.UI_PANEL)
-      .setStrokeStyle(2, BTN_PRIMARY);
+      .setStrokeStyle(2, BTN_PRIMARY)
+      .setInteractive();
     this.overlay.add(panelBg);
 
-    // Close button
+    // ── Header row (0~30px from panel top) ──
+    if (this._overlayHistory.length > 0) {
+      // Back button
+      const backBg = this.add.rectangle(panelX - panelW / 2 + 40, panelTop + 15, 60, 24, 0x000000, 0)
+        .setStrokeStyle(1, 0x636e72)
+        .setInteractive({ useHandCursor: true });
+      this.overlay.add(backBg);
+      const backLabel = this.add.text(panelX - panelW / 2 + 40, panelTop + 15, '< \ub4a4\ub85c', {
+        fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#ffffff',
+      }).setOrigin(0.5);
+      this.overlay.add(backLabel);
+      backBg.on('pointerdown', () => this._handleBack());
+    }
+
+    // Close (X) button
     const closeX = panelX + panelW / 2 - 20;
     const closeY = panelTop + 15;
     const closeBg = this.add.circle(closeX, closeY, 12, COLORS.BUTTON_ACTIVE)
@@ -415,93 +456,442 @@ export class MergeCodexScene extends Phaser.Scene {
       fontSize: '14px', fontFamily: 'Arial, sans-serif', color: '#ffffff', fontStyle: 'bold',
     }).setOrigin(0.5);
     this.overlay.add(closeText);
-    closeBg.on('pointerdown', () => this._closeOverlay());
+    closeBg.on('pointerdown', () => this._forceCloseOverlay());
 
+    // Delegate to tier-specific panel
     if (entry.tier === 1) {
-      // T1: basic info with stats
-      const nameText = this.add.text(panelX, panelTop + 40, entry.displayName, {
-        fontSize: '18px', fontFamily: 'Arial, sans-serif', color: '#ffffff', fontStyle: 'bold',
-      }).setOrigin(0.5);
-      this.overlay.add(nameText);
-
-      // Color circle
-      const circleG = this.add.graphics();
-      circleG.fillStyle(entry.color, 1);
-      circleG.fillCircle(panelX, panelTop + 70, 14);
-      this.overlay.add(circleG);
-
-      // Attack type (with type-specific color)
-      const atkColor1 = ATTACK_TYPE_COLORS_CSS[entry.attackType] || '#b2bec3';
-      const atkText = this.add.text(panelX, panelTop + 95, `Type: ${this._getAttackTypeBadge(entry.attackType)}`, {
-        fontSize: '13px', fontFamily: 'Arial, sans-serif', color: atkColor1,
-      }).setOrigin(0.5);
-      this.overlay.add(atkText);
-
-      // Basic stats
-      const lv1 = TOWER_STATS[entry.id]?.levels?.[1];
-      if (lv1) {
-        const statsStr = `DMG: ${lv1.damage}  |  SPD: ${lv1.fireRate}s  |  RNG: ${lv1.range}`;
-        const statsText = this.add.text(panelX, panelTop + 120, statsStr, {
-          fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#b2bec3',
-        }).setOrigin(0.5);
-        this.overlay.add(statsText);
-      }
-
-      // Tier badge
-      const tierBadge = this.add.text(panelX, panelTop + 145, 'Tier 1', {
-        fontSize: '12px', fontFamily: 'Arial, sans-serif', color: '#ffd700',
-      }).setOrigin(0.5);
-      this.overlay.add(tierBadge);
-
+      this._renderT1Panel(entry, panelX, panelTop, panelW, usedInList);
     } else {
-      // T2~T5: full recipe disclosure
-      const parts = entry.recipeKey ? entry.recipeKey.split('+') : ['?', '?'];
-      const matA = this._getDisplayNameById(parts[0]);
-      const matB = this._getDisplayNameById(parts[1]);
-
-      // Tower name
-      const nameText = this.add.text(panelX, panelTop + 40, entry.displayName, {
-        fontSize: '16px', fontFamily: 'Arial, sans-serif', color: '#ffffff', fontStyle: 'bold',
-      }).setOrigin(0.5);
-      this.overlay.add(nameText);
-
-      // Recipe
-      const recipeStr = `${matA} + ${matB}`;
-      const recipeText = this.add.text(panelX, panelTop + 65, recipeStr, {
-        fontSize: '13px', fontFamily: 'Arial, sans-serif', color: '#81ecec',
-      }).setOrigin(0.5);
-      this.overlay.add(recipeText);
-
-      const arrowText = this.add.text(panelX, panelTop + 85, `\u2192 ${entry.displayName}`, {
-        fontSize: '13px', fontFamily: 'Arial, sans-serif', color: '#ffd700',
-      }).setOrigin(0.5);
-      this.overlay.add(arrowText);
-
-      // Attack type (with type-specific color)
-      const atkColor2 = ATTACK_TYPE_COLORS_CSS[entry.attackType] || '#b2bec3';
-      const atkText = this.add.text(panelX, panelTop + 110, `Type: ${this._getAttackTypeBadge(entry.attackType)}`, {
-        fontSize: '12px', fontFamily: 'Arial, sans-serif', color: atkColor2,
-      }).setOrigin(0.5);
-      this.overlay.add(atkText);
-
-      // Tier badge
-      const tierBadge = this.add.text(panelX, panelTop + 135, `Tier ${entry.tier}`, {
-        fontSize: '12px', fontFamily: 'Arial, sans-serif', color: '#ffd700',
-      }).setOrigin(0.5);
-      this.overlay.add(tierBadge);
+      this._renderTreePanel(entry, panelX, panelTop, panelW, usedInList);
     }
   }
 
   /**
-   * Close the current overlay.
+   * Render T1 stat panel inside the current overlay.
+   * @param {object} entry - T1 tier data entry
+   * @param {number} panelX - Panel center X
+   * @param {number} panelTop - Panel top Y
+   * @param {number} panelW - Panel width
    * @private
    */
-  _closeOverlay() {
+  _renderT1Panel(entry, panelX, panelTop, panelW, usedInList) {
+    // Tower name
+    const nameText = this.add.text(panelX, panelTop + 40, entry.displayName, {
+      fontSize: '16px', fontFamily: 'Arial, sans-serif', color: '#ffffff', fontStyle: 'bold',
+    }).setOrigin(0.5);
+    this.overlay.add(nameText);
+
+    // Color circle + tier badge inline
+    const circleG = this.add.graphics();
+    circleG.fillStyle(entry.color, 1);
+    circleG.fillCircle(panelX - 30, panelTop + 65, 14);
+    this.overlay.add(circleG);
+
+    const tierBadge = this.add.text(panelX + 5, panelTop + 65, 'T1', {
+      fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#ffd700',
+    }).setOrigin(0, 0.5);
+    this.overlay.add(tierBadge);
+
+    // Attack type
+    const atkColor = ATTACK_TYPE_COLORS_CSS[entry.attackType] || '#b2bec3';
+    const atkText = this.add.text(panelX, panelTop + 90, this._getAttackTypeBadge(entry.attackType), {
+      fontSize: '11px', fontFamily: 'Arial, sans-serif', color: atkColor,
+    }).setOrigin(0.5);
+    this.overlay.add(atkText);
+
+    // Basic stats with meta upgrade bonuses applied
+    const lv1 = TOWER_STATS[entry.id]?.levels?.[1];
+    if (lv1) {
+      const stats = { damage: lv1.damage, fireRate: lv1.fireRate, range: lv1.range };
+      this._applyMetaUpgradesToStats(entry.id, stats);
+      const statsStr = `DMG: ${stats.damage}  |  SPD: ${stats.fireRate}s  |  RNG: ${stats.range}`;
+      const statsText = this.add.text(panelX, panelTop + 110, statsStr, {
+        fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#b2bec3',
+      }).setOrigin(0.5);
+      this.overlay.add(statsText);
+    }
+
+    // ── "Used in" section ──
+    if (usedInList.length > 0) {
+      this._renderUsedInSection(entry, usedInList, panelX, panelTop + 130, panelW);
+    }
+  }
+
+  /**
+   * Apply meta upgrade bonuses to a plain stats object.
+   * Mirrors GameScene._applyMetaUpgradesToTower logic but works on plain objects.
+   * @param {string} towerType - Tower type id (e.g. 'archer')
+   * @param {object} stats - { damage, fireRate, range, ... } — mutated in place
+   * @private
+   */
+  _applyMetaUpgradesToStats(towerType, stats) {
+    const upgrades = this._towerMetaUpgrades[towerType];
+    if (!upgrades) return;
+
+    const treeData = META_UPGRADE_TREE[towerType];
+    if (!treeData) return;
+
+    for (let tier = 1; tier <= 3; tier++) {
+      const choice = upgrades[`tier${tier}`];
+      if (!choice) continue;
+
+      const bonus = treeData[`tier${tier}`]?.[choice];
+      if (!bonus?.effects) continue;
+
+      for (const effect of bonus.effects) {
+        if (stats[effect.stat] === undefined) continue;
+        if (effect.type === 'multiply') {
+          stats[effect.stat] *= effect.value;
+          if (['damage', 'range', 'splashRadius', 'chainRadius',
+               'pushbackDistance', 'chainCount'].includes(effect.stat)) {
+            stats[effect.stat] = Math.round(stats[effect.stat]);
+          }
+        } else if (effect.type === 'add') {
+          stats[effect.stat] += effect.value;
+        }
+      }
+    }
+  }
+
+  /**
+   * Find all MERGE_RECIPES where this tower is used as a material.
+   * @param {string} towerId - Tower id (T1 type or merged tower id)
+   * @returns {Array<{resultEntry: object, recipeKey: string}>}
+   * @private
+   */
+  _findUsedInRecipes(towerId) {
+    const results = [];
+    for (const [recipeKey, recipe] of Object.entries(MERGE_RECIPES)) {
+      const parts = recipeKey.split('+');
+      if (parts.includes(towerId)) {
+        const resultEntry = this._buildEntryById(recipe.id);
+        if (resultEntry) results.push({ resultEntry, recipeKey });
+      }
+    }
+    // Sort by tier then name
+    results.sort((a, b) => a.resultEntry.tier - b.resultEntry.tier || a.resultEntry.displayName.localeCompare(b.resultEntry.displayName));
+    return results;
+  }
+
+  /**
+   * Render scrollable "used in" list section inside the overlay.
+   * @param {object} currentEntry - Current entry (for history push)
+   * @param {Array} usedInList - Result of _findUsedInRecipes
+   * @param {number} panelX - Panel center X
+   * @param {number} startY - Y to start rendering
+   * @param {number} panelW - Panel width
+   * @private
+   */
+  _renderUsedInSection(currentEntry, usedInList, panelX, startY, panelW) {
+    const viewH = 100;
+    const rowH = 22;
+    const headerH = 18;
+    let y = startY + 6;
+
+    // Divider
+    const divider = this.add.graphics();
+    divider.lineStyle(1, 0x636e72, 0.5);
+    divider.lineBetween(panelX - panelW / 2 + 20, y, panelX + panelW / 2 - 20, y);
+    this.overlay.add(divider);
+    y += 8;
+
+    // Section header (fixed, outside scroll)
+    const header = this.add.text(panelX, y, t('codex.usedIn') || '상위 조합', {
+      fontSize: '10px', fontFamily: 'Arial, sans-serif', color: '#636e72',
+    }).setOrigin(0.5);
+    this.overlay.add(header);
+    y += headerH;
+
+    // Scroll viewport area
+    const scrollTopY = y;
+    const scrollH = viewH - headerH - 14;
+    const contentH = usedInList.length * rowH;
+    const maxScroll = Math.max(0, contentH - scrollH);
+
+    // Scrollable container
+    const scrollContainer = this.add.container(0, 0);
+    this.overlay.add(scrollContainer);
+
+    // Build items inside scrollContainer (positions relative to world)
+    for (let i = 0; i < usedInList.length; i++) {
+      const { resultEntry } = usedInList[i];
+      const itemY = scrollTopY + i * rowH + rowH / 2;
+      const label = `T${resultEntry.tier} ${resultEntry.displayName}`;
+      const itemText = this.add.text(panelX, itemY, label, {
+        fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#dfe6e9',
+      }).setOrigin(0.5);
+      scrollContainer.add(itemText);
+
+      const hitArea = this.add.rectangle(panelX, itemY, panelW - 40, rowH, 0x000000, 0)
+        .setInteractive({ useHandCursor: true });
+      scrollContainer.add(hitArea);
+
+      hitArea.on('pointerover', () => itemText.setColor('#ffd700'));
+      hitArea.on('pointerout', () => itemText.setColor('#dfe6e9'));
+      hitArea.on('pointerdown', () => {
+        if (!this._inputReady) return;
+        this._overlayHistory.push(currentEntry);
+        this._renderOverlay(resultEntry);
+      });
+    }
+
+    // Mask to clip scroll area
+    const maskShape = this.add.rectangle(panelX, scrollTopY + scrollH / 2, panelW - 10, scrollH, 0x000000)
+      .setVisible(false);
+    this.overlay.add(maskShape);
+    scrollContainer.setMask(maskShape.createGeometryMask());
+
+    // Scroll indicator (show only if content overflows)
+    if (maxScroll > 0) {
+      const hint = this.add.text(panelX + panelW / 2 - 28, scrollTopY + scrollH - 2, '▼', {
+        fontSize: '9px', fontFamily: 'Arial, sans-serif', color: '#636e72',
+      }).setOrigin(0.5);
+      this.overlay.add(hint);
+      this._usedInScrollHint = hint;
+    }
+
+    // Drag-to-scroll state
+    let scrollY = 0;
+    let dragging = false;
+    let dragStartY = 0;
+    let dragStartScroll = 0;
+
+    // Invisible drag zone covering the scroll area
+    const dragZone = this.add.rectangle(panelX, scrollTopY + scrollH / 2, panelW - 10, scrollH, 0x000000, 0)
+      .setInteractive();
+    this.overlay.add(dragZone);
+
+    dragZone.on('pointerdown', (pointer) => {
+      dragging = true;
+      dragStartY = pointer.y;
+      dragStartScroll = scrollY;
+    });
+
+    this.input.on('pointermove', (pointer) => {
+      if (!dragging) return;
+      const dy = pointer.y - dragStartY;
+      scrollY = Phaser.Math.Clamp(dragStartScroll - dy, 0, maxScroll);
+      scrollContainer.y = -scrollY;
+      // Update scroll hint
+      if (this._usedInScrollHint) {
+        this._usedInScrollHint.setVisible(scrollY < maxScroll - 5);
+      }
+    });
+
+    this.input.on('pointerup', () => { dragging = false; });
+  }
+
+  /**
+   * Render the node tree panel for T2+ entries.
+   * Shows result node (top) connected to two material nodes (bottom left/right).
+   * @param {object} entry - T2+ tier data entry
+   * @param {number} panelX - Panel center X
+   * @param {number} panelTop - Panel top Y
+   * @param {number} panelW - Panel width
+   * @private
+   */
+  _renderTreePanel(entry, panelX, panelTop, panelW, usedInList) {
+    const parts = entry.recipeKey ? entry.recipeKey.split('+') : [];
+    const matAEntry = parts[0] ? this._buildEntryById(parts[0]) : null;
+    const matBEntry = parts[1] ? this._buildEntryById(parts[1]) : null;
+
+    // ── Result node (top center) ──
+    const resultY = panelTop + 90;
+    const resultR = 28;
+
+    const resultCircle = this.add.graphics();
+    resultCircle.fillStyle(entry.color, 1);
+    resultCircle.fillCircle(panelX, resultY, resultR);
+    resultCircle.lineStyle(2, BTN_PRIMARY, 1);
+    resultCircle.strokeCircle(panelX, resultY, resultR);
+    this.overlay.add(resultCircle);
+
+    const resultName = this.add.text(panelX, panelTop + 128, entry.displayName, {
+      fontSize: '12px', fontFamily: 'Arial, sans-serif', color: '#ffffff', fontStyle: 'bold',
+    }).setOrigin(0.5);
+    this.overlay.add(resultName);
+
+    const resultTier = this.add.text(panelX, panelTop + 144, `T${entry.tier}`, {
+      fontSize: '10px', fontFamily: 'Arial, sans-serif', color: '#ffd700',
+    }).setOrigin(0.5);
+    this.overlay.add(resultTier);
+
+    // ── Connector lines ──
+    const forkY = panelTop + 175;
+    const matY = panelTop + 210;
+    const matR = 20;
+    const matOffsetX = 55;
+    const matAX = panelX - matOffsetX;
+    const matBX = panelX + matOffsetX;
+
+    const lines = this.add.graphics();
+    this._renderConnectorLines(lines, { x: panelX, y: panelTop + 155 }, forkY, { x: matAX, y: matY }, { x: matBX, y: matY });
+    this.overlay.add(lines);
+
+    // ── Material nodes ──
+    if (matAEntry) this._renderMaterialNode(matAEntry, matAX, matY, matR, panelTop, entry);
+    if (matBEntry) this._renderMaterialNode(matBEntry, matBX, matY, matR, panelTop, entry);
+
+    // ── Stats below tree ──
+    let nextY = panelTop + 270;
+    const mergedStats = MERGED_TOWER_STATS[entry.id];
+    if (mergedStats) {
+      const divider = this.add.graphics();
+      divider.lineStyle(1, 0x636e72, 0.5);
+      divider.lineBetween(panelX - panelW / 2 + 20, nextY, panelX + panelW / 2 - 20, nextY);
+      this.overlay.add(divider);
+      nextY += 14;
+
+      const statsStr = `DMG: ${mergedStats.damage}  |  SPD: ${mergedStats.fireRate}s  |  RNG: ${mergedStats.range}`;
+      const statsText = this.add.text(panelX, nextY, statsStr, {
+        fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#b2bec3',
+      }).setOrigin(0.5);
+      this.overlay.add(statsText);
+      nextY += 16;
+    }
+
+    // ── "Used in" section ──
+    if (usedInList.length > 0) {
+      this._renderUsedInSection(entry, usedInList, panelX, nextY, panelW);
+    }
+  }
+
+  /**
+   * Render a single material node (circle + name + tier badge).
+   * Clickable: T2+ drills down, T1 shows stat panel.
+   * @param {object} matEntry - Material tier data entry
+   * @param {number} cx - Node center X
+   * @param {number} cy - Node center Y (circle)
+   * @param {number} r - Circle radius
+   * @param {number} panelTop - Panel top Y for text placement
+   * @param {object} currentEntry - The current result entry (for history push)
+   * @private
+   */
+  _renderMaterialNode(matEntry, cx, cy, r, panelTop, currentEntry) {
+    const circle = this.add.graphics();
+    circle.fillStyle(matEntry.color, 1);
+    circle.fillCircle(cx, cy, r);
+    // Clickable indicator: gold border for T2+, subtle border for T1
+    const borderColor = matEntry.tier >= 2 ? BTN_PRIMARY : 0x636e72;
+    circle.lineStyle(2, borderColor, 1);
+    circle.strokeCircle(cx, cy, r);
+    this.overlay.add(circle);
+
+    // Truncate name for material nodes (smaller space)
+    const displayName = matEntry.displayName.length > 6
+      ? matEntry.displayName.substring(0, 5) + '..'
+      : matEntry.displayName;
+    const nameText = this.add.text(cx, panelTop + 238, displayName, {
+      fontSize: '10px', fontFamily: 'Arial, sans-serif', color: '#ffffff',
+    }).setOrigin(0.5);
+    this.overlay.add(nameText);
+
+    const tierBadge = this.add.text(cx, panelTop + 252, `T${matEntry.tier}`, {
+      fontSize: '9px', fontFamily: 'Arial, sans-serif', color: '#ffd700',
+    }).setOrigin(0.5);
+    this.overlay.add(tierBadge);
+
+    // Interactive hit area (invisible rectangle over the node area)
+    const hitArea = this.add.rectangle(cx, cy + 10, r * 2 + 10, 70, 0x000000, 0)
+      .setInteractive({ useHandCursor: true });
+    this.overlay.add(hitArea);
+
+    hitArea.on('pointerdown', () => {
+      if (!this._inputReady) return;
+      // Push current entry to history, then navigate to material
+      this._overlayHistory.push(currentEntry);
+      this._renderOverlay(matEntry);
+    });
+  }
+
+  /**
+   * Render Y-shaped connector lines from result node down to two material nodes.
+   * @param {Phaser.GameObjects.Graphics} graphics - Graphics object to draw on
+   * @param {object} resultPos - { x, y } bottom of result node
+   * @param {number} forkY - Y coordinate of the fork point
+   * @param {object} matAPos - { x, y } top of material A node
+   * @param {object} matBPos - { x, y } top of material B node
+   * @private
+   */
+  _renderConnectorLines(graphics, resultPos, forkY, matAPos, matBPos) {
+    graphics.lineStyle(2, 0x636e72, 0.8);
+
+    // Vertical line from result down to fork point
+    graphics.beginPath();
+    graphics.moveTo(resultPos.x, resultPos.y);
+    graphics.lineTo(resultPos.x, forkY);
+    graphics.strokePath();
+
+    // Horizontal line across at fork point
+    graphics.beginPath();
+    graphics.moveTo(matAPos.x, forkY);
+    graphics.lineTo(matBPos.x, forkY);
+    graphics.strokePath();
+
+    // Vertical line down to material A
+    graphics.beginPath();
+    graphics.moveTo(matAPos.x, forkY);
+    graphics.lineTo(matAPos.x, matAPos.y - 20);
+    graphics.strokePath();
+
+    // Vertical line down to material B
+    graphics.beginPath();
+    graphics.moveTo(matBPos.x, forkY);
+    graphics.lineTo(matBPos.x, matBPos.y - 20);
+    graphics.strokePath();
+  }
+
+  /**
+   * Handle back navigation: pop history or close overlay.
+   * @private
+   */
+  _handleBack() {
+    if (this._overlayHistory.length > 0) {
+      const prevEntry = this._overlayHistory.pop();
+      this._renderOverlay(prevEntry);
+    } else {
+      this._forceCloseOverlay();
+    }
+  }
+
+  /**
+   * Force-close the overlay completely, ignoring history.
+   * @private
+   */
+  _forceCloseOverlay() {
     if (this.overlay) {
       this.overlay.destroy();
       this.overlay = null;
+      this._overlayHistory = [];
       this._overlayClosedAt = Date.now();
     }
+  }
+
+  /**
+   * Close the current overlay (respects history for back navigation).
+   * @private
+   */
+  _closeOverlay() {
+    this._handleBack();
+  }
+
+  /**
+   * Build a tier data entry object by tower/merge ID.
+   * Searches through _tierDataCache across all tiers.
+   * @param {string} id - Tower or merged tower ID
+   * @returns {object|null} The tier data entry, or null if not found
+   * @private
+   */
+  _buildEntryById(id) {
+    if (!this._tierDataCache) return null;
+    for (let tier = 1; tier <= 5; tier++) {
+      const entries = this._tierDataCache[tier];
+      if (!entries) continue;
+      for (const entry of entries) {
+        if (entry.id === id) return entry;
+      }
+    }
+    return null;
   }
 
   // ── Drag Scroll ──────────────────────────────────────────────
@@ -614,22 +1004,4 @@ export class MergeCodexScene extends Phaser.Scene {
     return map[attackType] || attackType;
   }
 
-  /**
-   * Get display name for a tower/merge ID.
-   * Looks up TOWER_STATS first, then MERGE_RECIPES values.
-   * @param {string} id
-   * @returns {string}
-   * @private
-   */
-  _getDisplayNameById(id) {
-    // Check base towers - use i18n key for language consistency
-    if (TOWER_STATS[id]) return t(`tower.${id}.name`) || TOWER_STATS[id].displayName;
-
-    // Check merged towers (search by recipe id)
-    for (const recipe of Object.values(MERGE_RECIPES)) {
-      if (recipe.id === id) return recipe.displayName;
-    }
-
-    return id;
-  }
 }

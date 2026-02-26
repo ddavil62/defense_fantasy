@@ -34,7 +34,7 @@ Phaser.js 3 기반 판타지 타워 디펜스 게임. 도형 기반 프로토타
 | `js/scenes/GameScene.js` | 핵심 게임플레이 (맵/타워/적/투사체/웨이브/AoE/체인/빔/메타 업그레이드/ProjectilePool/delta 캡/통계 추적/사거리 프리뷰/골드 싱크/머지 드래그 핸들링/Pause 오버레이 합성도감 버튼/wake 이벤트 처리) |
 | `js/scenes/GameOverScene.js` | 결과 표시, Diamond 획득, 통계 저장, 게임 히스토리 관리, RETRY/MENU 버튼 |
 | `js/scenes/CollectionScene.js` | 컬렉션 모드 -- 이중 탭: (1) 메타업그레이드 (타워 카드 그리드, 메타 업그레이드 트리, 유틸리티 업그레이드, 범용 타워 해금), (2) 합성도감 탭 클릭 시 MergeCodexScene으로 전환 |
-| `js/scenes/MergeCodexScene.js` | 합성도감 전용 씬 -- T1~T5 서브탭, 전체 112종 타워 카드(발견 여부 무관 전부 공개), 레시피 상세 오버레이, 드래그 스크롤. GameScene(Pause)과 CollectionScene 양쪽에서 진입 |
+| `js/scenes/MergeCodexScene.js` | 합성도감 전용 씬 -- T1~T5 서브탭, 전체 112종 타워 카드(발견 여부 무관 전부 공개), 카드 클릭 시 노드 트리 오버레이(T2+: 결과+Y자 연결선+재료 2개, T1: 스탯 패널), 재료 노드 드릴다운 + 히스토리 뒤로가기, 드래그 스크롤. GameScene(Pause)과 CollectionScene 양쪽에서 진입 |
 | `js/scenes/StatsScene.js` | 통계 표시 (스크롤 가능 UI, killsByType/killsByTower/goldEarned/damageDealt, 게임 히스토리) |
 | `js/entities/Tower.js` | 타워 배치/공격/판매/사거리 표시/강화(+1~+10)/머지(tier, mergeId, applyMergeResult) |
 | `js/entities/Enemy.js` | 적 이동/피격/슬로우/화상/독/방어력 감소/밀치기/분열/HP바 |
@@ -167,6 +167,7 @@ npx cap open android  # 또는 npx cap open ios
 - 머지 타워 시스템 Phase 4-B: 정적 코드 분석 23건 (정상 15 + 예외 8) + Playwright 테스트 23개 작성, QA PASS (R2, 1차 FAIL BUG 4건 수정 후 PASS)
 - 머지 프리뷰 UI: Playwright 테스트 49개 (정상 36 + 예외/엣지케이스 13) + 시각적 검증 2건, QA PASS
 - 합성도감 전용 씬: Playwright 테스트 50개 (정상 36 + 예외 14) + 시각적 검증 13건 QA PASS (R2, 1차 ISSUE-1 수정 후 PASS)
+- 합성도감 노드 트리 UI: Playwright 테스트 52개 (정상 30 + 예외 22) + 시각적 검증 11건 QA PASS
 
 ## 시스템별 상세 문서
 
@@ -177,7 +178,7 @@ npx cap open android  # 또는 npx cap open ios
 | [systems/wave.md](systems/wave.md) | R1~R20 정의, R21+ 스케일링, 보스 라운드 |
 | [systems/economy.md](systems/economy.md) | Gold, Diamond, 메타 업그레이드, 컬렉션, 골드 싱크 |
 | [systems/sound.md](systems/sound.md) | SFX 8종, BGM 3종, Web Audio API |
-| [systems/ui.md](systems/ui.md) | HUD, TowerPanel, 머지 프리뷰(조합 목록+드래그 하이라이트+호버 말풍선), 일시정지(합성도감 버튼 포함), 게임속도, 골드 싱크 UI, 컬렉션(이중 탭: 메타업그레이드+합성도감), MergeCodexScene(합성도감 전용 씬), 모바일 |
+| [systems/ui.md](systems/ui.md) | HUD, TowerPanel, 머지 프리뷰(조합 목록+드래그 하이라이트+호버 말풍선), 일시정지(합성도감 버튼 포함), 게임속도, 골드 싱크 UI, 컬렉션(이중 탭: 메타업그레이드+합성도감), MergeCodexScene(합성도감 전용 씬, 노드 트리 오버레이), 모바일 |
 
 ## 향후 계획
 
