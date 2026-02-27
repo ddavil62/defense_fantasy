@@ -4,6 +4,33 @@
 
 ---
 
+## 2026-02-27 -- 타워 이미지 APK 빌드 포함 수정
+
+### 배경
+
+타워 이미지 PNG 10개가 `assets/tower/`에 위치하여 Vite 빌드 결과물(`dist/`)에 포함되지 않았다. Vite는 `public/` 폴더의 내용만 `dist/`로 자동 복사하므로, Phaser의 런타임 이미지 로드(`assets/tower/${name}.png`)가 APK에서 실패하는 문제가 있었다.
+
+### 변경
+
+- **`public/assets/tower/`** -- 타워 이미지 PNG 10개를 `assets/tower/`에서 `public/assets/tower/`로 이동 (`git mv`). Archer, Dragon, Flame, Ice, Light, Lightning, Mage, Poison, Rock, Wind.
+- **`assets/`** -- 빈 디렉토리 삭제 (tower/ 하위만 존재하여 전체 제거)
+
+### 변경 없음
+
+- `js/scenes/BootScene.js` -- 이미지 로드 경로 `assets/tower/${name}.png` 유지 (Vite `public/` 규칙에 의해 동일 경로로 서빙)
+- `vite.config.js` -- `publicDir` 기본값(`public/`) 활용, 별도 설정 불필요
+
+### 문서
+
+- `docs/ART_STYLE_GUIDE.md` -- 이미지 경로를 `fantasydefence/public/assets/tower/`로 수정
+
+### 참고
+
+- 스펙: `.claude/specs/2026-02-27-tower-image-build-fix.md`
+- QA: `.claude/specs/2026-02-27-tower-image-build-fix-qa.md`
+
+---
+
 ## 2026-02-27 -- 타워 특징 설명(desc) 시스템 추가
 
 ### 배경

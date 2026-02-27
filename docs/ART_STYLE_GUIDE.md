@@ -217,7 +217,7 @@ transparent background, game asset, no text, centered
 - **소스 크기**: 500x500px (AI 생성 원본)
 - **저장 크기**: 128x128px (HighQualityBicubic 리사이즈)
 - **네이밍**: `{Type}.png` (PascalCase, 예: `Archer.png`, `Dragon.png`)
-- **경로**: `fantasydefence/assets/tower/`
+- **경로**: `fantasydefence/public/assets/tower/` (Vite 빌드 시 `dist/assets/tower/`로 자동 복사)
 
 ### 렌더링 규칙
 
