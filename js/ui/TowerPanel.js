@@ -575,10 +575,11 @@ export class TowerPanel {
     }).setOrigin(0.5);
     this._descContainer.add(statText);
 
-    // 비용 또는 잠금 해제 비용 표시
+    // 비용 또는 잠금 해제 조건 표시
     const isLocked = TOWER_STATS[type].locked && !this.unlockedTowers.includes(type);
-    const unlockCost = TOWER_STATS[type].unlockCost || 0;
-    const costStr = isLocked ? `\uD83D\uDD12 ${unlockCost}\uD83D\uDC8E` : `${stats.cost}G`;
+    const unlockWorld = TOWER_STATS[type].unlockWorld;
+    const worldName = unlockWorld ? t(`world.${unlockWorld}.name`) : '';
+    const costStr = isLocked ? `\uD83D\uDD12 ${worldName}` : `${stats.cost}G`;
     const costText = this.scene.add.text(popupX, popupY + 32, costStr, {
       fontSize: '13px',
       fontFamily: 'Outfit, Arial, sans-serif',

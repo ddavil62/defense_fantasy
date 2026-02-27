@@ -14,7 +14,7 @@ Phaser.js 3 기반 판타지 타워 디펜스 게임. 도형 기반 프로토타
 | 모바일 패키징 | Capacitor (Android + iOS) |
 | 모듈 구조 | ES6 모듈 기반 멀티 파일 (30개) |
 | 렌더링 | HTML5 Canvas (Phaser 기본) |
-| 데이터 저장 | localStorage (최고 기록, Diamond, 메타 업그레이드, 타워 해금, 머지 발견, 통계, 게임 히스토리, 월드 진행 상태, 엔드리스 해금) -- 세이브 v3 |
+| 데이터 저장 | localStorage (최고 기록, Diamond, 메타 업그레이드, 타워 해금, 머지 발견, 통계, 게임 히스토리, 월드 진행 상태, 엔드리스 해금) -- 세이브 v4 |
 | 해상도 | 360x640 (모바일 세로, portrait) |
 | 서버 요구 | Vite dev 서버 (`npm run dev`) |
 
@@ -28,16 +28,16 @@ Phaser.js 3 기반 판타지 타워 디펜스 게임. 도형 기반 프로토타
 | `index.html` | 진입점 (Vite용 간소화, CDN 제거) |
 | `style.css` | 바디 배경, 터치 방지(`touch-action: none`), safe-area 패딩 |
 | `js/main.js` | Phaser.Game 인스턴스 생성 (npm import, 360x640, FIT + CENTER_BOTH) |
-| `js/config.js` | 모든 게임 상수/밸런스 수치 집중 관리 (타워 10종, 적 8종, 웨이브 R1~R20, 메타 업그레이드 트리, 유틸리티 업그레이드, 저항 캡 0.55, 골드 싱크 상수, 머지 레시피 102종/스탯 102종 (T2 55종 + T3 30종 + T4 12종 + T5 5종), 별점 계산(calcStarRating), 캠페인 다이아몬드 보상(CAMPAIGN_DIAMOND_REWARDS), 세이브 마이그레이션 v3) |
+| `js/config.js` | 모든 게임 상수/밸런스 수치 집중 관리 (타워 10종, 적 8종, 웨이브 R1~R20, 메타 업그레이드 트리, 유틸리티 업그레이드, 저항 캡 0.55, 골드 싱크 상수, 머지 레시피 102종/스탯 102종 (T2 55종 + T3 30종 + T4 12종 + T5 5종), 별점 계산(calcStarRating), 캠페인 다이아몬드 보상(CAMPAIGN_DIAMOND_REWARDS), TOWER_UNLOCK_MAP(월드→타워 해금 매핑), 세이브 마이그레이션 v4) |
 | `js/scenes/BootScene.js` | 초기 설정, localStorage 로드, 세이브 마이그레이션 (stats 필드 포함), 메뉴 전환 |
 | `js/scenes/MenuScene.js` | 메뉴 화면, Diamond 표시, CAMPAIGN/ENDLESS(endlessUnlocked 조건부 활성)/COLLECTION/STATISTICS 버튼 |
 | `js/scenes/GameScene.js` | 핵심 게임플레이 (맵/타워/적/투사체/웨이브/AoE/체인/빔/메타 업그레이드/ProjectilePool/delta 캡/통계 추적/사거리 프리뷰/골드 싱크/머지 드래그 핸들링/Pause 오버레이 합성도감 버튼/wake 이벤트 처리/mapClear 이벤트→MapClearScene 전환) |
 | `js/scenes/GameOverScene.js` | 결과 표시, Diamond 획득, 통계 저장, 게임 히스토리 관리, RETRY/WORLD MAP(캠페인)/MENU 버튼 (RETRY 시 mapData/gameMode 전달) |
-| `js/scenes/MapClearScene.js` | 캠페인 맵 클리어 결과 씬 (별점 1~3성 애니메이션, 다이아몬드 차액 보상 실제 지급, worldProgress/campaignStats/endlessUnlocked 세이브 갱신, NEXT MAP(다음 맵 또는 월드 클리어)/RETRY/WORLD MAP 버튼) |
+| `js/scenes/MapClearScene.js` | 캠페인 맵 클리어 결과 씬 (별점 1~3성 애니메이션, 다이아몬드 차액 보상 실제 지급, worldProgress/campaignStats/endlessUnlocked 세이브 갱신, 월드 클리어 시 타워 자동 해금+알림 UI, NEXT MAP(다음 맵 또는 월드 클리어)/RETRY/WORLD MAP 버튼) |
 | `js/scenes/WorldSelectScene.js` | 월드 선택 씬 (5개 월드 패널, 세이브 데이터 기반 해금/잠금, 별점 진행도, LevelSelectScene 이동) |
 | `js/scenes/LevelSelectScene.js` | 레벨 선택 씬 (6개 맵 카드, 세이브 데이터 기반 별점/해금, START -> GameScene) |
 | `js/scenes/EndlessMapSelectScene.js` | 엔드리스 맵 선택 씬 (6탭: 클래식+5월드, 맵 카드, GameScene endless 모드 시작) |
-| `js/scenes/CollectionScene.js` | 컬렉션 모드 -- 이중 탭: (1) 메타업그레이드 (타워 카드 그리드, 메타 업그레이드 트리, 유틸리티 업그레이드, 범용 타워 해금), (2) 합성도감 탭 클릭 시 MergeCodexScene으로 전환 |
+| `js/scenes/CollectionScene.js` | 컬렉션 모드 -- 이중 탭: (1) 메타업그레이드 (타워 카드 그리드, 메타 업그레이드 트리, 유틸리티 업그레이드, 잠긴 타워 월드 클리어 조건 안내), (2) 합성도감 탭 클릭 시 MergeCodexScene으로 전환 |
 | `js/scenes/MergeCodexScene.js` | 합성도감 전용 씬 -- T1~T5 서브탭, 전체 112종 타워 카드(발견 여부 무관 전부 공개), 카드 클릭 시 TowerInfoOverlay(codex 모드)로 상세 정보 표시, 드래그 스크롤, shutdown 핸들러로 리소스 정리. GameScene(Pause)과 CollectionScene 양쪽에서 진입 |
 | `js/scenes/StatsScene.js` | 통계 표시 (스크롤 가능 UI, killsByType/killsByTower/goldEarned/damageDealt, 게임 히스토리) |
 | `js/entities/Tower.js` | 타워 배치/공격/판매/사거리 표시/강화(+1~+10)/머지(tier, mergeId, applyMergeResult) |
@@ -179,11 +179,11 @@ BootScene -> MenuScene
 
 ## 데이터 구조
 
-**localStorage 키: `fantasy-td-save`** (세이브 v3)
+**localStorage 키: `fantasy-td-save`** (세이브 v4)
 
 ```json
 {
-  "saveDataVersion": 3,
+  "saveDataVersion": 4,
   "bestRound": 15,
   "bestKills": 102,
   "totalGames": 5,
@@ -231,8 +231,8 @@ BootScene -> MenuScene
 }
 ```
 
-- `saveDataVersion`: 세이브 스키마 버전 (현재 3)
-- `unlockedTowers`: 해금된 타워 타입 배열 (v2에서 `dragonUnlocked` 대체)
+- `saveDataVersion`: 세이브 스키마 버전 (현재 4)
+- `unlockedTowers`: 해금된 타워 타입 배열 (월드 클리어 기반, v4에서 worldProgress 기반 재계산)
 - `discoveredMerges`: 발견한 머지 결과 ID 배열 (v2 신규)
 - `stats`: 전체 게임에 걸친 누적 통계 (킬 수, 골드, 데미지, 타입별/타워별 킬)
 - `gameHistory`: 최근 20게임 기록 배열 (FIFO, 게임당 상세 통계 포함)
@@ -246,7 +246,8 @@ BootScene -> MenuScene
 |---|---|
 | v1 -> v2 | dragonUnlocked -> unlockedTowers, discoveredMerges 추가, saveDataVersion=2 |
 | v2 -> v3 | worldProgress={}, endlessUnlocked=false, campaignStats 기본값, saveDataVersion=3 |
-| v1 -> v2 -> v3 | 순차 실행 (v1->v2 블록에서 saveDataVersion=2로 고정하여 v2->v3 블록 진입 보장) |
+| v3 -> v4 | unlockedTowers를 worldProgress 기반으로 재계산 (TOWER_UNLOCK_MAP 참조, 각 월드 6맵 전부 cleared 시 해당 타워 해금), saveDataVersion=4 |
+| v1 -> v2 -> v3 -> v4 | 순차 실행 (각 블록에서 버전 고정하여 다음 블록 진입 보장) |
 
 ## 실행 방법
 

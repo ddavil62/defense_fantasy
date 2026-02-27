@@ -8,7 +8,7 @@
 import {
   GAME_WIDTH, GAME_HEIGHT, COLORS, SAVE_KEY,
   TOWER_STATS, META_UPGRADE_TREE, UTILITY_UPGRADES,
-  BTN_PRIMARY, BTN_META,
+  BTN_PRIMARY, BTN_META, TOWER_UNLOCK_MAP,
 } from '../config.js';
 import { t } from '../i18n.js';
 
@@ -327,14 +327,15 @@ export class CollectionScene extends Phaser.Scene {
       }).setOrigin(0.5);
       this.tabContent.add(nameText);
 
-      // 잠금 해제 비용 (다이아몬드)
-      const unlockCost = stats.unlockCost || 0;
-      const costText = this.add.text(cx, y + 68, `\u25C6${unlockCost}`, {
-        fontSize: '11px',
+      // 해금 조건 (월드 클리어)
+      const unlockWorld = stats.unlockWorld;
+      const worldName = unlockWorld ? t(`world.${unlockWorld}.name`) : '';
+      const condText = this.add.text(cx, y + 68, `${worldName}`, {
+        fontSize: '10px',
         fontFamily: 'Arial, sans-serif',
-        color: COLORS.DIAMOND_CSS,
+        color: '#636e72',
       }).setOrigin(0.5);
-      this.tabContent.add(costText);
+      this.tabContent.add(condText);
 
       bg.on('pointerdown', () => {
         this._showTowerUnlockPopup(type);
@@ -1188,9 +1189,8 @@ export class CollectionScene extends Phaser.Scene {
     if (this.overlay) this.overlay.destroy();
 
     const stats = TOWER_STATS[type];
-    const unlockCost = stats.unlockCost || 0;
-    const diamond = this.saveData.diamond || 0;
-    const canAfford = diamond >= unlockCost;
+    const unlockWorld = stats.unlockWorld;
+    const worldName = unlockWorld ? t(`world.${unlockWorld}.name`) : '';
 
     this.overlay = this.add.container(0, 0).setDepth(50);
 
@@ -1202,7 +1202,7 @@ export class CollectionScene extends Phaser.Scene {
 
     // 팝업 패널
     const popW = 260;
-    const popH = 180;
+    const popH = 160;
     const popX = GAME_WIDTH / 2;
     const popY = GAME_HEIGHT / 2;
 
@@ -1212,11 +1212,11 @@ export class CollectionScene extends Phaser.Scene {
 
     // 타워 아이콘
     const iconG = this.add.graphics();
-    this._drawTowerIcon(iconG, type, popX - 50, popY - 55, 1.2);
+    this._drawTowerIcon(iconG, type, popX - 50, popY - 45, 1.2);
     this.overlay.add(iconG);
 
     // 타이틀
-    const titleText = this.add.text(popX + 10, popY - 55, `${stats.displayName} Tower`, {
+    const titleText = this.add.text(popX + 10, popY - 45, `${stats.displayName} Tower`, {
       fontSize: '16px',
       fontFamily: 'Arial, sans-serif',
       color: '#ffffff',
@@ -1224,75 +1224,41 @@ export class CollectionScene extends Phaser.Scene {
     }).setOrigin(0, 0.5);
     this.overlay.add(titleText);
 
-    // 설명
-    const descText = this.add.text(popX, popY - 25, `Unlock ${stats.displayName} Tower?`, {
+    // 해금 조건 안내
+    const condStr = t('ui.clearWorldToUnlock').replace('{world}', worldName);
+    const descText = this.add.text(popX, popY - 5, condStr, {
       fontSize: '14px',
       fontFamily: 'Arial, sans-serif',
-      color: '#ffffff',
+      color: '#fdcb6e',
     }).setOrigin(0.5);
     this.overlay.add(descText);
 
-    // 비용 (부족하면 빨간색)
-    const costColor = canAfford ? COLORS.DIAMOND_CSS : '#ff4757';
-    const costText = this.add.text(popX, popY + 0, `Cost: \u25C6 ${unlockCost}`, {
-      fontSize: '14px',
-      fontFamily: 'Arial, sans-serif',
-      color: costColor,
-    }).setOrigin(0.5);
-    this.overlay.add(costText);
+    // 확인 버튼
+    const okBg = this.add.rectangle(popX, popY + 45, 100, 36, COLORS.BUTTON_ACTIVE)
+      .setStrokeStyle(1, 0xffffff)
+      .setInteractive({ useHandCursor: true });
+    this.overlay.add(okBg);
 
-    // 잠금 해제 버튼
-    const unlockBtnColor = canAfford ? COLORS.BUTTON_ACTIVE : 0x636e72;
-    const unlockBg = this.add.rectangle(popX - 55, popY + 45, 100, 36, unlockBtnColor)
-      .setStrokeStyle(1, canAfford ? 0xffffff : 0x636e72);
-    this.overlay.add(unlockBg);
-
-    const unlockText = this.add.text(popX - 55, popY + 45, `Unlock \u25C6${unlockCost}`, {
-      fontSize: '12px',
+    const okText = this.add.text(popX, popY + 45, t('ui.confirm') || 'OK', {
+      fontSize: '13px',
       fontFamily: 'Arial, sans-serif',
-      color: canAfford ? '#ffffff' : '#636e72',
+      color: '#ffffff',
       fontStyle: 'bold',
     }).setOrigin(0.5);
-    this.overlay.add(unlockText);
+    this.overlay.add(okText);
 
-    if (canAfford) {
-      unlockBg.setInteractive({ useHandCursor: true });
-      unlockBg.on('pointerdown', () => {
-        this._unlockTower(type);
-      });
-    }
-
-    // 취소 버튼
-    const cancelBg = this.add.rectangle(popX + 55, popY + 45, 80, 36, COLORS.BACKGROUND)
-      .setStrokeStyle(1, 0x636e72)
-      .setInteractive({ useHandCursor: true });
-    this.overlay.add(cancelBg);
-
-    const cancelText = this.add.text(popX + 55, popY + 45, 'Cancel', {
-      fontSize: '12px',
-      fontFamily: 'Arial, sans-serif',
-      color: '#b2bec3',
-    }).setOrigin(0.5);
-    this.overlay.add(cancelText);
-
-    cancelBg.on('pointerdown', () => {
+    okBg.on('pointerdown', () => {
       this._closeOverlay();
     });
   }
 
   /**
-   * 타워를 잠금 해제한다.
-   * 다이아몬드를 차감하고, unlockedTowers 배열에 추가한 뒤 씬을 재구성한다.
+   * 타워를 잠금 해제한다 (마이그레이션 누락 복구용).
+   * unlockedTowers 배열에 추가한 뒤 씬을 재구성한다.
    * @param {string} type - 잠금 해제할 타워 타입 키
    * @private
    */
   _unlockTower(type) {
-    const unlockCost = TOWER_STATS[type].unlockCost || 0;
-    if ((this.saveData.diamond || 0) < unlockCost) return;
-
-    this.saveData.diamond -= unlockCost;
-
-    // unlockedTowers 배열에 추가 (중복 방지)
     if (!this.saveData.unlockedTowers) this.saveData.unlockedTowers = [];
     if (!this.saveData.unlockedTowers.includes(type)) {
       this.saveData.unlockedTowers.push(type);

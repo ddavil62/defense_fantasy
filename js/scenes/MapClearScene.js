@@ -8,7 +8,7 @@ import {
   GAME_WIDTH, GAME_HEIGHT, COLORS, VISUALS,
   calcStarRating, CAMPAIGN_DIAMOND_REWARDS,
   BTN_PRIMARY, BTN_BACK, BTN_DANGER,
-  SAVE_KEY, migrateSaveData,
+  SAVE_KEY, migrateSaveData, TOWER_UNLOCK_MAP, TOWER_STATS,
 } from '../config.js';
 import { t } from '../i18n.js';
 import { getNextMapId, WORLDS } from '../data/worlds.js';
@@ -109,6 +109,20 @@ export class MapClearScene extends Phaser.Scene {
     saveData.campaignStats.worldsCleared = WORLDS.filter(w =>
       w.mapIds.every(id => saveData.worldProgress[id]?.cleared === true)
     ).length;
+
+    // 타워 해금 체크: 방금 클리어한 맵이 속한 월드가 전부 클리어되었는지 확인
+    this._newlyUnlockedTower = null;
+    const currentWorld = WORLDS.find(w => w.mapIds.includes(mapId));
+    if (currentWorld) {
+      const worldCleared = currentWorld.mapIds.every(
+        id => saveData.worldProgress[id]?.cleared === true
+      );
+      const rewardTower = TOWER_UNLOCK_MAP[currentWorld.id];
+      if (worldCleared && rewardTower && !saveData.unlockedTowers.includes(rewardTower)) {
+        saveData.unlockedTowers.push(rewardTower);
+        this._newlyUnlockedTower = rewardTower;
+      }
+    }
 
     // 세이브 저장 + 레지스트리 갱신
     this._saveToDB(saveData);
@@ -235,6 +249,27 @@ export class MapClearScene extends Phaser.Scene {
         duration: 400,
         delay: 1400,
         ease: 'Power2',
+      });
+    }
+
+    // ── 타워 해금 알림 ──
+    if (this._newlyUnlockedTower) {
+      const towerName = t(`tower.${this._newlyUnlockedTower}.name`);
+      const unlockLabel = this.add.text(centerX, diamondY + 28,
+        `🔓 ${towerName} ${t('ui.towerUnlocked')}`, {
+          fontSize: '16px',
+          fontFamily: 'Arial, sans-serif',
+          color: '#00b894',
+          fontStyle: 'bold',
+        }).setOrigin(0.5).setAlpha(0).setScale(0.5);
+
+      this.tweens.add({
+        targets: unlockLabel,
+        alpha: 1,
+        scale: 1,
+        duration: 500,
+        delay: 1800,
+        ease: 'Back.easeOut',
       });
     }
 

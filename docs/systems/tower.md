@@ -11,11 +11,11 @@
 | 얼음 | 75G | 단일 | damage:8, fireRate:1.5, range:100, slow:0.3/2.0s | - |
 | 번개 | 120G | 체인 연쇄 즉발 | damage:18, fireRate:1.2, range:120, 4체인, decay:0.7, chainRadius:80 | - |
 | 불꽃 | 90G | 단일 도트 | damage:5, fireRate:1.5, range:100, burn:4/3s | - |
-| 바위 | 110G | 단일 | damage:45, fireRate:3.0, range:80 | - |
-| 독안개 | 95G | 즉발 광역 | damage:3, fireRate:2.0, range:120, splashRadius:60, poison:3/4s, armorReduction:20%/4s | - |
-| 바람 | 80G | 단일 | damage:5, fireRate:2.5, range:120, pushback:80 | - |
-| 빛 | 130G | 관통 빔 | damage:20, fireRate:1.8, range:600 | - |
-| 드래곤 | 250G | 범위 폭발 | damage:60, fireRate:2.5, range:160, splashRadius:80 | 50 Diamond |
+| 바위 | 110G | 단일 | damage:45, fireRate:3.0, range:80 | Forest 클리어 |
+| 독안개 | 95G | 즉발 광역 | damage:3, fireRate:2.0, range:120, splashRadius:60, poison:3/4s, armorReduction:20%/4s | Desert 클리어 |
+| 바람 | 80G | 단일 | damage:5, fireRate:2.5, range:120, pushback:80 | Tundra 클리어 |
+| 빛 | 130G | 관통 빔 | damage:20, fireRate:1.8, range:600 | Volcano 클리어 |
+| 드래곤 | 250G | 범위 폭발 | damage:60, fireRate:2.5, range:160, splashRadius:80 | Shadow 클리어 |
 
 ## 공격 타입 (7종)
 
@@ -29,13 +29,25 @@
 
 ## 타워 잠금 시스템
 
-`TOWER_STATS[type]`의 `locked`/`unlockCost` 필드로 범용 관리.
+`TOWER_STATS[type]`의 `locked`/`unlockWorld` 필드와 `TOWER_UNLOCK_MAP` 상수로 월드 클리어 기반 해금을 관리한다.
 
 - `locked: false` (또는 undefined) = 사용 가능
-- `locked: true` = 잠금 상태, Diamond로 해금
-- `unlockCost`: 해금에 필요한 Diamond 수량
-- 현재 드래곤만 `locked: true`, `unlockCost: 50`
+- `locked: true` = 잠금 상태, 해당 월드 클리어로 해금
+- `unlockWorld`: 해금 조건 월드 ID (해당 월드의 6개 맵 전부 클리어 시 해금)
+- 기본 5종 (archer, mage, ice, lightning, flame)은 시작 시 사용 가능
+- 나머지 5종은 월드 클리어로 해금:
+
+| 타워 | 해금 조건 |
+|---|---|
+| rock | Forest 월드 클리어 (6맵) |
+| poison | Desert 월드 클리어 (6맵) |
+| wind | Tundra 월드 클리어 (6맵) |
+| light | Volcano 월드 클리어 (6맵) |
+| dragon | Shadow 월드 클리어 (6맵) |
+
+- `TOWER_UNLOCK_MAP`: 월드 ID -> 타워 타입 매핑 상수 (config.js)
 - 해금 정보는 `saveData.unlockedTowers[]` 배열에 저장
+- MapClearScene에서 월드 클리어 감지 시 자동 해금 + 알림 UI 표시
 
 ## 머지 시스템
 

@@ -4,6 +4,39 @@
 
 ---
 
+## 2026-02-27 -- 타워 해금 확장 (월드 클리어 기반 5종 잠금)
+
+### 배경
+
+기존에는 타워 10종 중 드래곤만 50 Diamond로 해금하고 나머지 9종은 모두 사용 가능했다. 월드 클리어 보상을 강화하기 위해 기본 5종(archer, mage, ice, lightning, flame)만 시작 시 사용 가능하도록 변경하고, 나머지 5종은 각 월드 클리어(6맵 전부 cleared) 시 해금되도록 확장했다.
+
+### 추가
+
+- **`js/config.js`** -- `TOWER_UNLOCK_MAP` 상수 추가 (월드 ID -> 타워 타입 매핑: forest->rock, desert->poison, tundra->wind, volcano->light, shadow->dragon)
+- **`js/config.js`** -- TOWER_STATS의 rock, poison, wind, light, dragon 5종에 `locked: true`, `unlockWorld` 필드 추가 (기존 `unlockCost` 필드 제거)
+- **`js/config.js`** -- 세이브 마이그레이션 v3->v4 추가 (기존 unlockedTowers를 worldProgress 기반으로 재계산)
+- **`js/config.js`** -- `SAVE_DATA_VERSION = 4`
+- **`js/scenes/MapClearScene.js`** -- 월드 클리어 시 `TOWER_UNLOCK_MAP`으로 타워 자동 해금 + 알림 UI 표시
+- **`js/scenes/CollectionScene.js`** -- 잠긴 타워 카드에 해금 조건 월드 이름 표시, 클릭 시 월드 클리어 조건 안내 팝업 (기존 다이아 구매 팝업 대체)
+- **`js/ui/TowerPanel.js`** -- 롱프레스 설명에 잠긴 타워는 비용 대신 `🔒 [월드이름]` 표시
+- **`js/i18n.js`** -- `ui.towerUnlocked`, `ui.clearWorldToUnlock`, `ui.confirm` 키 추가 (한국어/영어)
+
+### 변경
+
+- **`js/config.js`** -- 기본 5종(archer, mage, ice, lightning, flame)은 `locked: false, unlockCost: 0` 유지, 잠긴 5종에서 `unlockCost` 필드 제거
+
+### 해금 매핑
+
+| 타워 | 해금 조건 |
+|---|---|
+| rock | Forest 월드 클리어 (6맵) |
+| poison | Desert 월드 클리어 (6맵) |
+| wind | Tundra 월드 클리어 (6맵) |
+| light | Volcano 월드 클리어 (6맵) |
+| dragon | Shadow 월드 클리어 (6맵) |
+
+---
+
 ## 2026-02-27 -- Endless 모드 해금 버그 수정
 
 ### 수정

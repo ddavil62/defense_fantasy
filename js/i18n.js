@@ -427,6 +427,9 @@ const STRINGS = {
     'ui.start': 'START',
     'ui.worldComplete': '월드 클리어!',
     'ui.locked': '잠금',
+    'ui.towerUnlocked': '타워 해금!',
+    'ui.clearWorldToUnlock': '{world} 클리어 시 해금',
+    'ui.confirm': '확인',
   },
   en: {
     'tower.archer.name': 'Archer',
@@ -824,5 +827,8 @@ const STRINGS = {
     'ui.start': 'START',
     'ui.worldComplete': 'World Clear!',
     'ui.locked': 'Locked',
+    'ui.towerUnlocked': 'Tower Unlocked!',
+    'ui.clearWorldToUnlock': 'Clear {world} to unlock',
+    'ui.confirm': 'OK',
   },
 };

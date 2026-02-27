@@ -4,6 +4,8 @@
  * 이 파일 외부에 매직 넘버가 존재하면 안 된다.
  */
 
+import { WORLDS } from './data/worlds.js';
+
 // ── 레이아웃 ────────────────────────────────────────────────────
 /** @const {number} 게임 논리 가로 크기 (px) */
 export const GAME_WIDTH = 360;
@@ -245,8 +247,8 @@ export const HP_BLINK_INTERVAL = 500;
 /**
  * 타워 유형별 기본 스탯.
  * - levels: { 1: Lv.1 스탯 }
- * - locked: true = 다이아몬드 해금 필요, false/undefined = 사용 가능
- * - unlockCost: 해금에 필요한 다이아몬드 비용 (locked=true일 때만)
+ * - locked: true = 해금 필요, false/undefined = 사용 가능
+ * - unlockWorld: 해금 조건 월드 ID (locked=true일 때, 해당 월드 클리어로 해금)
  * - cost: 설치 비용 (Lv.1)
  * - sellPrice: floor(총 투자금 * 0.6)
  */
@@ -352,8 +354,8 @@ export const TOWER_STATS = {
     name: 'Rock',
     displayName: 'Rock',
     color: 0x636e72,
-    locked: false,
-    unlockCost: 0,
+    locked: true,
+    unlockWorld: 'forest',
     levels: {
       1: {
         cost: 110,
@@ -370,8 +372,8 @@ export const TOWER_STATS = {
     name: 'Poison',
     displayName: 'Poison',
     color: 0xa8e063,
-    locked: false,
-    unlockCost: 0,
+    locked: true,
+    unlockWorld: 'desert',
     levels: {
       1: {
         cost: 95,
@@ -392,8 +394,8 @@ export const TOWER_STATS = {
     name: 'Wind',
     displayName: 'Wind',
     color: 0x81ecec,
-    locked: false,
-    unlockCost: 0,
+    locked: true,
+    unlockWorld: 'tundra',
     levels: {
       1: {
         cost: 80,
@@ -411,8 +413,8 @@ export const TOWER_STATS = {
     name: 'Light',
     displayName: 'Light',
     color: 0xffeaa7,
-    locked: false,
-    unlockCost: 0,
+    locked: true,
+    unlockWorld: 'volcano',
     levels: {
       1: {
         cost: 130,
@@ -429,7 +431,7 @@ export const TOWER_STATS = {
     displayName: 'Dragon',
     color: 0xd63031,
     locked: true,
-    unlockCost: 50,
+    unlockWorld: 'shadow',
     levels: {
       1: {
         cost: 250,
@@ -443,6 +445,20 @@ export const TOWER_STATS = {
       },
     },
   },
+};
+
+// ── 타워 해금 매핑 ──────────────────────────────────────────────
+/**
+ * 월드 ID → 해금 타워 타입 매핑.
+ * 해당 월드의 모든 맵 클리어 시 대응하는 타워가 해금된다.
+ * @type {Object<string, string>}
+ */
+export const TOWER_UNLOCK_MAP = {
+  forest: 'rock',
+  desert: 'poison',
+  tundra: 'wind',
+  volcano: 'light',
+  shadow: 'dragon',
 };
 
 // ── 합성 시스템 ─────────────────────────────────────────────────
@@ -1727,7 +1743,7 @@ export function calcStarRating(currentHP, maxHP) {
 /** @const {number[]} 별점별 캠페인 다이아몬드 보상 (인덱스 = 별점) */
 export const CAMPAIGN_DIAMOND_REWARDS = [0, 3, 5, 8];
 
-// (Dragon unlock cost is now in TOWER_STATS.dragon.unlockCost)
+// (타워 해금은 월드 클리어 기반, TOWER_UNLOCK_MAP 참조)
 
 // ── Meta Upgrade Tree (10 towers × 3 tiers × A/B) ─────────────
 /**
@@ -2115,7 +2131,7 @@ function createDefaultStats() {
 }
 
 /** @const {number} 현재 세이브 데이터 스키마 버전 */
-export const SAVE_DATA_VERSION = 3;
+export const SAVE_DATA_VERSION = 4;
 
 /**
  * 세이브 데이터를 최신 스키마로 마이그레이션한다.
@@ -2198,6 +2214,19 @@ export function migrateSaveData(saveData) {
     saveData.endlessUnlocked = false;
     saveData.campaignStats = { totalStars: 0, mapsCleared: 0, worldsCleared: 0 };
     saveData.saveDataVersion = 3;
+  }
+
+  // ── v3 → v4 마이그레이션: 타워 해금을 월드 클리어 기반으로 재계산 ──
+  if (saveData.saveDataVersion < 4) {
+    const newUnlocked = [];
+    for (const [worldId, towerType] of Object.entries(TOWER_UNLOCK_MAP)) {
+      const world = WORLDS.find(w => w.id === worldId);
+      if (world && world.mapIds.every(id => saveData.worldProgress[id]?.cleared)) {
+        newUnlocked.push(towerType);
+      }
+    }
+    saveData.unlockedTowers = newUnlocked;
+    saveData.saveDataVersion = 4;
   }
 
   // ── Ensure all v2 fields exist ──
