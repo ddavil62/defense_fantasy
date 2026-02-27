@@ -529,7 +529,7 @@ export class TowerPanel {
     const color = towerDef.color;
 
     const popupW = 320;
-    const popupH = 110;
+    const popupH = 130;
     const popupX = GAME_WIDTH / 2;
     const popupY = PANEL_Y - popupH / 2 - 8;
     const colorCSS = '#' + color.toString(16).padStart(6, '0');
@@ -552,12 +552,20 @@ export class TowerPanel {
     this._descContainer.add(nameText);
 
     // 타워 플레이버 텍스트
-    const flavorText = this.scene.add.text(popupX, popupY - 14, t(`tower.${type}.flavor`), {
+    const flavorText = this.scene.add.text(popupX, popupY - 18, t(`tower.${type}.flavor`), {
       fontSize: '11px',
       fontFamily: 'Outfit, Arial, sans-serif',
       color: '#a0a0a0',
     }).setOrigin(0.5);
     this._descContainer.add(flavorText);
+
+    // 타워 특징 설명 텍스트
+    const descText2 = this.scene.add.text(popupX, popupY - 2, t(`tower.${type}.desc`), {
+      fontSize: '11px',
+      fontFamily: 'Outfit, Arial, sans-serif',
+      color: '#d0d0d0',
+    }).setOrigin(0.5);
+    this._descContainer.add(descText2);
 
     // 스탯 한 줄 요약 (특수 효과 포함)
     const special = stats.slowAmount ? `Slow ${stats.slowAmount * 100}%`
@@ -568,7 +576,7 @@ export class TowerPanel {
       : stats.attackType === 'piercing_beam' ? 'Piercing'
       : '-';
     const statLine = `${t('ui.damage')} ${stats.damage}  |  ${t('ui.range')} ${stats.range}  |  ${t('ui.speed')} ${stats.fireRate}s  |  ${t('ui.special')} ${special}`;
-    const statText = this.scene.add.text(popupX, popupY + 10, statLine, {
+    const statText = this.scene.add.text(popupX, popupY + 20, statLine, {
       fontSize: '11px',
       fontFamily: 'Outfit, Arial, sans-serif',
       color: '#e0e0e0',
@@ -580,7 +588,7 @@ export class TowerPanel {
     const unlockWorld = TOWER_STATS[type].unlockWorld;
     const worldName = unlockWorld ? t(`world.${unlockWorld}.name`) : '';
     const costStr = isLocked ? `\uD83D\uDD12 ${worldName}` : `${stats.cost}G`;
-    const costText = this.scene.add.text(popupX, popupY + 32, costStr, {
+    const costText = this.scene.add.text(popupX, popupY + 42, costStr, {
       fontSize: '13px',
       fontFamily: 'Outfit, Arial, sans-serif',
       color: '#ffd700',

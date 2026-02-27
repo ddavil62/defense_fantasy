@@ -155,7 +155,7 @@ export class TowerInfoOverlay {
     // 패널 높이 계산
     const hasUsedIn = usedInList.length > 0;
     const usedInViewH = hasUsedIn ? 100 : 0;
-    const baseH = entry.tier >= 2 ? 300 : 200;
+    const baseH = entry.tier >= 2 ? 316 : 240;
     // game 모드에서 원래 타워(depth 0)를 보고 있을 때 버튼 영역 추가
     const isSourceView = this.mode === 'game' && this._history.length === 0;
     const actionH = isSourceView ? 90 : 0;
@@ -257,9 +257,29 @@ export class TowerInfoOverlay {
     }).setOrigin(0, 0.5);
     this._container.add(tierBadge);
 
+    // 플레이버 텍스트 (분위기)
+    const flavorKey = `tower.${entry.id}.flavor`;
+    const flavorStr = t(flavorKey);
+    if (flavorStr !== flavorKey) {
+      const flavorText = this.scene.add.text(panelX, panelTop + 84, flavorStr, {
+        fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#a0a0a0', fontStyle: 'italic',
+      }).setOrigin(0.5);
+      this._container.add(flavorText);
+    }
+
+    // 특징 설명 텍스트
+    const descKey = `tower.${entry.id}.desc`;
+    const descStr = t(descKey);
+    if (descStr !== descKey) {
+      const descText = this.scene.add.text(panelX, panelTop + 100, descStr, {
+        fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#d0d0d0',
+      }).setOrigin(0.5);
+      this._container.add(descText);
+    }
+
     // 공격 유형 배지
     const atkColor = ATTACK_TYPE_COLORS_CSS[entry.attackType] || '#b2bec3';
-    const atkText = this.scene.add.text(panelX, panelTop + 90,
+    const atkText = this.scene.add.text(panelX, panelTop + 130,
       this._getAttackTypeBadge(entry.attackType), {
         fontSize: '11px', fontFamily: 'Arial, sans-serif', color: atkColor,
       }).setOrigin(0.5);
@@ -279,7 +299,7 @@ export class TowerInfoOverlay {
       }
       const rangeInTiles = (stats.range / CELL_SIZE).toFixed(1);
       const statsStr = `DMG: ${stats.damage}  |  SPD: ${stats.fireRate}s  |  RNG: ${rangeInTiles}`;
-      const statsText = this.scene.add.text(panelX, panelTop + 110, statsStr, {
+      const statsText = this.scene.add.text(panelX, panelTop + 150, statsStr, {
         fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#b2bec3',
       }).setOrigin(0.5);
       this._container.add(statsText);
@@ -289,7 +309,7 @@ export class TowerInfoOverlay {
     if (this.mode === 'game' && this._history.length === 0 && this._sourceTower) {
       const info = this._sourceTower.getInfo();
       if (info.enhanceLevel > 0) {
-        const enhText = this.scene.add.text(panelX, panelTop + 126,
+        const enhText = this.scene.add.text(panelX, panelTop + 166,
           `+${info.enhanceLevel}`, {
             fontSize: '10px', fontFamily: 'Arial, sans-serif', color: '#ffd700',
           }).setOrigin(0.5);
@@ -299,10 +319,10 @@ export class TowerInfoOverlay {
 
     // 상위 조합 섹션
     if (usedInList.length > 0) {
-      this._renderUsedInSection(entry, usedInList, panelX, panelTop + 130);
+      this._renderUsedInSection(entry, usedInList, panelX, panelTop + 170);
     }
 
-    return panelTop + 200;
+    return panelTop + 240;
   }
 
   // ── T2+ 합성 트리 패널 ──────────────────────────────────────
@@ -339,14 +359,24 @@ export class TowerInfoOverlay {
     }).setOrigin(0.5);
     this._container.add(resultName);
 
-    const resultTier = this.scene.add.text(panelX, panelTop + 144, `T${entry.tier}`, {
+    // 결과 타워 특징 설명
+    const treeDescKey = `tower.${entry.id}.desc`;
+    const treeDescStr = t(treeDescKey);
+    if (treeDescStr !== treeDescKey) {
+      const treeDescText = this.scene.add.text(panelX, panelTop + 144, treeDescStr, {
+        fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#a0a0a0',
+      }).setOrigin(0.5);
+      this._container.add(treeDescText);
+    }
+
+    const resultTier = this.scene.add.text(panelX, panelTop + 160, `T${entry.tier}`, {
       fontSize: '10px', fontFamily: 'Arial, sans-serif', color: '#ffd700',
     }).setOrigin(0.5);
     this._container.add(resultTier);
 
     // ── Y자 연결선 ──
-    const forkY = panelTop + 175;
-    const matY = panelTop + 210;
+    const forkY = panelTop + 191;
+    const matY = panelTop + 226;
     const matR = 20;
     const matOffsetX = 55;
     const matAX = panelX - matOffsetX;
@@ -354,7 +384,7 @@ export class TowerInfoOverlay {
 
     const lines = this.scene.add.graphics();
     this._renderConnectorLines(lines,
-      { x: panelX, y: panelTop + 155 }, forkY,
+      { x: panelX, y: panelTop + 171 }, forkY,
       { x: matAX, y: matY }, { x: matBX, y: matY }
     );
     this._container.add(lines);
@@ -364,7 +394,7 @@ export class TowerInfoOverlay {
     if (matBEntry) this._renderMaterialNode(matBEntry, matBX, matY, matR, panelTop, entry);
 
     // ── 트리 아래 스탯 표시 ──
-    let nextY = panelTop + 270;
+    let nextY = panelTop + 286;
     const mergedStats = MERGED_TOWER_STATS[entry.id];
     if (mergedStats) {
       const divider = this.scene.add.graphics();
@@ -409,7 +439,7 @@ export class TowerInfoOverlay {
       this._renderUsedInSection(entry, usedInList, panelX, nextY);
     }
 
-    return panelTop + 300;
+    return panelTop + 316;
   }
 
   /**
@@ -437,12 +467,12 @@ export class TowerInfoOverlay {
     const displayName = matEntry.displayName.length > 6
       ? matEntry.displayName.substring(0, 5) + '..'
       : matEntry.displayName;
-    const nameText = this.scene.add.text(cx, panelTop + 238, displayName, {
+    const nameText = this.scene.add.text(cx, panelTop + 254, displayName, {
       fontSize: '10px', fontFamily: 'Arial, sans-serif', color: '#ffffff',
     }).setOrigin(0.5);
     this._container.add(nameText);
 
-    const tierBadge = this.scene.add.text(cx, panelTop + 252, `T${matEntry.tier}`, {
+    const tierBadge = this.scene.add.text(cx, panelTop + 268, `T${matEntry.tier}`, {
       fontSize: '9px', fontFamily: 'Arial, sans-serif', color: '#ffd700',
     }).setOrigin(0.5);
     this._container.add(tierBadge);

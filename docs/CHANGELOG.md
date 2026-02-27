@@ -4,6 +4,25 @@
 
 ---
 
+## 2026-02-27 -- 타워 특징 설명(desc) 시스템 추가
+
+### 배경
+
+T1 타워 10종에는 flavor(분위기 텍스트)만 있고 공격 타입/특성 설명이 없었다. T2~T5는 desc 키가 i18n에 정의되어 있지만 어떤 UI에서도 사용하지 않았다. 타워의 기능적 특징을 한눈에 파악할 수 있도록 desc 텍스트를 추가하고, flavor + desc를 주요 UI 3곳에 모두 표시한다.
+
+### 추가
+
+- **`js/i18n.js`** -- T1 타워 10종에 `tower.*.desc` 키 추가 (한국어/영어). 공격 타입 + 핵심 특성을 1줄로 요약.
+- **`js/ui/TowerInfoOverlay.js`** -- `_renderT1Panel()`에 flavor(이탤릭, #a0a0a0) + desc(#d0d0d0) 2줄 추가, 하단 요소 Y오프셋 +40px 조정. `_renderTreePanel()`에 결과 노드 아래 desc 1줄 추가, 하단 Y오프셋 +16px 조정.
+- **`js/ui/TowerPanel.js`** -- `_showDescription()` 롱프레스 팝업에 desc 1줄 추가, 팝업 높이 110→130px, 스탯/비용 라인 Y오프셋 조정.
+- **`js/scenes/CollectionScene.js`** -- `_showTowerDetailView()` 상세뷰에 flavor + desc 2줄 추가, 패널 높이 520→556px, 구분선/업그레이드 섹션 Y오프셋 +36px 조정.
+
+### 문서
+
+- `docs/systems/tower.md` -- 타워 텍스트 시스템 섹션 추가 (키 패턴, 표시 위치)
+
+---
+
 ## 2026-02-27 -- 타워 해금 확장 (월드 클리어 기반 5종 잠금)
 
 ### 배경

@@ -685,7 +685,7 @@ export class CollectionScene extends Phaser.Scene {
 
     // 오버레이 패널
     const panelW = 320;
-    const panelH = 520;
+    const panelH = 556;
     const panelX = GAME_WIDTH / 2;
     const panelY = GAME_HEIGHT / 2;
     const panelTop = panelY - panelH / 2;
@@ -738,13 +738,38 @@ export class CollectionScene extends Phaser.Scene {
     }).setOrigin(0.5);
     this.overlay.add(branchText);
 
+    // 플레이버 텍스트 (분위기)
+    const flavorKey = `tower.${type}.flavor`;
+    const flavorStr = t(flavorKey);
+    if (flavorStr !== flavorKey) {
+      const flavorText = this.add.text(panelX, panelTop + 80, flavorStr, {
+        fontSize: '11px',
+        fontFamily: 'Arial, sans-serif',
+        color: '#a0a0a0',
+        fontStyle: 'italic',
+      }).setOrigin(0.5);
+      this.overlay.add(flavorText);
+    }
+
+    // 특징 설명 텍스트
+    const descKey = `tower.${type}.desc`;
+    const descStr = t(descKey);
+    if (descStr !== descKey) {
+      const descText = this.add.text(panelX, panelTop + 96, descStr, {
+        fontSize: '11px',
+        fontFamily: 'Arial, sans-serif',
+        color: '#d0d0d0',
+      }).setOrigin(0.5);
+      this.overlay.add(descText);
+    }
+
     // 구분선
-    const divider = this.add.rectangle(panelX, panelTop + 80, panelW - 40, 1, 0x636e72)
+    const divider = this.add.rectangle(panelX, panelTop + 116, panelW - 40, 1, 0x636e72)
       .setAlpha(0.3);
     this.overlay.add(divider);
 
     // ── 티어별 A/B 옵션 섹션 (Tier 1~3) ──
-    const tierStartY = panelTop + 95;
+    const tierStartY = panelTop + 131;
     const tierHeight = 85;
 
     for (let tier = 1; tier <= 3; tier++) {
