@@ -162,8 +162,17 @@ export class SoundManager {
     /** @type {number} 활성 sfx_kill 수 (동시 재생 제한용) */
     this._killCount = 0;
 
+    /** @type {string|null} 백그라운드 전환 직전 재생 중이던 BGM ID (복귀 시 재개용) */
+    this._bgmIdBeforeBackground = null;
+
+    /** @type {Function|null} visibilitychange 이벤트 핸들러 (해제용 참조 보관) */
+    this._visibilityHandler = null;
+
     // 저장된 설정 로드
     this._loadSettings();
+
+    // 백그라운드/포그라운드 전환 이벤트 리스너 등록
+    this._initVisibilityHandler();
   }
 
   // ── 오디오 컨텍스트 ────────────────────────────────────────────
@@ -221,6 +230,34 @@ export class SoundManager {
     if (this._bgmGain) {
       this._bgmGain.gain.setValueAtTime(this.bgmVolume, this._ctx.currentTime);
     }
+  }
+
+  // ── 백그라운드 전환 처리 ─────────────────────────────────────────
+
+  /**
+   * document.visibilitychange 이벤트 리스너를 등록한다.
+   * 앱이 백그라운드로 전환되면 BGM을 일시정지하고,
+   * 포그라운드로 복귀하면 이전 BGM을 재개한다.
+   * @private
+   */
+  _initVisibilityHandler() {
+    this._visibilityHandler = () => {
+      if (document.hidden) {
+        // 백그라운드 전환: 스케줄러가 활성 상태일 때만 BGM ID를 저장 후 일시정지
+        // _bgmIntervalId가 null이면 이미 정지 상태(인게임 일시정지 등)이므로 저장하지 않음
+        this._bgmIdBeforeBackground = this._bgmIntervalId !== null
+          ? this._currentBgmId
+          : null;
+        this.pauseBgm();
+      } else {
+        // 포그라운드 복귀: 이전 BGM이 있으면 재개
+        if (this._bgmIdBeforeBackground) {
+          this.resumeBgm(this._bgmIdBeforeBackground);
+        }
+        this._bgmIdBeforeBackground = null;
+      }
+    };
+    document.addEventListener('visibilitychange', this._visibilityHandler);
   }
 
   // ── SFX ─────────────────────────────────────────────────────────
@@ -610,6 +647,41 @@ export class SoundManager {
   }
 
   /**
+   * BGM 스케줄러를 일시정지한다. 현재 재생 중인 노드는 유지하고
+   * setInterval만 중단한다. AudioContext도 suspend 처리한다.
+   * SFX도 동일한 AudioContext를 공유하므로 함께 일시정지된다.
+   */
+  pauseBgm() {
+    if (this._bgmIntervalId !== null) {
+      clearInterval(this._bgmIntervalId);
+      this._bgmIntervalId = null;
+    }
+    if (this._ctx && this._ctx.state === 'running') {
+      this._ctx.suspend();
+    }
+  }
+
+  /**
+   * 이전에 일시정지된 BGM을 재개한다.
+   * AudioContext를 resume한 뒤, 중단된 BGM ID로 playBgm()을 다시 시작한다.
+   * 비동기 콜백 내에서 다시 백그라운드 상태로 전환되었는지 확인하여
+   * 레이스 컨디션을 방지한다.
+   * @param {string} bgmId - 재개할 BGM 식별자
+   */
+  resumeBgm(bgmId) {
+    if (!bgmId) return;
+    if (this._ctx && this._ctx.state === 'suspended') {
+      this._ctx.resume().then(() => {
+        // 가드: ctx.resume() 비동기 완료 전에 다시 백그라운드로 전환된 경우 재생하지 않음
+        if (document.hidden) return;
+        this.playBgm(bgmId);
+      });
+    } else {
+      this.playBgm(bgmId);
+    }
+  }
+
+  /**
    * 예정된 BGM 노트를 스케줄링한다 (룩어헤드 스케줄링 패턴).
    * setInterval에 의해 100ms마다 호출된다.
    * @private
@@ -870,6 +942,13 @@ export class SoundManager {
    */
   destroy() {
     this.stopBgm(false);
+
+    // visibilitychange 이벤트 리스너 해제
+    if (this._visibilityHandler) {
+      document.removeEventListener('visibilitychange', this._visibilityHandler);
+      this._visibilityHandler = null;
+    }
+
     if (this._ctx) {
       try {
         this._ctx.close();

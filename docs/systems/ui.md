@@ -424,9 +424,11 @@ T1 카드 오버레이에서 DMG/SPD/RNG 표시 시, `saveData.towerUpgrades`에
 
 - HUD 우측 상단 Pause 버튼 (||)
 - Pause 시 게임 루프 완전 중단 + 반투명 오버레이
+- Pause 시 BGM 정지: `_pauseGame()`에서 현재 BGM ID를 `_bgmIdBeforePause`에 저장 후 `stopBgm(false)` 호출
+- Resume 시 BGM 복원: `_resumeGame()`에서 `_bgmIdBeforePause`로 `playBgm()` 호출
 - 오버레이 내용 (패널: 220x260, 중심 x=180, y=310):
   - "PAUSED" 텍스트 (y=220)
-  - Resume 버튼 (y=252, 색상 0x00b894 초록, 이전 게임 속도 복원 후 재개)
+  - Resume 버튼 (y=252, 색상 0x00b894 초록, 이전 게임 속도 + BGM 복원 후 재개)
   - 합성도감 버튼 (y=288, 색상 0x6c5ce7 보라, MergeCodexScene 전환)
   - Main Menu 버튼 (y=324, 색상 0xe94560 빨강, MenuScene으로 즉시 이동)
   - SFX/BGM 볼륨 조절 슬라이더 (baseY=360)

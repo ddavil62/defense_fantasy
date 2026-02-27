@@ -101,6 +101,9 @@ export class GameScene extends Phaser.Scene {
     /** @type {number} 일시정지 직전 저장된 게임 속도 (Resume 시 복원) */
     this.gameSpeed_saved = SPEED_NORMAL;
 
+    /** @type {string|null} 일시정지 직전 재생 중이던 BGM ID (Resume 시 복원) */
+    this._bgmIdBeforePause = null;
+
     /** @type {Phaser.GameObjects.Container|null} 일시정지 오버레이 컨테이너 */
     this.pauseOverlay = null;
 
@@ -1652,23 +1655,38 @@ export class GameScene extends Phaser.Scene {
   /**
    * 게임을 일시정지하고 오버레이를 표시한다.
    * 현재 게임 속도를 저장하여 Resume 시 복원한다.
+   * BGM도 함께 정지하여 백그라운드 전환 시 불일치를 방지한다.
    * @private
    */
   _pauseGame() {
     this.isPaused = true;
     this.gameSpeed_saved = this.gameSpeed;
+
+    // BGM 정지: 일시정지 전 BGM ID를 저장 후 stopBgm 호출
+    if (this.soundManager) {
+      this._bgmIdBeforePause = this.soundManager._currentBgmId;
+      this.soundManager.stopBgm(false);
+    }
+
     this._showPauseOverlay();
   }
 
   /**
    * 게임을 재개하고 오버레이를 숨긴다.
-   * 일시정지 전 게임 속도를 복원한다.
+   * 일시정지 전 게임 속도와 BGM을 복원한다.
    * @private
    */
   _resumeGame() {
     this.isPaused = false;
     this.gameSpeed = this.gameSpeed_saved;
     this._hidePauseOverlay();
+
+    // 일시정지 전 재생 중이던 BGM 복원
+    if (this.soundManager && this._bgmIdBeforePause) {
+      this.soundManager.playBgm(this._bgmIdBeforePause);
+      this._bgmIdBeforePause = null;
+    }
+
     // 일시정지 중 변경되었을 수 있는 음소거 버튼 갱신
     this._updateMuteButton();
   }

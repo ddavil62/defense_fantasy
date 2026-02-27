@@ -4,6 +4,35 @@
 
 ---
 
+## 2026-02-27 -- 앱 백그라운드 전환 시 BGM 자동 일시정지
+
+### 배경
+
+Android Capacitor 앱에서 홈버튼으로 백그라운드 전환 시 BGM이 계속 재생되어 배터리 소모 및 사용자 불편을 유발했다. `document.visibilitychange` 이벤트를 활용하여 백그라운드 전환 시 BGM을 자동 일시정지하고 복귀 시 재개하도록 처리한다.
+
+### 추가
+
+- **`js/managers/SoundManager.js`**
+  - `_bgmIdBeforeBackground` 필드: 백그라운드 전환 직전 재생 중이던 BGM ID 저장
+  - `_visibilityHandler` 필드: visibilitychange 이벤트 핸들러 참조 (해제용)
+  - `_initVisibilityHandler()` 메서드: constructor에서 호출, `document.visibilitychange` 이벤트 등록. hidden 시 `_bgmIntervalId !== null`(스케줄러 활성) 조건으로 BGM ID 저장 후 `pauseBgm()` 호출, 복귀 시 `resumeBgm()` 호출
+  - `pauseBgm()` 메서드: BGM 스케줄러(setInterval) 중단 + `AudioContext.suspend()`. `_currentBgmId`는 유지 (`stopBgm()`과 다른 동작)
+  - `resumeBgm(bgmId)` 메서드: `AudioContext.resume()` 후 `playBgm(bgmId)` 호출. `.then()` 콜백에 `document.hidden` 가드로 비동기 레이스 컨디션 방지
+
+### 변경
+
+- **`js/managers/SoundManager.js`** -- `destroy()`에 `document.removeEventListener('visibilitychange', ...)` 추가
+- **`js/scenes/GameScene.js`** -- `_pauseGame()`에서 `soundManager._currentBgmId`를 `_bgmIdBeforePause`에 저장 후 `stopBgm(false)` 호출. `_resumeGame()`에서 저장된 BGM ID로 `playBgm()` 호출하여 복원. 인게임 일시정지 중 백그라운드 전환 시 BGM 재시작 방지 (QA R1에서 발견)
+
+### 참고
+
+- 스펙: `.claude/specs/2026-02-27-bgm-pause-on-background.md`
+- QA: `.claude/specs/2026-02-27-bgm-pause-on-background-qa.md`
+- 제약: `playBgm()`은 항상 처음 노트부터 시작 (재생 위치 복원 불가, SoundManager 아키텍처 한계)
+- `pauseBgm()`은 `AudioContext.suspend()`를 호출하므로 SFX도 함께 일시정지됨 (백그라운드 상태에서 예상되는 동작)
+
+---
+
 ## 2026-02-27 -- 타워 이미지 APK 빌드 포함 수정
 
 ### 배경
