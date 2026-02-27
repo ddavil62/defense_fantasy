@@ -67,6 +67,17 @@ export class Tower {
     this.graphics = scene.add.graphics();
     this.graphics.setDepth(10);
 
+    // T1 기본 타워 스프라이트 (텍스처가 존재하면 도형 대신 이미지 사용)
+    const textureKey = `tower_${type}`;
+    if (scene.textures.exists(textureKey)) {
+      /** @type {Phaser.GameObjects.Sprite|null} T1 타워 스프라이트 (합성 시 제거) */
+      this.sprite = scene.add.sprite(this.x, this.y, textureKey);
+      this.sprite.setDisplaySize(64, 64);
+      this.sprite.setDepth(10);
+    } else {
+      this.sprite = null;
+    }
+
     /** @type {Phaser.GameObjects.Graphics|null} 사거리 원 그래픽 (선택 시 표시) */
     this.rangeGraphics = null;
 
@@ -104,41 +115,44 @@ export class Tower {
    */
   draw() {
     this.graphics.clear();
-    const color = this._getColor();
 
-    const sizeScale = 1.0;
+    // 스프라이트가 있으면 도형 그리기를 건너뛴다 (T1 기본 타워)
+    if (!this.sprite) {
+      const color = this._getColor();
+      const sizeScale = 1.0;
 
-    switch (this.type) {
-      case 'archer':
-        this._drawArcher(color, sizeScale);
-        break;
-      case 'mage':
-        this._drawMage(color, sizeScale);
-        break;
-      case 'ice':
-        this._drawIce(color, sizeScale);
-        break;
-      case 'lightning':
-        this._drawLightning(color, sizeScale);
-        break;
-      case 'flame':
-        this._drawFlame(color, sizeScale);
-        break;
-      case 'rock':
-        this._drawRock(color, sizeScale);
-        break;
-      case 'poison':
-        this._drawPoison(color, sizeScale);
-        break;
-      case 'wind':
-        this._drawWind(color, sizeScale);
-        break;
-      case 'light':
-        this._drawLight(color, sizeScale);
-        break;
-      case 'dragon':
-        this._drawDragon(color, sizeScale);
-        break;
+      switch (this.type) {
+        case 'archer':
+          this._drawArcher(color, sizeScale);
+          break;
+        case 'mage':
+          this._drawMage(color, sizeScale);
+          break;
+        case 'ice':
+          this._drawIce(color, sizeScale);
+          break;
+        case 'lightning':
+          this._drawLightning(color, sizeScale);
+          break;
+        case 'flame':
+          this._drawFlame(color, sizeScale);
+          break;
+        case 'rock':
+          this._drawRock(color, sizeScale);
+          break;
+        case 'poison':
+          this._drawPoison(color, sizeScale);
+          break;
+        case 'wind':
+          this._drawWind(color, sizeScale);
+          break;
+        case 'light':
+          this._drawLight(color, sizeScale);
+          break;
+        case 'dragon':
+          this._drawDragon(color, sizeScale);
+          break;
+      }
     }
 
     // 티어 2 이상이면 등급별 테두리 표시
@@ -584,6 +598,12 @@ export class Tower {
     this.mergeId = mergeData.id;
     this.tier = mergeData.tier;
 
+    // 합성 시 T1 스프라이트 제거 → Graphics 폴백
+    if (this.sprite) {
+      this.sprite.destroy();
+      this.sprite = null;
+    }
+
     // MERGED_TOWER_STATS에서 합성 타워 스탯 로드
     const mergedStats = MERGED_TOWER_STATS[mergeData.id];
     if (mergedStats) {
@@ -668,6 +688,10 @@ export class Tower {
    */
   destroy() {
     this.hideRangeCircle();
+    if (this.sprite) {
+      this.sprite.destroy();
+      this.sprite = null;
+    }
     if (this.graphics) {
       this.graphics.destroy();
       this.graphics = null;

@@ -18,10 +18,18 @@ export class BootScene extends Phaser.Scene {
 
   /**
    * 에셋을 사전 로드한다.
-   * 현재 프로토타입 단계에서는 도형(shape)만 사용하므로 로드할 외부 에셋이 없다.
+   * T1 기본 타워 10종의 스프라이트 이미지를 로드한다.
    */
   preload() {
-    // 프로토타입 단계에서는 외부 에셋 없음
+    // T1 기본 타워 스프라이트 (500x500 PNG, 투명 배경)
+    const towerTypes = [
+      'archer', 'mage', 'ice', 'lightning', 'flame',
+      'rock', 'poison', 'wind', 'light', 'dragon',
+    ];
+    for (const type of towerTypes) {
+      const name = type.charAt(0).toUpperCase() + type.slice(1);
+      this.load.image(`tower_${type}`, `assets/tower/${name}.png`);
+    }
   }
 
   /**
