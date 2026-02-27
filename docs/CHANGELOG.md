@@ -4,6 +4,22 @@
 
 ---
 
+## 2026-02-27 -- Endless 모드 해금 버그 수정
+
+### 수정
+
+- **`js/config.js`** -- v2→v3 세이브 마이그레이션에서 `bestRound >= 20`이면 `endlessUnlocked = true`로 설정하던 레거시 조건 제거
+  - 변경 전: `saveData.endlessUnlocked = (saveData.bestRound || 0) >= 20;`
+  - 변경 후: `saveData.endlessUnlocked = false;`
+  - 캠페인 30개 맵 미클리어 레거시 유저가 Endless 모드에 진입 가능했던 버그 수정
+  - 실제 해금은 `MapClearScene.js`에서 30개 맵 전체 cleared 시에만 발생
+
+### 문서
+
+- **`docs/PROJECT.md`** -- 엔드리스 해금 조건에서 레거시 유저 분기 설명 제거, 세이브 마이그레이션 테이블 갱신
+
+---
+
 ## 2026-02-27 -- 타워 정보 오버레이 통합 (TowerInfoOverlay)
 
 ### 배경

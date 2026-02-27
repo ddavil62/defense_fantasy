@@ -175,8 +175,7 @@ BootScene -> MenuScene
 - shadow: campaignStats.totalStars >= 60
 
 #### 엔드리스 해금
-- 신규 유저: 30개 맵 전부 cleared === true -> endlessUnlocked = true
-- 레거시 유저(v2->v3 마이그레이션): bestRound >= 20 -> endlessUnlocked = true
+- 30개 맵 전부 cleared === true -> endlessUnlocked = true
 
 ## 데이터 구조
 
@@ -246,7 +245,7 @@ BootScene -> MenuScene
 | 경로 | 처리 |
 |---|---|
 | v1 -> v2 | dragonUnlocked -> unlockedTowers, discoveredMerges 추가, saveDataVersion=2 |
-| v2 -> v3 | worldProgress={}, endlessUnlocked=(bestRound>=20), campaignStats 기본값, saveDataVersion=3 |
+| v2 -> v3 | worldProgress={}, endlessUnlocked=false, campaignStats 기본값, saveDataVersion=3 |
 | v1 -> v2 -> v3 | 순차 실행 (v1->v2 블록에서 saveDataVersion=2로 고정하여 v2->v3 블록 진입 보장) |
 
 ## 실행 방법

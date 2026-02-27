@@ -2195,7 +2195,7 @@ export function migrateSaveData(saveData) {
   // ── v2 → v3 마이그레이션 ──
   if (saveData.saveDataVersion < 3) {
     saveData.worldProgress = {};
-    saveData.endlessUnlocked = (saveData.bestRound || 0) >= 20;
+    saveData.endlessUnlocked = false;
     saveData.campaignStats = { totalStars: 0, mapsCleared: 0, worldsCleared: 0 };
     saveData.saveDataVersion = 3;
   }
