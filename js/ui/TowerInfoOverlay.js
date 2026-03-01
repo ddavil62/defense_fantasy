@@ -114,6 +114,15 @@ export class TowerInfoOverlay {
   }
 
   /**
+   * 뒤로가기를 외부에서 트리거한다.
+   * 히스토리가 있으면 이전 항목으로, 없으면 오버레이를 닫는다.
+   * ESC 키 핸들러 등 외부에서 _handleBack()을 호출할 때 사용한다.
+   */
+  handleBack() {
+    this._handleBack();
+  }
+
+  /**
    * 오버레이가 현재 열려 있는지 확인한다.
    * @returns {boolean} 열려 있으면 true
    */

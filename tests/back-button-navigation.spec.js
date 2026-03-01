@@ -470,7 +470,7 @@ test.describe('Android 뒤로가기 키(ESC) 내비게이션 검증', () => {
       expect(errors).toEqual([]);
     });
 
-    test('이미 일시정지 상태에서 ESC 시 아무 변화도 없다', async ({ page }) => {
+    test('이미 일시정지 상태에서 ESC 시 게임이 재개된다', async ({ page }) => {
       const errors = [];
       page.on('pageerror', err => errors.push(err.message));
 
@@ -503,7 +503,7 @@ test.describe('Android 뒤로가기 키(ESC) 내비게이션 검증', () => {
       });
       expect(isPaused1).toBe(true);
 
-      // 두 번째 ESC -> 변화 없음 (여전히 일시정지)
+      // 두 번째 ESC -> 게임 재개 (일시정지 해제)
       await page.keyboard.press('Escape');
       await page.waitForTimeout(500);
 
@@ -511,7 +511,7 @@ test.describe('Android 뒤로가기 키(ESC) 내비게이션 검증', () => {
         const g = window.__game;
         return g.scene.getScenes(true)[0]?.isPaused;
       });
-      expect(isPaused2).toBe(true);
+      expect(isPaused2).toBe(false);
 
       // 여전히 GameScene
       const sceneKey = await getActiveSceneKey(page);

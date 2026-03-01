@@ -28,7 +28,7 @@ Phaser.js 3 기반 판타지 타워 디펜스 게임. 도형 기반 프로토타
 | `capacitor.config.json` | Capacitor 앱 설정 (Android + iOS) |
 | `index.html` | 진입점 (Vite용 간소화, CDN 제거) |
 | `style.css` | 바디 배경, 터치 방지(`touch-action: none`), safe-area 패딩, Galmuri @font-face 선언 |
-| `js/main.js` | Phaser.Game 인스턴스 생성 (npm import, 360x640, FIT + CENTER_BOTH, pixelArt: true), Android 뒤로가기 키(ESC) 내비게이션 핸들러 |
+| `js/main.js` | Phaser.Game 인스턴스 생성 (npm import, 360x640, FIT + CENTER_BOTH, pixelArt: true), Android 뒤로가기 키(ESC) 내비게이션 핸들러 (오버레이 우선 처리: TowerInfoOverlay/pauseOverlay 열림 시 씬 전환 대신 오버레이 닫기) |
 | `js/config.js` | 모든 게임 상수/밸런스 수치 집중 관리 (타워 10종, 적 8종, 웨이브 R1~R20, 메타 업그레이드 트리, 유틸리티 업그레이드, 저항 캡 0.55, 골드 싱크 상수, 머지 레시피 102종/스탯 102종 (T2 55종 + T3 30종 + T4 12종 + T5 5종), 별점 계산(calcStarRating), 캠페인 다이아몬드 보상(CAMPAIGN_DIAMOND_REWARDS), TOWER_UNLOCK_MAP(월드→타워 해금 매핑), 세이브 마이그레이션 v4) |
 | `js/scenes/BootScene.js` | 초기 설정, localStorage 로드, 세이브 마이그레이션 (stats 필드 포함), UI 에셋 46장 preload, `async create()` + `await document.fonts.ready`로 Galmuri 폰트 로딩 대기 후 메뉴 전환 |
 | `js/scenes/MenuScene.js` | 메뉴 화면, Diamond 표시, CAMPAIGN/ENDLESS(endlessUnlocked 조건부 활성)/COLLECTION/STATISTICS 버튼, 종료 확인 다이얼로그(_openExitDialog) |
@@ -59,7 +59,7 @@ Phaser.js 3 기반 판타지 타워 디펜스 게임. 도형 기반 프로토타
 | `js/i18n.js` | 다국어 지원 (한국어/영어), 모든 UI 텍스트 번역 키 관리 |
 | `js/ui/HUD.js` | 상단 HUD (Wave/Gold/HP, HP 위험 깜빡임, 웨이브 카운트다운, 적 프리뷰, 캠페인 Wave X/Y 표시) |
 | `js/ui/TowerPanel.js` | 하단 타워 선택(2줄 5열)/판매/강화/드래그&드롭 머지 UI/머지 프리뷰(드래그 하이라이트+호버 말풍선)/3단 속도(1x/2x/3x) 패널. 타워 상세 모달은 TowerInfoOverlay로 위임 |
-| `js/ui/TowerInfoOverlay.js` | 공용 타워 정보 오버레이 (game/codex 모드). NineSlice 동적 패널, T1 스탯 패널, T2+ Y자 합성 트리, 상위 조합 드래그 스크롤, 드릴다운, game 모드 강화/판매 버튼, enhanceLevel 기반 baseH 동적 계산 |
+| `js/ui/TowerInfoOverlay.js` | 공용 타워 정보 오버레이 (game/codex 모드). NineSlice 동적 패널, T1 스탯 패널, T2+ Y자 합성 트리, 상위 조합 드래그 스크롤, 드릴다운, game 모드 강화/판매 버튼, enhanceLevel 기반 baseH 동적 계산, handleBack() 공개 래퍼(ESC 키 외부 호출용) |
 
 **총 32개 JS 파일** (+ 맵 데이터 5개 파일)
 

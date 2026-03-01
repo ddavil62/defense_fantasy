@@ -82,6 +82,32 @@ function handleBackButton(e) {
   // BootScene은 뒤로가기 무시
   if (key === 'BootScene') return;
 
+  // ── 오버레이 우선 처리 ──
+  // TowerInfoOverlay 또는 일시정지 오버레이가 열려 있으면
+  // 씬 네비게이션 대신 오버레이를 닫는다.
+
+  // MergeCodexScene: towerInfoOverlay 열림 확인
+  if (key === 'MergeCodexScene') {
+    if (scene.towerInfoOverlay && scene.towerInfoOverlay.isOpen()) {
+      scene.towerInfoOverlay.handleBack();
+      return;
+    }
+  }
+
+  // GameScene: TowerInfoOverlay 또는 일시정지 오버레이 열림 확인
+  if (key === 'GameScene') {
+    // TowerInfoOverlay가 우선 (depth 100 > pauseOverlay depth 50)
+    if (scene.towerPanel && scene.towerPanel.isOverlayOpen()) {
+      scene.towerPanel.towerInfoOverlay.handleBack();
+      return;
+    }
+    // 일시정지 오버레이가 열려 있으면 재개
+    if (scene.isPaused && scene.pauseOverlay) {
+      scene._resumeGame();
+      return;
+    }
+  }
+
   switch (key) {
     case 'MenuScene':
       // 종료 확인 다이얼로그 표시 (이미 열려 있으면 무시)

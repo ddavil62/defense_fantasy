@@ -4,6 +4,34 @@
 
 ---
 
+## 2026-03-02 -- ESC 키 오버레이 우선순위 처리
+
+### 배경
+
+Android 뒤로가기(ESC) 키를 누를 때 TowerInfoOverlay나 일시정지 오버레이가 열려 있어도 씬 네비게이션(`scene.start`, `_pauseGame()`)이 실행되는 버그가 있었다. 오버레이가 열린 상태에서 ESC를 누르면 사용자는 오버레이가 닫히길 기대하지만, 씬 전환이나 중복 일시정지가 발생했다.
+
+### 추가
+
+- **`js/ui/TowerInfoOverlay.js`** -- `handleBack()` 공개 메서드 추가 (116~123행). `_handleBack()` private 메서드를 외부에서 안전하게 호출하는 래퍼. 히스토리가 있으면 이전 항목으로, 없으면 오버레이를 닫는다
+- **`js/main.js`** -- `handleBackButton()` 함수의 `switch (key)` 분기 전에 오버레이 우선 처리 로직 삽입 (85~109행)
+  - MergeCodexScene: `towerInfoOverlay.isOpen()` 확인 -> `handleBack()` 호출 후 return
+  - GameScene: `towerPanel.isOverlayOpen()` 확인 -> `towerPanel.towerInfoOverlay.handleBack()` 호출 후 return
+  - GameScene: `isPaused && pauseOverlay` 확인 -> `_resumeGame()` 호출 후 return
+
+### 변경
+
+- GameScene에서 일시정지 중 ESC 시 동작 변경: 이전에는 아무 변화 없음(isPaused 유지) -> 이제는 게임 재개(`_resumeGame()` 호출, isPaused = false)
+
+### 참고
+
+- 스펙: `.claude/specs/2026-03-02-esc-overlay-priority.md`
+- QA: `.claude/specs/2026-03-02-esc-overlay-priority-qa.md`
+- 우선순위: TowerInfoOverlay(depth 100) > pauseOverlay(depth 50)
+- 기존 `switch (key)` 분기 코드 변경 없음
+- QA MEDIUM 소견: 기존 테스트 `back-button-navigation.spec.js:473` ("이미 일시정지 상태에서 ESC 시 아무 변화도 없다")가 의도된 동작 변경으로 실패함. 테스트 업데이트 필요
+
+---
+
 ## 2026-03-02 -- TowerInfoOverlay 텍스트 오버플로 및 패널 크기 불일치 수정
 
 ### 배경
