@@ -56,7 +56,7 @@ export class MenuScene extends Phaser.Scene {
     // ── 타이틀 텍스트 (골드 + 그림자 글로우) ──
     this.add.text(centerX, 190 + offsetY, 'Fantasy\nTower Defense', {
       fontSize: '28px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffd700',
       align: 'center',
       fontStyle: 'bold',
@@ -75,7 +75,7 @@ export class MenuScene extends Phaser.Scene {
     const diamond = saveData?.diamond || 0;
     this.add.text(centerX, 280 + offsetY, `\u25C6 ${diamond}`, {
       fontSize: '18px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: COLORS.DIAMOND_CSS,
       align: 'center',
     }).setOrigin(0.5);
@@ -84,14 +84,14 @@ export class MenuScene extends Phaser.Scene {
     if (saveData && saveData.bestRound > 0) {
       this.add.text(centerX, 315 + offsetY, `Best: Round ${saveData.bestRound}`, {
         fontSize: '18px',
-        fontFamily: 'Arial, sans-serif',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#ffd700',
         align: 'center',
       }).setOrigin(0.5);
 
       this.add.text(centerX, 338 + offsetY, `Kills: ${saveData.bestKills} | Games: ${saveData.totalGames}`, {
         fontSize: '13px',
-        fontFamily: 'Arial, sans-serif',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#b2bec3',
         align: 'center',
       }).setOrigin(0.5);
@@ -105,7 +105,7 @@ export class MenuScene extends Phaser.Scene {
 
     this.add.text(centerX, 380 + offsetY, t('ui.campaign'), {
       fontSize: '16px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#1a1a2e',
       fontStyle: 'bold',
     }).setOrigin(0.5);
@@ -129,7 +129,7 @@ export class MenuScene extends Phaser.Scene {
 
       this.add.text(centerX, 435 + offsetY, t('ui.endless'), {
         fontSize: '15px',
-        fontFamily: 'Arial, sans-serif',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#1a1a2e',
         fontStyle: 'bold',
       }).setOrigin(0.5);
@@ -149,7 +149,7 @@ export class MenuScene extends Phaser.Scene {
 
       this.add.text(centerX, 435 + offsetY, t('ui.endless'), {
         fontSize: '15px',
-        fontFamily: 'Arial, sans-serif',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#636e72',
         fontStyle: 'bold',
       }).setOrigin(0.5);
@@ -157,7 +157,7 @@ export class MenuScene extends Phaser.Scene {
       // ENDLESS 하단 잠금 안내 텍스트
       this.add.text(centerX, 460 + offsetY, t('ui.endlessLocked'), {
         fontSize: '12px',
-        fontFamily: 'Arial, sans-serif',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#636e72',
       }).setOrigin(0.5);
     }
@@ -170,7 +170,7 @@ export class MenuScene extends Phaser.Scene {
 
     this.add.text(centerX, 492 + offsetY, 'COLLECTION', {
       fontSize: '15px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: BTN_META_CSS,
       fontStyle: 'bold',
     }).setOrigin(0.5);
@@ -190,7 +190,7 @@ export class MenuScene extends Phaser.Scene {
 
     this.add.text(centerX, 544 + offsetY, 'STATISTICS', {
       fontSize: '15px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffffff',
       fontStyle: 'bold',
     }).setOrigin(0.5);
@@ -218,7 +218,7 @@ export class MenuScene extends Phaser.Scene {
         isMuted ? '\u266A OFF' : '\u266A ON',
         {
           fontSize: '13px',
-          fontFamily: 'Arial, sans-serif',
+          fontFamily: 'Galmuri11, Arial, sans-serif',
           color: isMuted ? BTN_SELL_CSS : BTN_BACK_CSS,
           fontStyle: 'bold',
         }

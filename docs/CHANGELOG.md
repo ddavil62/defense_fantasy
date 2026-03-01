@@ -4,6 +4,43 @@
 
 ---
 
+## 2026-03-01 -- Galmuri 픽셀 폰트 적용
+
+### 배경
+
+게임이 `pixelArt: true` 렌더링과 46장의 픽셀아트 UI 에셋을 사용하지만, 텍스트는 벡터 시스템 폰트(Arial)를 사용하고 있었다. 다크 판타지 픽셀아트 컨셉과 일관된 타이포그래피를 위해 Galmuri11 비트맵 픽셀 폰트로 전체 교체했다.
+
+### 추가
+
+- **`public/assets/fonts/`** -- Galmuri 폰트 파일 3개 배치
+  - `Galmuri11.woff2` (504KB) -- 본문 전반 Regular
+  - `Galmuri11-Bold.woff2` (166KB) -- Bold 강조 텍스트
+  - `Galmuri9.woff2` (429KB) -- 소형 텍스트 확장 여지용 (현재 미사용)
+- **`style.css`** -- `@font-face` 3개 선언 추가 (Galmuri11 Regular/Bold, Galmuri9)
+  - `font-display: block`으로 FOUT 방지
+  - URL 경로: `/assets/fonts/` (Vite 정적 에셋 서빙)
+- **`index.html`** -- Galmuri11 Regular/Bold preload 링크 2개 추가
+  - Galmuri9는 현재 미사용이므로 preload 생략 (약 430KB 불필요 로드 방지)
+
+### 변경
+
+- **`js/scenes/BootScene.js`** -- `create()` 메서드를 `async`로 변경, `await document.fonts.ready`로 폰트 로딩 완료 대기 후 MenuScene 전환
+- **15개 JS 파일의 fontFamily 일괄 교체** (183개 참조)
+  - `'Arial, sans-serif'` -> `'Galmuri11, Arial, sans-serif'`
+  - `'Outfit, Arial, sans-serif'` -> `'Galmuri11, Arial, sans-serif'`
+  - 대상 파일: CollectionScene, GameOverScene, GameScene, LevelSelectScene, MapClearScene, MenuScene, WorldSelectScene, EndlessMapSelectScene, StatsScene, MergeCodexScene, HUD, TowerInfoOverlay, TowerPanel, WaveManager, MapManager
+  - 기존 `fontStyle: 'bold'` 유지 (Galmuri11 Bold 자동 적용)
+  - `fontSize` 수치 변경 없음
+
+### 참고
+
+- 스펙: `.claude/specs/2026-03-01-font-change.md`
+- QA: `.claude/specs/2026-03-01-font-change-qa.md`
+- 폰트: Galmuri v2.40.3, SIL OFL 라이선스 (https://github.com/quiple/galmuri)
+- QA LOW 소견: Galmuri9 @font-face 선언만 존재하고 JS에서 미참조. 향후 소형 텍스트 적용 시 활용 예정.
+
+---
+
 ## 2026-03-01 -- UI 이미지 에셋 46장 생성 및 코드 적용
 
 ### 배경

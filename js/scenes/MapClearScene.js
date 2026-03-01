@@ -148,7 +148,7 @@ export class MapClearScene extends Phaser.Scene {
     // ── MAP CLEAR 타이틀 (골드 글로우) ──
     this.add.text(centerX, centerY - 175, t('ui.mapClear'), {
       fontSize: '26px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffd700',
       fontStyle: 'bold',
       shadow: {
@@ -176,7 +176,7 @@ export class MapClearScene extends Phaser.Scene {
         ? this.add.image(x, starY, iconKey).setDisplaySize(30, 30)
         : this.add.text(x, starY, '\u2605', {
             fontSize: '36px',
-            fontFamily: 'Arial, sans-serif',
+            fontFamily: 'Galmuri11, Arial, sans-serif',
             color: filled ? '#ffd700' : '#333340',
             fontStyle: 'bold',
           }).setOrigin(0.5);
@@ -212,7 +212,7 @@ export class MapClearScene extends Phaser.Scene {
     this.add.text(centerX, infoY,
       `Waves: ${this.wavesCleared}  |  Kills: ${this.kills}`, {
         fontSize: '14px',
-        fontFamily: 'Arial, sans-serif',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#b2bec3',
       }).setOrigin(0.5);
 
@@ -221,7 +221,7 @@ export class MapClearScene extends Phaser.Scene {
     this.add.text(centerX, infoY + 22,
       `HP: ${this.currentHP}/${this.maxHP} (${hpPercent}%)`, {
         fontSize: '13px',
-        fontFamily: 'Arial, sans-serif',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
         color: hpPercent >= 80 ? '#ffd700' : hpPercent >= 40 ? '#fdcb6e' : '#ff4757',
       }).setOrigin(0.5);
 
@@ -232,7 +232,7 @@ export class MapClearScene extends Phaser.Scene {
       const diamondText = this.add.text(centerX, diamondY,
         `\u25C6 +${earnedDiamond} Diamond`, {
           fontSize: '18px',
-          fontFamily: 'Arial, sans-serif',
+          fontFamily: 'Galmuri11, Arial, sans-serif',
           color: COLORS.DIAMOND_CSS,
           fontStyle: 'bold',
         }).setOrigin(0.5).setAlpha(0);
@@ -250,7 +250,7 @@ export class MapClearScene extends Phaser.Scene {
       const alreadyText = this.add.text(centerX, diamondY,
         t('ui.alreadyBest'), {
           fontSize: '14px',
-          fontFamily: 'Arial, sans-serif',
+          fontFamily: 'Galmuri11, Arial, sans-serif',
           color: '#636e72',
         }).setOrigin(0.5).setAlpha(0);
 
@@ -269,7 +269,7 @@ export class MapClearScene extends Phaser.Scene {
       const unlockLabel = this.add.text(centerX, diamondY + 28,
         `🔓 ${towerName} ${t('ui.towerUnlocked')}`, {
           fontSize: '16px',
-          fontFamily: 'Arial, sans-serif',
+          fontFamily: 'Galmuri11, Arial, sans-serif',
           color: '#00b894',
           fontStyle: 'bold',
         }).setOrigin(0.5).setAlpha(0).setScale(0.5);
@@ -288,7 +288,7 @@ export class MapClearScene extends Phaser.Scene {
     const ratingTexts = ['', t('ui.rating1'), t('ui.rating2'), t('ui.rating3')];
     this.add.text(centerX, centerY + 40, ratingTexts[stars] || '', {
       fontSize: '14px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: stars === 3 ? '#ffd700' : stars === 2 ? '#fdcb6e' : '#b2bec3',
     }).setOrigin(0.5);
 
@@ -303,7 +303,7 @@ export class MapClearScene extends Phaser.Scene {
     const nextLabel = nextMapId ? t('ui.nextMap') : t('ui.worldComplete');
     this.add.text(centerX, nextY, nextLabel, {
       fontSize: '16px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#1a1a2e',
       fontStyle: 'bold',
     }).setOrigin(0.5);
@@ -330,7 +330,7 @@ export class MapClearScene extends Phaser.Scene {
 
     this.add.text(centerX, retryY, 'RETRY', {
       fontSize: '15px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffffff',
       fontStyle: 'bold',
     }).setOrigin(0.5);
@@ -353,7 +353,7 @@ export class MapClearScene extends Phaser.Scene {
 
     this.add.text(centerX, worldY, t('ui.worldMap'), {
       fontSize: '15px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffffff',
       fontStyle: 'bold',
     }).setOrigin(0.5);

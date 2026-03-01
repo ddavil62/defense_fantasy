@@ -210,7 +210,7 @@ export class TowerInfoOverlay {
 
       const backLabel = this.scene.add.text(
         panelX - PANEL_W / 2 + 40, panelTop + 15, '< \ub4a4\ub85c', {
-          fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#ffffff',
+          fontSize: '11px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#ffffff',
         }
       ).setOrigin(0.5);
       this._container.add(backLabel);
@@ -226,7 +226,7 @@ export class TowerInfoOverlay {
     this._container.add(closeBg);
 
     const closeText = this.scene.add.text(closeX, closeY, 'X', {
-      fontSize: '14px', fontFamily: 'Arial, sans-serif', color: '#ffffff', fontStyle: 'bold',
+      fontSize: '14px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#ffffff', fontStyle: 'bold',
     }).setOrigin(0.5);
     this._container.add(closeText);
 
@@ -248,7 +248,7 @@ export class TowerInfoOverlay {
   _renderT1Panel(entry, panelX, panelTop, usedInList) {
     // 타워 이름
     const nameText = this.scene.add.text(panelX, panelTop + 40, entry.displayName, {
-      fontSize: '16px', fontFamily: 'Arial, sans-serif', color: '#ffffff', fontStyle: 'bold',
+      fontSize: '16px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#ffffff', fontStyle: 'bold',
     }).setOrigin(0.5);
     this._container.add(nameText);
 
@@ -259,7 +259,7 @@ export class TowerInfoOverlay {
     this._container.add(circleG);
 
     const tierBadge = this.scene.add.text(panelX + 5, panelTop + 65, 'T1', {
-      fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#ffd700',
+      fontSize: '11px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#ffd700',
     }).setOrigin(0, 0.5);
     this._container.add(tierBadge);
 
@@ -268,7 +268,7 @@ export class TowerInfoOverlay {
     const flavorStr = t(flavorKey);
     if (flavorStr !== flavorKey) {
       const flavorText = this.scene.add.text(panelX, panelTop + 84, flavorStr, {
-        fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#a0a0a0', fontStyle: 'italic',
+        fontSize: '11px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#a0a0a0', fontStyle: 'italic',
       }).setOrigin(0.5);
       this._container.add(flavorText);
     }
@@ -278,7 +278,7 @@ export class TowerInfoOverlay {
     const descStr = t(descKey);
     if (descStr !== descKey) {
       const descText = this.scene.add.text(panelX, panelTop + 100, descStr, {
-        fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#d0d0d0',
+        fontSize: '11px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#d0d0d0',
       }).setOrigin(0.5);
       this._container.add(descText);
     }
@@ -287,7 +287,7 @@ export class TowerInfoOverlay {
     const atkColor = ATTACK_TYPE_COLORS_CSS[entry.attackType] || '#b2bec3';
     const atkText = this.scene.add.text(panelX, panelTop + 130,
       this._getAttackTypeBadge(entry.attackType), {
-        fontSize: '11px', fontFamily: 'Arial, sans-serif', color: atkColor,
+        fontSize: '11px', fontFamily: 'Galmuri11, Arial, sans-serif', color: atkColor,
       }).setOrigin(0.5);
     this._container.add(atkText);
 
@@ -306,7 +306,7 @@ export class TowerInfoOverlay {
       const rangeInTiles = (stats.range / CELL_SIZE).toFixed(1);
       const statsStr = `DMG: ${stats.damage}  |  SPD: ${stats.fireRate}s  |  RNG: ${rangeInTiles}`;
       const statsText = this.scene.add.text(panelX, panelTop + 150, statsStr, {
-        fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#b2bec3',
+        fontSize: '11px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#b2bec3',
       }).setOrigin(0.5);
       this._container.add(statsText);
     }
@@ -317,7 +317,7 @@ export class TowerInfoOverlay {
       if (info.enhanceLevel > 0) {
         const enhText = this.scene.add.text(panelX, panelTop + 166,
           `+${info.enhanceLevel}`, {
-            fontSize: '10px', fontFamily: 'Arial, sans-serif', color: '#ffd700',
+            fontSize: '10px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#ffd700',
           }).setOrigin(0.5);
         this._container.add(enhText);
       }
@@ -361,7 +361,7 @@ export class TowerInfoOverlay {
     this._container.add(resultCircle);
 
     const resultName = this.scene.add.text(panelX, panelTop + 128, entry.displayName, {
-      fontSize: '12px', fontFamily: 'Arial, sans-serif', color: '#ffffff', fontStyle: 'bold',
+      fontSize: '12px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#ffffff', fontStyle: 'bold',
     }).setOrigin(0.5);
     this._container.add(resultName);
 
@@ -370,13 +370,13 @@ export class TowerInfoOverlay {
     const treeDescStr = t(treeDescKey);
     if (treeDescStr !== treeDescKey) {
       const treeDescText = this.scene.add.text(panelX, panelTop + 144, treeDescStr, {
-        fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#a0a0a0',
+        fontSize: '11px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#a0a0a0',
       }).setOrigin(0.5);
       this._container.add(treeDescText);
     }
 
     const resultTier = this.scene.add.text(panelX, panelTop + 160, `T${entry.tier}`, {
-      fontSize: '10px', fontFamily: 'Arial, sans-serif', color: '#ffd700',
+      fontSize: '10px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#ffd700',
     }).setOrigin(0.5);
     this._container.add(resultTier);
 
@@ -421,7 +421,7 @@ export class TowerInfoOverlay {
       const rangeInTiles = (rng / CELL_SIZE).toFixed(1);
       const statsStr = `DMG: ${dmg}  |  SPD: ${spd}s  |  RNG: ${rangeInTiles}`;
       const statsText = this.scene.add.text(panelX, nextY, statsStr, {
-        fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#b2bec3',
+        fontSize: '11px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#b2bec3',
       }).setOrigin(0.5);
       this._container.add(statsText);
       nextY += 16;
@@ -433,7 +433,7 @@ export class TowerInfoOverlay {
       if (info.enhanceLevel > 0) {
         const enhText = this.scene.add.text(panelX, nextY,
           `+${info.enhanceLevel}`, {
-            fontSize: '10px', fontFamily: 'Arial, sans-serif', color: '#ffd700',
+            fontSize: '10px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#ffd700',
           }).setOrigin(0.5);
         this._container.add(enhText);
         nextY += 16;
@@ -474,12 +474,12 @@ export class TowerInfoOverlay {
       ? matEntry.displayName.substring(0, 5) + '..'
       : matEntry.displayName;
     const nameText = this.scene.add.text(cx, panelTop + 254, displayName, {
-      fontSize: '10px', fontFamily: 'Arial, sans-serif', color: '#ffffff',
+      fontSize: '10px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#ffffff',
     }).setOrigin(0.5);
     this._container.add(nameText);
 
     const tierBadge = this.scene.add.text(cx, panelTop + 268, `T${matEntry.tier}`, {
-      fontSize: '9px', fontFamily: 'Arial, sans-serif', color: '#ffd700',
+      fontSize: '9px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#ffd700',
     }).setOrigin(0.5);
     this._container.add(tierBadge);
 
@@ -560,7 +560,7 @@ export class TowerInfoOverlay {
 
     // 섹션 헤더 (스크롤 영역 바깥 고정)
     const header = this.scene.add.text(panelX, y, t('codex.usedIn') || '\uc0c1\uc704 \uc870\ud569', {
-      fontSize: '10px', fontFamily: 'Arial, sans-serif', color: '#636e72',
+      fontSize: '10px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#636e72',
     }).setOrigin(0.5);
     this._container.add(header);
     y += headerH;
@@ -584,7 +584,7 @@ export class TowerInfoOverlay {
       const itemY = scrollTopY + i * rowH + rowH / 2;
       const label = `T${resultEntry.tier} ${resultEntry.displayName}`;
       const itemText = this.scene.add.text(panelX, itemY, label, {
-        fontSize: '11px', fontFamily: 'Arial, sans-serif', color: '#dfe6e9',
+        fontSize: '11px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#dfe6e9',
       }).setOrigin(0.5);
       scrollContainer.add(itemText);
       itemTexts.push({ text: itemText, entry: resultEntry, baseY: itemY });
@@ -602,7 +602,7 @@ export class TowerInfoOverlay {
     if (maxScroll > 0) {
       const hint = this.scene.add.text(
         panelX + PANEL_W / 2 - 28, scrollTopY + scrollH - 2, '\u25bc', {
-          fontSize: '9px', fontFamily: 'Arial, sans-serif', color: '#636e72',
+          fontSize: '9px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#636e72',
         }
       ).setOrigin(0.5);
       this._container.add(hint);
@@ -713,7 +713,7 @@ export class TowerInfoOverlay {
         .replace('{level}', info.enhanceLevel + 1)
         .replace('{cost}', info.enhanceCost);
       const enhText = this.scene.add.text(panelX, curY, `\u2b06 ${enhLabel}`, {
-        fontSize: '12px', fontFamily: 'Arial, sans-serif', color: '#ffffff', fontStyle: 'bold',
+        fontSize: '12px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#ffffff', fontStyle: 'bold',
       }).setOrigin(0.5);
       this._container.add(enhText);
 
@@ -729,7 +729,7 @@ export class TowerInfoOverlay {
     // 최대 강화 레벨 도달 시 텍스트 표시
     if (!info.canEnhance && info.enhanceLevel >= MAX_ENHANCE_LEVEL) {
       const maxText = this.scene.add.text(panelX, curY, `\u2b50 ${t('ui.maxEnhance')}`, {
-        fontSize: '12px', fontFamily: 'Arial, sans-serif', color: '#ffd700', fontStyle: 'bold',
+        fontSize: '12px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#ffd700', fontStyle: 'bold',
       }).setOrigin(0.5);
       this._container.add(maxText);
       curY += 24;
@@ -753,7 +753,7 @@ export class TowerInfoOverlay {
     this._container.add(sellBtn);
 
     const sellText = this.scene.add.text(panelX, curY, `Sell ${info.sellPrice}G`, {
-      fontSize: '12px', fontFamily: 'Arial, sans-serif', color: '#ffffff', fontStyle: 'bold',
+      fontSize: '12px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#ffffff', fontStyle: 'bold',
     }).setOrigin(0.5);
     this._container.add(sellText);
 

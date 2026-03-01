@@ -150,7 +150,7 @@ export class MapManager {
     const spawnPos = gridToPixel(this.mapData.spawnPos.col, this.mapData.spawnPos.row);
     this.scene.add.text(spawnPos.x, spawnPos.y, '\u2193', {
       fontSize: '20px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#8b1a2e',
       fontStyle: 'bold',
     }).setOrigin(0.5).setDepth(2);
@@ -159,7 +159,7 @@ export class MapManager {
     const basePos = gridToPixel(this.mapData.basePos.col, this.mapData.basePos.row);
     this.scene.add.text(basePos.x, basePos.y, '\u26E8', {
       fontSize: '18px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffd700',
     }).setOrigin(0.5).setDepth(2);
   }

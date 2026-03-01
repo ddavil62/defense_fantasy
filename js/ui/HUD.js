@@ -86,14 +86,14 @@ export class HUD {
         .setDisplaySize(14, 14).setDepth(31);
       this.waveText = this.scene.add.text(28, HUD_HEIGHT / 2, 'Wave: 1', {
         fontSize: '16px',
-        fontFamily: 'Arial, sans-serif',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#ffffff',
       }).setOrigin(0, 0.5).setDepth(31);
     } else {
       this.waveIcon = null;
       this.waveText = this.scene.add.text(10, HUD_HEIGHT / 2, '\u2694 Wave: 1', {
         fontSize: '16px',
-        fontFamily: 'Arial, sans-serif',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#ffffff',
       }).setOrigin(0, 0.5).setDepth(31);
     }
@@ -104,14 +104,14 @@ export class HUD {
         .setDisplaySize(14, 14).setDepth(31);
       this.goldText = this.scene.add.text(150, HUD_HEIGHT / 2, '200', {
         fontSize: '16px',
-        fontFamily: 'Arial, sans-serif',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
         color: GOLD_TEXT_CSS,
       }).setOrigin(0.5, 0.5).setDepth(31);
     } else {
       this.goldIcon = null;
       this.goldText = this.scene.add.text(150, HUD_HEIGHT / 2, '\u25C6 200', {
         fontSize: '16px',
-        fontFamily: 'Arial, sans-serif',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
         color: GOLD_TEXT_CSS,
       }).setOrigin(0.5, 0.5).setDepth(31);
     }
@@ -122,14 +122,14 @@ export class HUD {
         .setDisplaySize(14, 14).setDepth(31);
       this.hpText = this.scene.add.text(248, HUD_HEIGHT / 2, '20', {
         fontSize: '16px',
-        fontFamily: 'Arial, sans-serif',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#ffffff',
       }).setOrigin(0, 0.5).setDepth(31);
     } else {
       this.hpIcon = null;
       this.hpText = this.scene.add.text(235, HUD_HEIGHT / 2, '\u2665 20', {
         fontSize: '16px',
-        fontFamily: 'Arial, sans-serif',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#ffffff',
       }).setOrigin(0, 0.5).setDepth(31);
     }
@@ -137,7 +137,7 @@ export class HUD {
     // 카운트다운 텍스트 (웨이브 텍스트 아래, 휴식 시간에만 표시)
     this.countdownText = this.scene.add.text(10, HUD_HEIGHT + 4, '', {
       fontSize: '11px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#b2bec3',
     }).setOrigin(0, 0).setDepth(31).setAlpha(0);
 

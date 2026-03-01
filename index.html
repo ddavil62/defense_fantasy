@@ -7,6 +7,10 @@
   <meta name="theme-color" content="#1a1a2e">
   <title>Fantasy Tower Defense</title>
   <link rel="stylesheet" href="style.css">
+  <!-- Galmuri 픽셀 폰트 선행 로드 (렌더링 전 폰트 확보) -->
+  <link rel="preload" href="/assets/fonts/Galmuri11.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/assets/fonts/Galmuri11-Bold.woff2" as="font" type="font/woff2" crossorigin>
+  <!-- Galmuri9는 @font-face만 선언, 현재 미사용이므로 preload 생략 (확장 여지용) -->
 </head>
 <body>
   <div id="game-container"></div>

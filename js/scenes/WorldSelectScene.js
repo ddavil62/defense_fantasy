@@ -48,7 +48,7 @@ export class WorldSelectScene extends Phaser.Scene {
     // 뒤로가기 버튼 (좌측)
     const backText = this.add.text(30, 25, t('ui.back'), {
       fontSize: '14px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#1a9c7e',
       fontStyle: 'bold',
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
@@ -63,7 +63,7 @@ export class WorldSelectScene extends Phaser.Scene {
     // 타이틀 (중앙)
     this.add.text(centerX, 25, t('ui.worldSelect'), {
       fontSize: '18px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffd700',
       fontStyle: 'bold',
     }).setOrigin(0.5);
@@ -110,7 +110,7 @@ export class WorldSelectScene extends Phaser.Scene {
 
         this.add.text(panelLeft, panelY - panelH / 2 + 14, `${world.order}. ${t(world.nameKey)}`, {
           fontSize: '16px',
-          fontFamily: 'Arial, sans-serif',
+          fontFamily: 'Galmuri11, Arial, sans-serif',
           color: '#ffd700',
           fontStyle: 'bold',
         }).setOrigin(0, 0);
@@ -118,7 +118,7 @@ export class WorldSelectScene extends Phaser.Scene {
         // 좌측 하단: 설명 텍스트
         this.add.text(panelLeft, panelY - panelH / 2 + 56, t(world.descKey), {
           fontSize: '12px',
-          fontFamily: 'Arial, sans-serif',
+          fontFamily: 'Galmuri11, Arial, sans-serif',
           color: '#b2bec3',
         }).setOrigin(0, 0.5);
 
@@ -128,7 +128,7 @@ export class WorldSelectScene extends Phaser.Scene {
           .replace('{max}', String(progress.maxStars));
         this.add.text(panelRight, panelY - panelH / 2 + 14, `\u2605 ${starsText}`, {
           fontSize: '12px',
-          fontFamily: 'Arial, sans-serif',
+          fontFamily: 'Galmuri11, Arial, sans-serif',
           color: '#ffd700',
         }).setOrigin(1, 0);
       } else {
@@ -145,7 +145,7 @@ export class WorldSelectScene extends Phaser.Scene {
         // 좌측 상단: 월드 번호 + 이름 (회색)
         this.add.text(panelLeft, panelY - panelH / 2 + 14, `${world.order}. ${t(world.nameKey)}`, {
           fontSize: '16px',
-          fontFamily: 'Arial, sans-serif',
+          fontFamily: 'Galmuri11, Arial, sans-serif',
           color: '#636e72',
           fontStyle: 'bold',
         }).setOrigin(0, 0);
@@ -153,7 +153,7 @@ export class WorldSelectScene extends Phaser.Scene {
         // 좌측 하단: 설명 텍스트
         this.add.text(panelLeft, panelY - panelH / 2 + 56, t(world.descKey), {
           fontSize: '12px',
-          fontFamily: 'Arial, sans-serif',
+          fontFamily: 'Galmuri11, Arial, sans-serif',
           color: '#636e72',
         }).setOrigin(0, 0.5);
 
@@ -163,7 +163,7 @@ export class WorldSelectScene extends Phaser.Scene {
           .replace('{max}', String(progress.maxStars));
         this.add.text(panelRight, panelY - panelH / 2 + 14, `\u2605 ${starsText}`, {
           fontSize: '12px',
-          fontFamily: 'Arial, sans-serif',
+          fontFamily: 'Galmuri11, Arial, sans-serif',
           color: '#636e72',
         }).setOrigin(1, 0);
 
@@ -174,7 +174,7 @@ export class WorldSelectScene extends Phaser.Scene {
         } else {
           this.add.text(panelRight, panelY - panelH / 2 + 35, '\uD83D\uDD12', {
             fontSize: '20px',
-            fontFamily: 'Arial, sans-serif',
+            fontFamily: 'Galmuri11, Arial, sans-serif',
             color: '#636e72',
           }).setOrigin(1, 0.5);
         }
@@ -183,7 +183,7 @@ export class WorldSelectScene extends Phaser.Scene {
         const reqText = t('ui.starsRequired').replace('{n}', String(world.requiredStars));
         this.add.text(panelRight, panelY - panelH / 2 + 56, reqText, {
           fontSize: '11px',
-          fontFamily: 'Arial, sans-serif',
+          fontFamily: 'Galmuri11, Arial, sans-serif',
           color: '#636e72',
         }).setOrigin(1, 0.5);
       }

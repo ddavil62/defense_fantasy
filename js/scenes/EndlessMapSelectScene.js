@@ -61,7 +61,7 @@ export class EndlessMapSelectScene extends Phaser.Scene {
     // 뒤로가기 버튼 (좌측)
     const backText = this.add.text(30, 25, t('ui.back'), {
       fontSize: '14px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#1a9c7e',
       fontStyle: 'bold',
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
@@ -76,7 +76,7 @@ export class EndlessMapSelectScene extends Phaser.Scene {
     // 타이틀 (중앙)
     this.add.text(centerX, 25, t('ui.endlessMapSelect'), {
       fontSize: '18px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffd700',
       fontStyle: 'bold',
     }).setOrigin(0.5);
@@ -120,7 +120,7 @@ export class EndlessMapSelectScene extends Phaser.Scene {
 
       const label = this.add.text(tx, tabY, tab.label, {
         fontSize: '12px',
-        fontFamily: 'Arial, sans-serif',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
         color: isActive ? '#1a1a2e' : '#b2bec3',
         fontStyle: 'bold',
       }).setOrigin(0.5);
@@ -196,7 +196,7 @@ export class EndlessMapSelectScene extends Phaser.Scene {
     // 카드 좌측: 맵 이름
     const nameText = this.add.text(cardLeft, cardY - cardH / 2 + 14, t('ui.classicMap'), {
       fontSize: '16px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffd700',
       fontStyle: 'bold',
     }).setOrigin(0, 0);
@@ -205,7 +205,7 @@ export class EndlessMapSelectScene extends Phaser.Scene {
     // 카드 좌측 하단: 설명
     const descText = this.add.text(cardLeft, cardY - cardH / 2 + 40, t('ui.classicMapDesc'), {
       fontSize: '12px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#b2bec3',
     }).setOrigin(0, 0);
     this._cardObjects.push(descText);
@@ -213,7 +213,7 @@ export class EndlessMapSelectScene extends Phaser.Scene {
     // 카드 우측: 웨이브 표시 (무한)
     const waveText = this.add.text(cardRight, cardY - cardH / 2 + 14, 'Wave: \u221E', {
       fontSize: '11px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#b2bec3',
     }).setOrigin(1, 0);
     this._cardObjects.push(waveText);
@@ -231,7 +231,7 @@ export class EndlessMapSelectScene extends Phaser.Scene {
 
     const startLabel = this.add.text(btnX, btnY, t('ui.start'), {
       fontSize: '13px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#1a1a2e',
       fontStyle: 'bold',
     }).setOrigin(0.5);
@@ -278,7 +278,7 @@ export class EndlessMapSelectScene extends Phaser.Scene {
       // 좌측 상단: 맵 번호
       const numText = this.add.text(cardLeft, cardY - cardH / 2 + 8, `${index + 1}`, {
         fontSize: '20px',
-        fontFamily: 'Arial, sans-serif',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#ffd700',
         fontStyle: 'bold',
       }).setOrigin(0, 0);
@@ -287,7 +287,7 @@ export class EndlessMapSelectScene extends Phaser.Scene {
       // 좌측 중단: 맵 이름
       const nameText = this.add.text(cardLeft, cardY - cardH / 2 + 34, t(mapData.meta.nameKey), {
         fontSize: '13px',
-        fontFamily: 'Arial, sans-serif',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#ffffff',
       }).setOrigin(0, 0);
       this._cardObjects.push(nameText);
@@ -295,7 +295,7 @@ export class EndlessMapSelectScene extends Phaser.Scene {
       // 좌측 하단: 맵 설명
       const descText = this.add.text(cardLeft, cardY - cardH / 2 + 52, t(mapData.meta.descKey), {
         fontSize: '10px',
-        fontFamily: 'Arial, sans-serif',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#636e72',
       }).setOrigin(0, 0);
       this._cardObjects.push(descText);
@@ -304,7 +304,7 @@ export class EndlessMapSelectScene extends Phaser.Scene {
       const totalW = isFinite(mapData.totalWaves) ? mapData.totalWaves : '\u221E';
       const waveLabel = this.add.text(cardRight, cardY - cardH / 2 + 8, `Wave: ${totalW}`, {
         fontSize: '11px',
-        fontFamily: 'Arial, sans-serif',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#b2bec3',
       }).setOrigin(1, 0);
       this._cardObjects.push(waveLabel);
@@ -322,7 +322,7 @@ export class EndlessMapSelectScene extends Phaser.Scene {
 
       const startLabel = this.add.text(btnX, btnY, t('ui.start'), {
         fontSize: '12px',
-        fontFamily: 'Arial, sans-serif',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#1a1a2e',
         fontStyle: 'bold',
       }).setOrigin(0.5);

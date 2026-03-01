@@ -101,7 +101,7 @@ export class WaveManager {
       `Wave ${this.currentWave}`,
       {
         fontSize: '32px',
-        fontFamily: 'Arial, sans-serif',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#ffffff',
         fontStyle: 'bold',
         stroke: '#000000',
@@ -287,7 +287,7 @@ export class WaveManager {
       `Wave ${this.currentWave} Clear!\n+${awardedGold}G Bonus`,
       {
         fontSize: '24px',
-        fontFamily: 'Arial, sans-serif',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#ffd700',
         fontStyle: 'bold',
         align: 'center',

@@ -173,7 +173,7 @@ export class MergeCodexScene extends Phaser.Scene {
 
     this.add.text(38, 24, '< BACK', {
       fontSize: '14px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffffff',
     }).setOrigin(0.5);
 
@@ -184,7 +184,7 @@ export class MergeCodexScene extends Phaser.Scene {
     // 타이틀
     this.add.text(180, 24, t('codex.title'), {
       fontSize: '18px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffffff',
       fontStyle: 'bold',
     }).setOrigin(0.5);
@@ -285,7 +285,7 @@ export class MergeCodexScene extends Phaser.Scene {
 
       const label = this.add.text(x, cy, `T${tier}`, {
         fontSize: '12px',
-        fontFamily: 'Arial, sans-serif',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
         color: isActive ? '#ffffff' : '#636e72',
         fontStyle: isActive ? 'bold' : 'normal',
       }).setOrigin(0.5);
@@ -329,7 +329,7 @@ export class MergeCodexScene extends Phaser.Scene {
 
     const progressText = this.add.text(GAME_WIDTH / 2, PROGRESS_Y + 8, progressStr, {
       fontSize: '12px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#b2bec3',
     }).setOrigin(0.5);
     this._codexContentContainer.add(progressText);
@@ -400,7 +400,7 @@ export class MergeCodexScene extends Phaser.Scene {
       : entry.displayName;
     const nameText = this.add.text(cx, y + 40, displayName, {
       fontSize: '9px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffffff',
     }).setOrigin(0.5);
     this.codexScrollContainer.add(nameText);
@@ -410,7 +410,7 @@ export class MergeCodexScene extends Phaser.Scene {
     const badgeColor = ATTACK_TYPE_COLORS_CSS[entry.attackType] || '#81ecec';
     const badgeText = this.add.text(cx, y + 54, badgeStr, {
       fontSize: '8px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: badgeColor,
       backgroundColor: '#0d1117',
       padding: { x: 2, y: 1 },
@@ -420,7 +420,7 @@ export class MergeCodexScene extends Phaser.Scene {
     // 티어 배지
     const tierBadge = this.add.text(cx, y + 67, `T${entry.tier}`, {
       fontSize: '8px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffd700',
     }).setOrigin(0.5);
     this.codexScrollContainer.add(tierBadge);

@@ -210,7 +210,7 @@ export class TowerPanel {
       const costColor = isLocked ? '#636e72' : GOLD_TEXT_CSS;
       const costText = this.scene.add.text(x, y + 14, costStr, {
         fontSize: '9px',
-        fontFamily: 'Arial, sans-serif',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
         color: costColor,
         align: 'center',
       }).setOrigin(0.5);
@@ -400,7 +400,7 @@ export class TowerPanel {
 
     this.sellText = this.scene.add.text(x, y, 'S', {
       fontSize: '14px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffffff',
       fontStyle: 'bold',
     }).setOrigin(0.5);
@@ -446,7 +446,7 @@ export class TowerPanel {
 
     this.speedText = this.scene.add.text(x, y, 'x1', {
       fontSize: '12px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffffff',
       fontStyle: 'bold',
     }).setOrigin(0.5);
@@ -568,7 +568,7 @@ export class TowerPanel {
     // 타워 이름
     const nameText = this.scene.add.text(popupX, popupY - 36, t(`tower.${type}.name`), {
       fontSize: '18px',
-      fontFamily: 'Outfit, Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: colorCSS,
       fontStyle: 'bold',
     }).setOrigin(0.5);
@@ -577,7 +577,7 @@ export class TowerPanel {
     // 타워 플레이버 텍스트
     const flavorText = this.scene.add.text(popupX, popupY - 18, t(`tower.${type}.flavor`), {
       fontSize: '11px',
-      fontFamily: 'Outfit, Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#a0a0a0',
     }).setOrigin(0.5);
     this._descContainer.add(flavorText);
@@ -585,7 +585,7 @@ export class TowerPanel {
     // 타워 특징 설명 텍스트
     const descText2 = this.scene.add.text(popupX, popupY - 2, t(`tower.${type}.desc`), {
       fontSize: '11px',
-      fontFamily: 'Outfit, Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#d0d0d0',
     }).setOrigin(0.5);
     this._descContainer.add(descText2);
@@ -601,7 +601,7 @@ export class TowerPanel {
     const statLine = `${t('ui.damage')} ${stats.damage}  |  ${t('ui.range')} ${stats.range}  |  ${t('ui.speed')} ${stats.fireRate}s  |  ${t('ui.special')} ${special}`;
     const statText = this.scene.add.text(popupX, popupY + 20, statLine, {
       fontSize: '11px',
-      fontFamily: 'Outfit, Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#e0e0e0',
     }).setOrigin(0.5);
     this._descContainer.add(statText);
@@ -613,7 +613,7 @@ export class TowerPanel {
     const costStr = isLocked ? `\uD83D\uDD12 ${worldName}` : `${stats.cost}G`;
     const costText = this.scene.add.text(popupX, popupY + 42, costStr, {
       fontSize: '13px',
-      fontFamily: 'Outfit, Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffd700',
     }).setOrigin(0.5);
     this._descContainer.add(costText);
@@ -829,7 +829,7 @@ export class TowerPanel {
     // 결과 타워 이름
     const nameText = this.scene.add.text(0, -5, `\u2192 ${resultName}`, {
       fontSize: '10px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: colorCSS,
       fontStyle: 'bold',
     }).setOrigin(0.5);
@@ -838,7 +838,7 @@ export class TowerPanel {
     // 결과 타워 티어
     const tierText = this.scene.add.text(0, 8, `(T${result.tier})`, {
       fontSize: '9px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#aaaaaa',
     }).setOrigin(0.5);
     container.add(tierText);

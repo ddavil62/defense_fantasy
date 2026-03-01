@@ -76,7 +76,7 @@ export class StatsScene extends Phaser.Scene {
 
     this.add.text(38, y, '< BACK', {
       fontSize: '14px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffffff',
     }).setOrigin(0.5).setDepth(50);
 
@@ -84,7 +84,7 @@ export class StatsScene extends Phaser.Scene {
 
     this.add.text(180, y, 'STATISTICS', {
       fontSize: '18px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffffff',
       fontStyle: 'bold',
     }).setOrigin(0.5).setDepth(50);
@@ -138,7 +138,7 @@ export class StatsScene extends Phaser.Scene {
       this.scrollContainer.add(
         this.add.text(28, y, item.label, {
           fontSize: '13px',
-          fontFamily: 'Arial, sans-serif',
+          fontFamily: 'Galmuri11, Arial, sans-serif',
           color: '#8a8a9a',
         })
       );
@@ -146,7 +146,7 @@ export class StatsScene extends Phaser.Scene {
       this.scrollContainer.add(
         this.add.text(GAME_WIDTH - 28, y, item.value, {
           fontSize: '14px',
-          fontFamily: 'Arial, sans-serif',
+          fontFamily: 'Galmuri11, Arial, sans-serif',
           color: BTN_PRIMARY_CSS,
           fontStyle: 'bold',
         }).setOrigin(1, 0)
@@ -181,7 +181,7 @@ export class StatsScene extends Phaser.Scene {
     if (entries.length === 0) {
       this.scrollContainer.add(
         this.add.text(28, y, 'No kills yet', {
-          fontSize: '13px', fontFamily: 'Arial, sans-serif', color: '#636e72',
+          fontSize: '13px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#636e72',
         })
       );
       y += 22;
@@ -202,12 +202,12 @@ export class StatsScene extends Phaser.Scene {
         // 유형명 + 킬 수
         this.scrollContainer.add(
           this.add.text(44, y, `${label}`, {
-            fontSize: '13px', fontFamily: 'Arial, sans-serif', color: '#dfe6e9',
+            fontSize: '13px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#dfe6e9',
           })
         );
         this.scrollContainer.add(
           this.add.text(GAME_WIDTH - 24, y, `${this._formatNumber(count)} (${pct}%)`, {
-            fontSize: '12px', fontFamily: 'Arial, sans-serif', color: '#b2bec3',
+            fontSize: '12px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#b2bec3',
           }).setOrigin(1, 0)
         );
 
@@ -244,7 +244,7 @@ export class StatsScene extends Phaser.Scene {
     if (entries.length === 0) {
       this.scrollContainer.add(
         this.add.text(28, y, 'No tower data yet', {
-          fontSize: '13px', fontFamily: 'Arial, sans-serif', color: '#636e72',
+          fontSize: '13px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#636e72',
         })
       );
       y += 22;
@@ -265,14 +265,14 @@ export class StatsScene extends Phaser.Scene {
         // 타워명
         this.scrollContainer.add(
           this.add.text(44, y, label, {
-            fontSize: '13px', fontFamily: 'Arial, sans-serif', color: '#dfe6e9',
+            fontSize: '13px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#dfe6e9',
           })
         );
 
         // 킬 수
         this.scrollContainer.add(
           this.add.text(GAME_WIDTH - 24, y, `${this._formatNumber(count)} kills`, {
-            fontSize: '12px', fontFamily: 'Arial, sans-serif', color: '#b2bec3',
+            fontSize: '12px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#b2bec3',
           }).setOrigin(1, 0)
         );
 
@@ -306,7 +306,7 @@ export class StatsScene extends Phaser.Scene {
     if (history.length === 0) {
       this.scrollContainer.add(
         this.add.text(28, y, 'No games played yet', {
-          fontSize: '13px', fontFamily: 'Arial, sans-serif', color: '#636e72',
+          fontSize: '13px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#636e72',
         })
       );
       y += 22;
@@ -331,7 +331,7 @@ export class StatsScene extends Phaser.Scene {
         this.scrollContainer.add(
           this.add.text(cardX + 8, y + 8, `#${game.gameNumber}`, {
             fontSize: '12px',
-            fontFamily: 'Arial, sans-serif',
+            fontFamily: 'Galmuri11, Arial, sans-serif',
             color: BTN_PRIMARY_CSS,
             fontStyle: 'bold',
           })
@@ -343,7 +343,7 @@ export class StatsScene extends Phaser.Scene {
         this.scrollContainer.add(
           this.add.text(cardX + 55, y + 8, info + extra, {
             fontSize: '12px',
-            fontFamily: 'Arial, sans-serif',
+            fontFamily: 'Galmuri11, Arial, sans-serif',
             color: '#dfe6e9',
           })
         );
@@ -372,7 +372,7 @@ export class StatsScene extends Phaser.Scene {
 
     const text = this.add.text(28, y + 2, title, {
       fontSize: '12px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffffff',
       fontStyle: 'bold',
     });

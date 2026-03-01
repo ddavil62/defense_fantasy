@@ -87,7 +87,7 @@ export class BootScene extends Phaser.Scene {
    * - localStorage에서 세이브 데이터를 읽어 마이그레이션 후 레지스트리에 저장
    * - SoundManager 싱글턴을 레지스트리에 등록
    */
-  create() {
+  async create() {
     let saveData = null;
     try {
       const raw = localStorage.getItem(SAVE_KEY);
@@ -107,6 +107,10 @@ export class BootScene extends Phaser.Scene {
     if (!this.registry.get('soundManager')) {
       this.registry.set('soundManager', new SoundManager());
     }
+
+    // 커스텀 폰트(Galmuri)가 완전히 로드된 후 MenuScene으로 전환
+    // CSS @font-face로 선언된 폰트가 resolve될 때까지 대기하여 FOUT 방지
+    await document.fonts.ready;
 
     this.scene.start('MenuScene');
   }

@@ -107,7 +107,7 @@ export class GameOverScene extends Phaser.Scene {
     // ── GAME OVER 타이틀 (다크 레드 + 그림자 글로우) ──
     this.add.text(centerX, centerY - 165, 'GAME OVER', {
       fontSize: '28px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#c0392b',
       fontStyle: 'bold',
       shadow: {
@@ -126,13 +126,13 @@ export class GameOverScene extends Phaser.Scene {
     // ── 도달 라운드 (골드 강조) ──
     this.add.text(centerX - 40, centerY - 115, 'Round:', {
       fontSize: '18px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#b2bec3',
     }).setOrigin(1, 0.5);
 
     this.add.text(centerX - 34, centerY - 115, `${this.round}`, {
       fontSize: '22px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffd700',
       fontStyle: 'bold',
     }).setOrigin(0, 0.5);
@@ -140,13 +140,13 @@ export class GameOverScene extends Phaser.Scene {
     // ── 킬 수 (골드 강조) ──
     this.add.text(centerX - 40, centerY - 88, 'Kills:', {
       fontSize: '16px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#b2bec3',
     }).setOrigin(1, 0.5);
 
     this.add.text(centerX - 34, centerY - 88, `${this.kills}`, {
       fontSize: '20px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffd700',
       fontStyle: 'bold',
     }).setOrigin(0, 0.5);
@@ -154,7 +154,7 @@ export class GameOverScene extends Phaser.Scene {
     // 최고 기록
     this.add.text(centerX, centerY - 60, `Best: Round ${saveData.bestRound}`, {
       fontSize: '16px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffd700',
     }).setOrigin(0.5);
 
@@ -162,7 +162,7 @@ export class GameOverScene extends Phaser.Scene {
     if (isNewBest) {
       const newBestText = this.add.text(centerX, centerY - 38, 'NEW BEST!', {
         fontSize: '18px',
-        fontFamily: 'Arial, sans-serif',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#ffd700',
         fontStyle: 'bold',
         shadow: {
@@ -190,7 +190,7 @@ export class GameOverScene extends Phaser.Scene {
     this.add.text(centerX, statsY,
       `Towers: ${gs.towersPlaced || 0}  |  Gold: ${gs.goldEarned || 0}`, {
         fontSize: '12px',
-        fontFamily: 'Arial, sans-serif',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#b2bec3',
       }).setOrigin(0.5);
 
@@ -200,7 +200,7 @@ export class GameOverScene extends Phaser.Scene {
       this.add.text(centerX, statsY + 18,
         `Top Tower: ${topTower.name} (${topTower.kills} kills)`, {
           fontSize: '11px',
-          fontFamily: 'Arial, sans-serif',
+          fontFamily: 'Galmuri11, Arial, sans-serif',
           color: '#636e72',
         }).setOrigin(0.5);
     }
@@ -210,21 +210,21 @@ export class GameOverScene extends Phaser.Scene {
     if (diamondEarned > 0) {
       this.add.text(centerX, diamondY, `\u25C6 +${diamondEarned} Diamond`, {
         fontSize: '18px',
-        fontFamily: 'Arial, sans-serif',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
         color: COLORS.DIAMOND_CSS,
         fontStyle: 'bold',
       }).setOrigin(0.5);
 
       this.add.text(centerX, diamondY + 23, `(Total: \u25C6 ${saveData.diamond})`, {
         fontSize: '13px',
-        fontFamily: 'Arial, sans-serif',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#636e72',
       }).setOrigin(0.5);
     } else {
       // 5라운드 미만 도달 시 다이아몬드 미지급 안내
       this.add.text(centerX, diamondY, 'R5+ for Diamond', {
         fontSize: '14px',
-        fontFamily: 'Arial, sans-serif',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#636e72',
       }).setOrigin(0.5);
     }
@@ -237,7 +237,7 @@ export class GameOverScene extends Phaser.Scene {
 
     this.add.text(centerX, retryY, 'RETRY', {
       fontSize: '18px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#1a1a2e',
       fontStyle: 'bold',
     }).setOrigin(0.5);
@@ -261,7 +261,7 @@ export class GameOverScene extends Phaser.Scene {
 
       this.add.text(centerX, worldMapY, 'WORLD MAP', {
         fontSize: '15px',
-        fontFamily: 'Arial, sans-serif',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#ffffff',
         fontStyle: 'bold',
       }).setOrigin(0.5);
@@ -281,7 +281,7 @@ export class GameOverScene extends Phaser.Scene {
 
       this.add.text(centerX, menuY, 'MENU', {
         fontSize: '14px',
-        fontFamily: 'Arial, sans-serif',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#ffffff',
         fontStyle: 'bold',
       }).setOrigin(0.5);
@@ -301,7 +301,7 @@ export class GameOverScene extends Phaser.Scene {
 
       this.add.text(centerX, menuY, 'MENU', {
         fontSize: '16px',
-        fontFamily: 'Arial, sans-serif',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#ffffff',
         fontStyle: 'bold',
       }).setOrigin(0.5);

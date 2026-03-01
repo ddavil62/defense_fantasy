@@ -119,7 +119,7 @@ export class CollectionScene extends Phaser.Scene {
 
     this.add.text(38, 24, '< BACK', {
       fontSize: '14px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffffff',
     }).setOrigin(0.5);
 
@@ -130,7 +130,7 @@ export class CollectionScene extends Phaser.Scene {
     // 타이틀
     this.add.text(180, 24, 'COLLECTION', {
       fontSize: '18px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffffff',
       fontStyle: 'bold',
     }).setOrigin(0.5);
@@ -139,7 +139,7 @@ export class CollectionScene extends Phaser.Scene {
     const diamond = this.saveData.diamond || 0;
     this.diamondText = this.add.text(352, 24, `\u25C6 ${diamond}`, {
       fontSize: '16px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: COLORS.DIAMOND_CSS,
     }).setOrigin(1, 0.5);
   }
@@ -190,7 +190,7 @@ export class CollectionScene extends Phaser.Scene {
 
     const metaText = this.add.text(leftX, tabCenterY, t('collection.tab.meta'), {
       fontSize: '13px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: metaActive ? '#ffffff' : '#636e72',
       fontStyle: metaActive ? 'bold' : 'normal',
     }).setOrigin(0.5);
@@ -218,7 +218,7 @@ export class CollectionScene extends Phaser.Scene {
 
     const codexText = this.add.text(rightX, tabCenterY, t('collection.tab.codex'), {
       fontSize: '13px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: codexActive ? '#ffffff' : '#636e72',
       fontStyle: codexActive ? 'bold' : 'normal',
     }).setOrigin(0.5);
@@ -322,7 +322,7 @@ export class CollectionScene extends Phaser.Scene {
       // 타워 이름
       const nameText = this.add.text(cx, y + 52, stats.displayName, {
         fontSize: '12px',
-        fontFamily: 'Arial, sans-serif',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#636e72',
       }).setOrigin(0.5);
       this.tabContent.add(nameText);
@@ -332,7 +332,7 @@ export class CollectionScene extends Phaser.Scene {
       const worldName = unlockWorld ? t(`world.${unlockWorld}.name`) : '';
       const condText = this.add.text(cx, y + 68, `${worldName}`, {
         fontSize: '10px',
-        fontFamily: 'Arial, sans-serif',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#636e72',
       }).setOrigin(0.5);
       this.tabContent.add(condText);
@@ -356,7 +356,7 @@ export class CollectionScene extends Phaser.Scene {
       // 타워 이름
       const nameText = this.add.text(cx, y + 52, stats.displayName, {
         fontSize: '12px',
-        fontFamily: 'Arial, sans-serif',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#ffffff',
       }).setOrigin(0.5);
       this.tabContent.add(nameText);
@@ -366,7 +366,7 @@ export class CollectionScene extends Phaser.Scene {
       const tierStr = maxTier > 0 ? `Lv.${maxTier}` : 'Lv.0';
       const tierText = this.add.text(cx, y + 68, tierStr, {
         fontSize: '11px',
-        fontFamily: 'Arial, sans-serif',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#ffd700',
       }).setOrigin(0.5);
       this.tabContent.add(tierText);
@@ -526,7 +526,7 @@ export class CollectionScene extends Phaser.Scene {
     const headerY = 390;
     const headerText = this.add.text(GAME_WIDTH / 2, headerY, '── UTILITY ──', {
       fontSize: '13px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#636e72',
     }).setOrigin(0.5);
     this.tabContent.add(headerText);
@@ -577,7 +577,7 @@ export class CollectionScene extends Phaser.Scene {
 
     const nameText = this.add.text(x + 32, y + 16, util.name, {
       fontSize: '12px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffffff',
     }).setOrigin(0, 0.5);
     this.tabContent.add(nameText);
@@ -585,7 +585,7 @@ export class CollectionScene extends Phaser.Scene {
     // 현재 티어 표시
     const tierText = this.add.text(cx, y + 40, `Tier ${tier}/${maxTier}`, {
       fontSize: '11px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffd700',
     }).setOrigin(0.5);
     this.tabContent.add(tierText);
@@ -599,7 +599,7 @@ export class CollectionScene extends Phaser.Scene {
     }
     const effectText = this.add.text(cx, y + 56, effectStr, {
       fontSize: '10px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#b2bec3',
     }).setOrigin(0.5);
     this.tabContent.add(effectText);
@@ -703,7 +703,7 @@ export class CollectionScene extends Phaser.Scene {
 
     const closeText = this.add.text(closeX, closeY, 'X', {
       fontSize: '14px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffffff',
       fontStyle: 'bold',
     }).setOrigin(0.5);
@@ -722,7 +722,7 @@ export class CollectionScene extends Phaser.Scene {
     // 타워 이름
     const nameText = this.add.text(panelX, panelTop + 38, stats.displayName, {
       fontSize: '18px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffffff',
       fontStyle: 'bold',
     }).setOrigin(0.5);
@@ -733,7 +733,7 @@ export class CollectionScene extends Phaser.Scene {
     const branchStr = maxTier > 0 ? `Meta Tier ${maxTier}` : 'No meta upgrades';
     const branchText = this.add.text(panelX, panelTop + 60, branchStr, {
       fontSize: '13px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#b2bec3',
     }).setOrigin(0.5);
     this.overlay.add(branchText);
@@ -744,7 +744,7 @@ export class CollectionScene extends Phaser.Scene {
     if (flavorStr !== flavorKey) {
       const flavorText = this.add.text(panelX, panelTop + 80, flavorStr, {
         fontSize: '11px',
-        fontFamily: 'Arial, sans-serif',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#a0a0a0',
         fontStyle: 'italic',
       }).setOrigin(0.5);
@@ -757,7 +757,7 @@ export class CollectionScene extends Phaser.Scene {
     if (descStr !== descKey) {
       const descText = this.add.text(panelX, panelTop + 96, descStr, {
         fontSize: '11px',
-        fontFamily: 'Arial, sans-serif',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#d0d0d0',
       }).setOrigin(0.5);
       this.overlay.add(descText);
@@ -783,7 +783,7 @@ export class CollectionScene extends Phaser.Scene {
       // 티어 라벨
       const tierLabel = this.add.text(panelX - panelW / 2 + 25, tierY, `Tier ${tier}`, {
         fontSize: '14px',
-        fontFamily: 'Arial, sans-serif',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#ffd700',
         fontStyle: 'bold',
       });
@@ -806,7 +806,7 @@ export class CollectionScene extends Phaser.Scene {
     const summaryY = tierStartY + 3 * tierHeight + 10;
     const summaryHeader = this.add.text(panelX, summaryY, '── Current Bonuses ──', {
       fontSize: '12px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#b2bec3',
     }).setOrigin(0.5);
     this.overlay.add(summaryHeader);
@@ -814,7 +814,7 @@ export class CollectionScene extends Phaser.Scene {
     const bonusSummary = this._calcBonusSummary(type, upgrades);
     const summaryText = this.add.text(panelX, summaryY + 20, bonusSummary, {
       fontSize: '11px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#b2bec3',
       align: 'center',
     }).setOrigin(0.5);
@@ -895,7 +895,7 @@ export class CollectionScene extends Phaser.Scene {
 
     const badgeText = this.add.text(x - w / 2 + 14, y, label, {
       fontSize: '10px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffffff',
       fontStyle: 'bold',
     }).setOrigin(0.5);
@@ -908,7 +908,7 @@ export class CollectionScene extends Phaser.Scene {
 
     const descText = this.add.text(x - 10, y, descStr, {
       fontSize: '11px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: textColor,
     }).setOrigin(0.5);
     this.overlay.add(descText);
@@ -917,7 +917,7 @@ export class CollectionScene extends Phaser.Scene {
     const costStr = isSelected ? '' : `\u25C6 ${optionData.cost}`;
     const costText = this.add.text(x + w / 2 - 30, y, costStr, {
       fontSize: '11px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: costColor,
     }).setOrigin(0.5);
     this.overlay.add(costText);
@@ -1054,7 +1054,7 @@ export class CollectionScene extends Phaser.Scene {
 
     const closeText = this.add.text(closeX, closeY, 'X', {
       fontSize: '14px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffffff',
       fontStyle: 'bold',
     }).setOrigin(0.5);
@@ -1072,7 +1072,7 @@ export class CollectionScene extends Phaser.Scene {
 
     const nameText = this.add.text(panelX - 30, panelTop + 45, util.name, {
       fontSize: '18px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffffff',
       fontStyle: 'bold',
     }).setOrigin(0, 0.5);
@@ -1087,7 +1087,7 @@ export class CollectionScene extends Phaser.Scene {
     }
     const statusText = this.add.text(panelX, panelTop + 75, `Current: ${currentDesc} (Tier ${currentTier}/${util.tiers.length})`, {
       fontSize: '13px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#b2bec3',
     }).setOrigin(0.5);
     this.overlay.add(statusText);
@@ -1144,7 +1144,7 @@ export class CollectionScene extends Phaser.Scene {
       const labelPrefix = isCompleted ? '\u2713 ' : isLocked ? '\uD83D\uDD12 ' : '';
       const tierLabel = this.add.text(panelX - panelW / 2 + 40, btnY, `${labelPrefix}Tier ${tier}`, {
         fontSize: '13px',
-        fontFamily: 'Arial, sans-serif',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
         color: textColor,
         fontStyle: 'bold',
       }).setOrigin(0, 0.5);
@@ -1153,7 +1153,7 @@ export class CollectionScene extends Phaser.Scene {
       // 효과 설명
       const effectText = this.add.text(panelX + 10, btnY, tierData.desc, {
         fontSize: '12px',
-        fontFamily: 'Arial, sans-serif',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
         color: textColor,
       }).setOrigin(0, 0.5);
       this.overlay.add(effectText);
@@ -1163,7 +1163,7 @@ export class CollectionScene extends Phaser.Scene {
       const costStr = isCompleted ? '' : `\u25C6 ${tierData.cost}`;
       const costText = this.add.text(panelX + panelW / 2 - 30, btnY, costStr, {
         fontSize: '12px',
-        fontFamily: 'Arial, sans-serif',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
         color: costColor,
       }).setOrigin(1, 0.5);
       this.overlay.add(costText);
@@ -1243,7 +1243,7 @@ export class CollectionScene extends Phaser.Scene {
     // 타이틀
     const titleText = this.add.text(popX + 10, popY - 45, `${stats.displayName} Tower`, {
       fontSize: '16px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffffff',
       fontStyle: 'bold',
     }).setOrigin(0, 0.5);
@@ -1253,7 +1253,7 @@ export class CollectionScene extends Phaser.Scene {
     const condStr = t('ui.clearWorldToUnlock').replace('{world}', worldName);
     const descText = this.add.text(popX, popY - 5, condStr, {
       fontSize: '14px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#fdcb6e',
     }).setOrigin(0.5);
     this.overlay.add(descText);
@@ -1266,7 +1266,7 @@ export class CollectionScene extends Phaser.Scene {
 
     const okText = this.add.text(popX, popY + 45, t('ui.confirm') || 'OK', {
       fontSize: '13px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffffff',
       fontStyle: 'bold',
     }).setOrigin(0.5);

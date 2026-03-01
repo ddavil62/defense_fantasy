@@ -4,6 +4,34 @@
  * Capacitor safe-area 대응을 포함한다.
  */
 
+/* ── Galmuri 픽셀 폰트 (@font-face) ──
+ * 다크 판타지 픽셀아트 컨셉에 맞는 한국어 비트맵 폰트.
+ * SIL OFL 라이선스 (https://github.com/quiple/galmuri)
+ */
+@font-face {
+  font-family: 'Galmuri11';
+  src: url('/assets/fonts/Galmuri11.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+  font-display: block; /* 로딩 전 텍스트 비표시 (FOUT 방지) */
+}
+
+@font-face {
+  font-family: 'Galmuri11';
+  src: url('/assets/fonts/Galmuri11-Bold.woff2') format('woff2');
+  font-weight: bold;
+  font-style: normal;
+  font-display: block;
+}
+
+@font-face {
+  font-family: 'Galmuri9';
+  src: url('/assets/fonts/Galmuri9.woff2') format('woff2');
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
+
 /* 브라우저 기본 여백/패딩 초기화 */
 * {
   margin: 0;

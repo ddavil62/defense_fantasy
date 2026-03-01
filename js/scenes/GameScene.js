@@ -1402,7 +1402,7 @@ export class GameScene extends Phaser.Scene {
         '\u26A0 BOSS WAVE \u26A0',
         {
           fontSize: '26px',
-          fontFamily: 'Arial, sans-serif',
+          fontFamily: 'Galmuri11, Arial, sans-serif',
           fontStyle: 'bold',
           color: '#ff4757',
           stroke: '#000000',
@@ -1623,7 +1623,7 @@ export class GameScene extends Phaser.Scene {
 
     this.pauseBtnText = this.add.text(310, 20, '||', {
       fontSize: '12px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffffff',
       fontStyle: 'bold',
     }).setOrigin(0.5).setDepth(26);
@@ -1645,7 +1645,7 @@ export class GameScene extends Phaser.Scene {
 
     this.muteBtnText = this.add.text(278, 20, isMuted ? 'M' : '\u266A', {
       fontSize: '13px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: isMuted ? '#b2bec3' : '#55efc4',
       fontStyle: 'bold',
     }).setOrigin(0.5).setDepth(25);
@@ -1798,7 +1798,7 @@ export class GameScene extends Phaser.Scene {
     // "PAUSED" 텍스트 (금색 + 글로우)
     const pausedText = this.add.text(180, 220, 'PAUSED', {
       fontSize: '20px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffd700',
       fontStyle: 'bold',
       shadow: {
@@ -1819,7 +1819,7 @@ export class GameScene extends Phaser.Scene {
 
     const resumeText = this.add.text(180, 252, 'Resume', {
       fontSize: '14px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffffff',
       fontStyle: 'bold',
     }).setOrigin(0.5).setDepth(52);
@@ -1837,7 +1837,7 @@ export class GameScene extends Phaser.Scene {
 
     const codexText = this.add.text(180, 292, t('ui.mergeCodex'), {
       fontSize: '14px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffffff',
       fontStyle: 'bold',
     }).setOrigin(0.5).setDepth(52);
@@ -1858,7 +1858,7 @@ export class GameScene extends Phaser.Scene {
 
     const menuText = this.add.text(180, 332, 'Main Menu', {
       fontSize: '14px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffffff',
       fontStyle: 'bold',
     }).setOrigin(0.5).setDepth(52);
@@ -1885,12 +1885,12 @@ export class GameScene extends Phaser.Scene {
     const baseY = 370;
     const labelStyle = {
       fontSize: '12px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffffff',
     };
     const valueStyle = {
       fontSize: '12px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffd700',
     };
 
@@ -1962,7 +1962,7 @@ export class GameScene extends Phaser.Scene {
 
     const muteTxt = this.add.text(180, muteY, sm.muted ? 'UNMUTE' : 'MUTE', {
       fontSize: '12px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffffff',
       fontStyle: 'bold',
     }).setOrigin(0.5).setDepth(52);
@@ -2013,14 +2013,14 @@ export class GameScene extends Phaser.Scene {
 
     this.hpRecoverText = this.add.text(x, y, '+HP', {
       fontSize: '10px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffffff',
       fontStyle: 'bold',
     }).setOrigin(0.5).setDepth(31);
 
     this.hpRecoverCostText = this.add.text(x, y + 14, '', {
       fontSize: '7px',
-      fontFamily: 'Arial, sans-serif',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffd700',
     }).setOrigin(0.5).setDepth(31);
 
@@ -2130,21 +2130,21 @@ export class GameScene extends Phaser.Scene {
 
       const iconText = this.add.text(x, y - 2, def.icon, {
         fontSize: '12px',
-        fontFamily: 'Arial, sans-serif',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#ffffff',
         fontStyle: 'bold',
       }).setOrigin(0.5).setDepth(31);
 
       const costText = this.add.text(x, y + 10, '', {
         fontSize: '6px',
-        fontFamily: 'Arial, sans-serif',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#ffd700',
       }).setOrigin(0.5).setDepth(31);
 
       // 쿨다운 카운트 오버레이 텍스트
       const cdText = this.add.text(x, y, '', {
         fontSize: '9px',
-        fontFamily: 'Arial, sans-serif',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#ffffff',
         fontStyle: 'bold',
       }).setOrigin(0.5).setDepth(32).setAlpha(0);
