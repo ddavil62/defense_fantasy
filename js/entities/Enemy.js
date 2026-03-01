@@ -129,7 +129,15 @@ export class Enemy {
       const displaySize = this._getRadius() * 2.6;  // 스프라이트를 반지름 대비 30% 확대
       this.sprite.setDisplaySize(displaySize, displaySize);
       this.sprite.setDepth(15);
+      /** @type {number} 스프라이트 기본 표시 크기 (애니메이션 복원용) */
+      this._baseDisplaySize = displaySize;
     }
+
+    // ── 걷기 애니메이션 상태 ──
+    /** @type {number} 걷기 애니메이션 누적 시간 (초) */
+    this._walkTime = Math.random() * Math.PI * 2;  // 랜덤 오프셋으로 개체별 비동기화
+    /** @type {number} 이전 프레임의 이동 방향 X (좌우 반전용) */
+    this._lastDx = 0;
 
     this.draw();
   }
@@ -144,8 +152,8 @@ export class Enemy {
     this.graphics.clear();
 
     if (this.sprite) {
-      // 스프라이트 모드: 위치만 갱신하고 디버프 틴트 적용
-      this.sprite.setPosition(this.x, this.y);
+      // 스프라이트 모드: 위치 + 걷기 애니메이션 적용
+      this._applyWalkAnimation();
       this._applySpriteDebuffTint();
     } else {
       // 폴백 모드: 기존 도형 렌더링
@@ -156,6 +164,51 @@ export class Enemy {
     this._drawDebuffIndicators();
 
     this._drawHPBar();
+  }
+
+  /**
+   * 스프라이트에 걷기 애니메이션을 적용한다.
+   * 상하 바운스 + 좌우 기울기 + 스쿼시/스트레치로 이동감을 표현한다.
+   * @private
+   */
+  _applyWalkAnimation() {
+    if (!this.sprite) return;
+
+    const isBoss = this.type === 'boss' || this.type === 'boss_armored';
+
+    // 걷기 속도: 이동 속도에 비례 (빠른 적 = 빠른 걸음, 보스 = 느린 걸음)
+    const walkSpeed = isBoss ? 4 : 8;
+    const t = this._walkTime;
+
+    // 상하 바운스 (사인파): 보스는 작게, 일반은 크게
+    const bounceAmp = isBoss ? 1.5 : 3;
+    const bounceY = Math.abs(Math.sin(t * walkSpeed)) * bounceAmp;
+
+    // 좌우 기울기 (사인파, 반주기 오프셋)
+    const tiltAmp = isBoss ? 0.03 : 0.06;
+    const tilt = Math.sin(t * walkSpeed) * tiltAmp;
+
+    // 스쿼시/스트레치: 바운스 정점에서 세로 늘림, 착지에서 가로 늘림
+    const squashPhase = Math.abs(Math.sin(t * walkSpeed));
+    const scaleX = 1 + squashPhase * 0.05;
+    const scaleY = 1 - squashPhase * 0.05;
+
+    // 위치 적용 (Y축 바운스)
+    this.sprite.setPosition(this.x, this.y - bounceY);
+
+    // 회전(기울기) 적용
+    this.sprite.setRotation(tilt);
+
+    // 스쿼시/스트레치 적용
+    const base = this._baseDisplaySize;
+    this.sprite.setDisplaySize(base * scaleX, base * scaleY);
+
+    // 이동 방향에 따라 좌우 반전
+    if (this._lastDx < -0.1) {
+      this.sprite.setFlipX(true);
+    } else if (this._lastDx > 0.1) {
+      this.sprite.setFlipX(false);
+    }
   }
 
   /**
@@ -453,6 +506,9 @@ export class Enemy {
       }
     }
 
+    // ── 걷기 애니메이션 타이머 갱신 ──
+    this._walkTime += delta;
+
     // ── 이동 처리 ────────────────────────────────────────────
     if (this.waypointIndex >= this.path.length - 1) {
       this.reachedBase = true;
@@ -462,6 +518,9 @@ export class Enemy {
     const target = this.path[this.waypointIndex + 1];
     const dx = target.x - this.x;
     const dy = target.y - this.y;
+
+    // 이동 방향 저장 (스프라이트 좌우 반전용)
+    this._lastDx = dx;
     const dist = Math.sqrt(dx * dx + dy * dy);
 
     if (dist <= 0) {
