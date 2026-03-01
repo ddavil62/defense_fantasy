@@ -718,16 +718,60 @@ export class Enemy {
   // ── 사망 이펙트 ────────────────────────────────────────────────
 
   /**
-   * 사망 시 파티클 이펙트를 재생한다.
-   * 확장 링 + 랜덤 속도 파티클로 구성되며, 보스는 추가 링이 표시된다.
+   * 사망 시 스프라이트 쓰러짐 애니메이션 + 파티클 이펙트를 재생한다.
+   * 스프라이트가 있으면 옆으로 90° 넘어진 후 서서히 사라진다.
+   * 확장 링 + 랜덤 속도 파티클도 함께 표시되며, 보스는 추가 링이 표시된다.
    * @private
    */
   _playDeathEffect() {
+    const isBoss = this.type === 'boss' || this.type === 'boss_armored';
+
+    // ── 스프라이트 사망 애니메이션 (옆으로 넘어진 후 페이드 아웃) ──
+    if (this.sprite) {
+      const deathSprite = this.sprite;
+      this.sprite = null;  // destroy()에서 중복 제거 방지
+
+      // 걷기 애니메이션 상태를 초기화하여 깔끔한 사망 자세로 시작
+      deathSprite.setPosition(this.x, this.y);
+      const base = this._baseDisplaySize;
+      deathSprite.setDisplaySize(base, base);
+      deathSprite.setRotation(0);
+      deathSprite.clearTint();
+
+      // 넘어지는 방향: 마지막 이동 방향 기준 (오른쪽 이동 → 오른쪽으로 넘어짐)
+      const fallDirection = this._lastDx >= 0 ? 1 : -1;
+      const targetRotation = fallDirection * (Math.PI / 2);
+
+      const fallDuration = isBoss ? 400 : 250;
+      const fadeDuration = isBoss ? 500 : 350;
+
+      // 1단계: 옆으로 넘어짐 (회전 + 약간 아래로 침강)
+      this.scene.tweens.add({
+        targets: deathSprite,
+        rotation: targetRotation,
+        y: this.y + (base * 0.15),
+        duration: fallDuration,
+        ease: 'Quad.easeIn',
+        onComplete: () => {
+          // 2단계: 서서히 사라짐 (페이드 아웃)
+          this.scene.tweens.add({
+            targets: deathSprite,
+            alpha: 0,
+            duration: fadeDuration,
+            ease: 'Power2',
+            onComplete: () => {
+              deathSprite.destroy();
+            },
+          });
+        },
+      });
+    }
+
+    // ── 파티클 이펙트 (기존) ──
     const effectGraphics = this.scene.add.graphics();
     effectGraphics.setDepth(20);
     const baseStats = ENEMY_STATS[this.type];
     const color = baseStats ? baseStats.color : 0xffffff;
-    const isBoss = this.type === 'boss' || this.type === 'boss_armored';
 
     // 확장 링 이펙트 생성
     let elapsed = 0;
