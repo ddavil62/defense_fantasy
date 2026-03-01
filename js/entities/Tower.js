@@ -63,9 +63,12 @@ export class Tower {
     this.totalInvested = this.stats.cost;
 
     // ── 그래픽 초기화 ──
+    // Y좌표 기반 depth: 아래쪽 타워(Y값 큰)가 위쪽 타워를 자연스럽게 가림
+    const towerDepth = 10 + (this.y / 1000);
+
     /** @type {Phaser.GameObjects.Graphics} 타워 도형 그래픽 */
     this.graphics = scene.add.graphics();
-    this.graphics.setDepth(10);
+    this.graphics.setDepth(towerDepth);
 
     // T1 기본 타워 스프라이트 (텍스처가 존재하면 도형 대신 이미지 사용)
     const textureKey = `tower_${type}`;
@@ -73,7 +76,7 @@ export class Tower {
       /** @type {Phaser.GameObjects.Sprite|null} T1 타워 스프라이트 (합성 시 제거) */
       this.sprite = scene.add.sprite(this.x, this.y, textureKey);
       this.sprite.setDisplaySize(64, 64);
-      this.sprite.setDepth(10);
+      this.sprite.setDepth(towerDepth);
     } else {
       this.sprite = null;
     }
@@ -609,7 +612,8 @@ export class Tower {
     if (this.scene.textures.exists(textureKey)) {
       this.sprite = this.scene.add.sprite(this.x, this.y, textureKey);
       this.sprite.setDisplaySize(64, 64);
-      this.sprite.setDepth(10);
+      // Y좌표 기반 depth: 아래쪽 타워가 위쪽 타워를 자연스럽게 가림
+      this.sprite.setDepth(10 + (this.y / 1000));
     }
 
     // MERGED_TOWER_STATS에서 합성 타워 스탯 로드
