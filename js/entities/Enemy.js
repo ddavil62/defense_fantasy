@@ -126,7 +126,7 @@ export class Enemy {
     const spriteKey = getEnemySpriteKey(this.type, this.worldId);
     if (spriteKey && scene.textures.exists(spriteKey)) {
       this.sprite = scene.add.image(this.x, this.y, spriteKey);
-      const displaySize = this._getRadius() * 2;
+      const displaySize = this._getRadius() * 2.6;  // 스프라이트를 반지름 대비 30% 확대
       this.sprite.setDisplaySize(displaySize, displaySize);
       this.sprite.setDepth(15);
     }
