@@ -50,8 +50,11 @@ export class MenuScene extends Phaser.Scene {
     this.add.rectangle(centerX, 30, GAME_WIDTH - 40, 2, 0xc0a030).setAlpha(0.6);
     this.add.rectangle(centerX, GAME_HEIGHT - 30, GAME_WIDTH - 40, 2, 0xc0a030).setAlpha(0.6);
 
+    // ── 레이아웃 오프셋 (콘텐츠 상단 여백 조정) ──
+    const offsetY = -100;
+
     // ── 타이틀 텍스트 (골드 + 그림자 글로우) ──
-    this.add.text(centerX, 190, 'Fantasy\nTower Defense', {
+    this.add.text(centerX, 190 + offsetY, 'Fantasy\nTower Defense', {
       fontSize: '28px',
       fontFamily: 'Arial, sans-serif',
       color: '#ffd700',
@@ -70,7 +73,7 @@ export class MenuScene extends Phaser.Scene {
     // ── 다이아몬드 보유량 (퍼플) ──
     const saveData = this.registry.get('saveData');
     const diamond = saveData?.diamond || 0;
-    this.add.text(centerX, 280, `\u25C6 ${diamond}`, {
+    this.add.text(centerX, 280 + offsetY, `\u25C6 ${diamond}`, {
       fontSize: '18px',
       fontFamily: 'Arial, sans-serif',
       color: COLORS.DIAMOND_CSS,
@@ -79,14 +82,14 @@ export class MenuScene extends Phaser.Scene {
 
     // ── 최고 기록 표시 ──
     if (saveData && saveData.bestRound > 0) {
-      this.add.text(centerX, 315, `Best: Round ${saveData.bestRound}`, {
+      this.add.text(centerX, 315 + offsetY, `Best: Round ${saveData.bestRound}`, {
         fontSize: '18px',
         fontFamily: 'Arial, sans-serif',
         color: '#ffd700',
         align: 'center',
       }).setOrigin(0.5);
 
-      this.add.text(centerX, 338, `Kills: ${saveData.bestKills} | Games: ${saveData.totalGames}`, {
+      this.add.text(centerX, 338 + offsetY, `Kills: ${saveData.bestKills} | Games: ${saveData.totalGames}`, {
         fontSize: '13px',
         fontFamily: 'Arial, sans-serif',
         color: '#b2bec3',
@@ -95,11 +98,11 @@ export class MenuScene extends Phaser.Scene {
     }
 
     // ── CAMPAIGN 버튼 (골드 프라이머리) ──
-    const campaignBg = this.add.rectangle(centerX, 380, 160, 44, BTN_PRIMARY)
+    const campaignBg = this.add.rectangle(centerX, 380 + offsetY, 160, 44, BTN_PRIMARY)
       .setInteractive({ useHandCursor: true })
       .setStrokeStyle(2, 0xffd700);
 
-    this.add.text(centerX, 380, t('ui.campaign'), {
+    this.add.text(centerX, 380 + offsetY, t('ui.campaign'), {
       fontSize: '16px',
       fontFamily: 'Arial, sans-serif',
       color: '#1a1a2e',
@@ -121,11 +124,11 @@ export class MenuScene extends Phaser.Scene {
 
     if (endlessUnlocked) {
       // 활성 상태: 골드 프라이머리 버튼
-      const endlessBg = this.add.rectangle(centerX, 435, 160, 40, BTN_PRIMARY)
+      const endlessBg = this.add.rectangle(centerX, 435 + offsetY, 160, 40, BTN_PRIMARY)
         .setInteractive({ useHandCursor: true })
         .setStrokeStyle(2, 0xffd700);
 
-      this.add.text(centerX, 435, t('ui.endless'), {
+      this.add.text(centerX, 435 + offsetY, t('ui.endless'), {
         fontSize: '15px',
         fontFamily: 'Arial, sans-serif',
         color: '#1a1a2e',
@@ -142,10 +145,10 @@ export class MenuScene extends Phaser.Scene {
       endlessBg.on('pointerout', () => endlessBg.setFillStyle(BTN_PRIMARY));
     } else {
       // 비활성 상태: 회색 잠금 버튼
-      this.add.rectangle(centerX, 435, 160, 40, BTN_SELL)
+      this.add.rectangle(centerX, 435 + offsetY, 160, 40, BTN_SELL)
         .setStrokeStyle(1, 0x636e72);
 
-      this.add.text(centerX, 435, t('ui.endless'), {
+      this.add.text(centerX, 435 + offsetY, t('ui.endless'), {
         fontSize: '15px',
         fontFamily: 'Arial, sans-serif',
         color: '#636e72',
@@ -153,7 +156,7 @@ export class MenuScene extends Phaser.Scene {
       }).setOrigin(0.5);
 
       // ENDLESS 하단 잠금 안내 텍스트
-      this.add.text(centerX, 460, t('ui.endlessLocked'), {
+      this.add.text(centerX, 460 + offsetY, t('ui.endlessLocked'), {
         fontSize: '12px',
         fontFamily: 'Arial, sans-serif',
         color: '#636e72',
@@ -161,11 +164,11 @@ export class MenuScene extends Phaser.Scene {
     }
 
     // ── COLLECTION 버튼 (퍼플 메타) ──
-    const collBg = this.add.rectangle(centerX, 492, 160, 40, BTN_META)
+    const collBg = this.add.rectangle(centerX, 492 + offsetY, 160, 40, BTN_META)
       .setInteractive({ useHandCursor: true })
       .setStrokeStyle(2, COLORS.DIAMOND);
 
-    this.add.text(centerX, 492, 'COLLECTION', {
+    this.add.text(centerX, 492 + offsetY, 'COLLECTION', {
       fontSize: '15px',
       fontFamily: 'Arial, sans-serif',
       color: BTN_META_CSS,
@@ -183,11 +186,11 @@ export class MenuScene extends Phaser.Scene {
     collBg.on('pointerout', () => collBg.setFillStyle(BTN_META));
 
     // ── STATISTICS 버튼 (틸 백) ──
-    const statsBg = this.add.rectangle(centerX, 544, 160, 40, BTN_BACK)
+    const statsBg = this.add.rectangle(centerX, 544 + offsetY, 160, 40, BTN_BACK)
       .setInteractive({ useHandCursor: true })
       .setStrokeStyle(1, 0x1a9c7e);
 
-    this.add.text(centerX, 544, 'STATISTICS', {
+    this.add.text(centerX, 544 + offsetY, 'STATISTICS', {
       fontSize: '15px',
       fontFamily: 'Arial, sans-serif',
       color: '#ffffff',
@@ -209,11 +212,11 @@ export class MenuScene extends Phaser.Scene {
     const sm = this.registry.get('soundManager');
     if (sm) {
       const isMuted = sm.muted;
-      const muteBg = this.add.rectangle(centerX, 596, 80, 28, isMuted ? BTN_SELL : BTN_BACK)
+      const muteBg = this.add.rectangle(centerX, 596 + offsetY, 80, 28, isMuted ? BTN_SELL : BTN_BACK)
         .setStrokeStyle(1, isMuted ? 0x636e72 : 0x1a9c7e)
         .setInteractive({ useHandCursor: true });
 
-      const muteLabel = this.add.text(centerX, 596,
+      const muteLabel = this.add.text(centerX, 596 + offsetY,
         isMuted ? '\u266A OFF' : '\u266A ON',
         {
           fontSize: '13px',
