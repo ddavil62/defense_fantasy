@@ -183,7 +183,7 @@ export class LevelSelectScene extends Phaser.Scene {
         this.add.text(btnX, btnY, t('ui.start'), {
           fontSize: '13px',
           fontFamily: 'Galmuri11, Arial, sans-serif',
-          color: '#1a1a2e',
+          color: '#ffd700',
           fontStyle: 'bold',
         }).setOrigin(0.5);
 
