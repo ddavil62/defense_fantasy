@@ -18,6 +18,15 @@ import { t } from '../i18n.js';
 /** @const {number} 오버레이 패널 너비 (px) */
 const PANEL_W = 300;
 
+/** @const {number} NineSlice 상단 슬라이스 (루비 장식 포함) */
+const NS_TOP = 48;
+/** @const {number} NineSlice 하단 슬라이스 (눈 장식 포함) */
+const NS_BOTTOM = 44;
+/** @const {number} NineSlice 좌측 슬라이스 (골드 기둥) */
+const NS_LEFT = 24;
+/** @const {number} NineSlice 우측 슬라이스 (골드 기둥) */
+const NS_RIGHT = 24;
+
 /**
  * 타워 상세 정보 오버레이 클래스.
  * 'game' 모드와 'codex' 모드를 지원하며,
@@ -69,6 +78,9 @@ export class TowerInfoOverlay {
 
     /** @type {Function|null} 상위 조합 드래그 스크롤 pointerup 리스너 참조 */
     this._scrollUpHandler = null;
+
+    /** @type {boolean} 현재 보기가 강화된 원본 타워인지 여부 (baseH 동적 계산용) */
+    this._isSourceWithEnhance = false;
   }
 
   // ── 공개 API ──────────────────────────────────────────────────
@@ -155,7 +167,14 @@ export class TowerInfoOverlay {
     // 패널 높이 계산
     const hasUsedIn = usedInList.length > 0;
     const usedInViewH = hasUsedIn ? 100 : 0;
-    const baseH = entry.tier >= 2 ? 316 : 240;
+    // enhanceLevel > 0이면 T2 패널 nextY가 +16px 밀리므로 baseH도 +16 적용
+    this._isSourceWithEnhance = this.mode === 'game'
+      && this._history.length === 0
+      && this._sourceTower
+      && (this._sourceTower.getInfo().enhanceLevel > 0);
+
+    const enhanceOffset = this._isSourceWithEnhance ? 16 : 0;
+    const baseH = entry.tier >= 2 ? (316 + enhanceOffset) : (240 + enhanceOffset);
     // game 모드에서 원래 타워(depth 0)를 보고 있을 때 버튼 영역 추가
     const isSourceView = this.mode === 'game' && this._history.length === 0;
     const actionH = isSourceView ? 90 : 0;
@@ -167,8 +186,14 @@ export class TowerInfoOverlay {
     // ── 패널 배경 (이미지 또는 사각형 폴백) ──
     let panelBg;
     if (this.scene.textures.exists('panel_info_overlay')) {
-      panelBg = this.scene.add.image(panelX, panelY, 'panel_info_overlay')
-        .setInteractive();
+      // NineSlice: 모서리/테두리 장식을 유지하면서 중앙 영역만 동적으로 늘림
+      panelBg = this.scene.add.nineslice(
+        panelX, panelY,
+        'panel_info_overlay',
+        null,              // frame (null = 전체 이미지)
+        PANEL_W, panelH,   // 표시 너비/높이 (panelH는 동적 계산값)
+        NS_LEFT, NS_RIGHT, NS_TOP, NS_BOTTOM
+      ).setInteractive();
     } else {
       panelBg = this.scene.add.rectangle(panelX, panelY, PANEL_W, panelH, COLORS.UI_PANEL)
         .setStrokeStyle(2, BTN_PRIMARY)
@@ -269,6 +294,7 @@ export class TowerInfoOverlay {
     if (flavorStr !== flavorKey) {
       const flavorText = this.scene.add.text(panelX, panelTop + 84, flavorStr, {
         fontSize: '11px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#a0a0a0', fontStyle: 'italic',
+        wordWrap: { width: 260 }, align: 'center',
       }).setOrigin(0.5);
       this._container.add(flavorText);
     }
@@ -279,6 +305,7 @@ export class TowerInfoOverlay {
     if (descStr !== descKey) {
       const descText = this.scene.add.text(panelX, panelTop + 100, descStr, {
         fontSize: '11px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#d0d0d0',
+        wordWrap: { width: 260 }, align: 'center',
       }).setOrigin(0.5);
       this._container.add(descText);
     }
@@ -324,8 +351,10 @@ export class TowerInfoOverlay {
     }
 
     // 상위 조합 섹션
+    // enhanceLevel > 0이면 panelTop+166에 enhText(10px)가 표시되므로 시작 Y를 뒤로 민다
+    const t1UsedInY = this._isSourceWithEnhance ? panelTop + 186 : panelTop + 170;
     if (usedInList.length > 0) {
-      this._renderUsedInSection(entry, usedInList, panelX, panelTop + 170);
+      this._renderUsedInSection(entry, usedInList, panelX, t1UsedInY);
     }
 
     return panelTop + 240;
@@ -371,6 +400,7 @@ export class TowerInfoOverlay {
     if (treeDescStr !== treeDescKey) {
       const treeDescText = this.scene.add.text(panelX, panelTop + 144, treeDescStr, {
         fontSize: '11px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#a0a0a0',
+        wordWrap: { width: 260 }, align: 'center',
       }).setOrigin(0.5);
       this._container.add(treeDescText);
     }
@@ -795,6 +825,7 @@ export class TowerInfoOverlay {
       this._closedAt = Date.now();
       this._sourceTower = null;
       this._usedInScrollHint = null;
+      this._isSourceWithEnhance = false;
     }
   }
 

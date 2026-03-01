@@ -4,6 +4,29 @@
 
 ---
 
+## 2026-03-02 -- TowerInfoOverlay 텍스트 오버플로 및 패널 크기 불일치 수정
+
+### 배경
+
+인게임 타워 정보 오버레이(TowerInfoOverlay)에서 콘텐츠가 패널 배경 밖으로 넘치는 3가지 버그가 있었다. (1) `panel_info_overlay.png`가 300x360px 고정 이미지여서 콘텐츠가 360px을 초과하면 배경이 부족했고, (2) enhanceLevel > 0일 때 T2 패널의 nextY가 +16px 밀려 상위 조합 목록과 액션 버튼이 16px 겹쳤고, (3) 설명 텍스트에 wordWrap이 없어 긴 문자열이 패널 좌우 밖으로 넘쳤다.
+
+### 변경
+
+- **`js/ui/TowerInfoOverlay.js`** -- 3가지 수정 적용
+  - **NineSlice 교체**: 패널 배경을 `add.image()` -> `add.nineslice()`로 교체. 슬라이스 상수 NS_TOP=48, NS_BOTTOM=44, NS_LEFT=24, NS_RIGHT=24 추가. 모서리/테두리 장식을 유지하면서 중앙 영역만 동적으로 늘림. Rectangle 폴백은 기존 그대로 유지
+  - **baseH 동적 계산**: `_isSourceWithEnhance` 필드 추가 (생성자 초기화, `_render()`에서 판정, `_forceClose()`에서 리셋). enhanceLevel > 0이면 baseH에 +16px 반영 (T1: 240->256, T2+: 316->332). T1 패널의 `_renderUsedInSection` 시작 Y도 170->186으로 조정
+  - **wordWrap 추가**: `_renderT1Panel` flavorText/descText, `_renderTreePanel` treeDescText 3곳에 `wordWrap: { width: 260 }, align: 'center'` 추가
+
+### 참고
+
+- 스펙: `.claude/specs/2026-03-01-tower-overlay-overflow.md`
+- QA: `.claude/specs/2026-03-01-tower-overlay-overflow-qa.md`
+- Phaser 3.87.0 NineSlice API 사용 (추가 패키지 없음)
+- 기존 드릴다운, 스크롤, 버튼 동작 변경 없음 (회귀 테스트 65건 PASS)
+- QA LOW 소견: `_renderTreePanel`의 treeDescText가 2줄 이상 wrap될 경우 resultTier(panelTop+160)와 겹칠 수 있으나, 현재 게임 내 모든 desc 텍스트가 1줄이므로 실제 발생하지 않음
+
+---
+
 ## 2026-03-01 -- 레벨 선택 카드 텍스트 오버플로우 수정
 
 ### 배경
