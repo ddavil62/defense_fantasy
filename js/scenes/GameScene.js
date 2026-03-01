@@ -344,7 +344,7 @@ export class GameScene extends Phaser.Scene {
    * @private
    */
   _onPointerDown(pointer) {
-    if (this.isGameOver || this.isPaused) return;
+    if (this.isGameOver || this.isPaused || this._resumeCooldown) return;
     // 타워 정보 오버레이가 열려있으면 게임 입력 무시 (오버레이가 이벤트 처리)
     if (this.towerPanel && this.towerPanel.isOverlayOpen()) return;
 
@@ -1709,6 +1709,10 @@ export class GameScene extends Phaser.Scene {
    */
   _resumeGame() {
     this.isPaused = false;
+    // Resume 후 입력 쿨다운: 오버레이 파괴 시 같은 좌표의 타워에
+    // 클릭이 관통되는 것을 방지 (모바일 터치 이벤트 특성)
+    this._resumeCooldown = true;
+    this.time.delayedCall(100, () => { this._resumeCooldown = false; });
     this.gameSpeed = this.gameSpeed_saved;
     this._hidePauseOverlay();
 
@@ -2427,6 +2431,8 @@ export class GameScene extends Phaser.Scene {
   _onPointerUp(pointer) {
     // 타워 정보 오버레이가 열려있으면 게임 입력 무시
     if (this.towerPanel && this.towerPanel.isOverlayOpen()) return;
+    // Resume 직후 클릭 관통 방지
+    if (this._resumeCooldown) return;
     const wasDragging = this.towerPanel && this.towerPanel.isDragging();
     this._pendingDrag = null;
     if (wasDragging) {
