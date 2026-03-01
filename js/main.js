@@ -57,3 +57,110 @@ const game = new Phaser.Game(config);
 
 // Playwright 테스트에서 게임 인스턴스에 접근할 수 있도록 전역에 노출
 window.__game = game;
+
+// ── Android 뒤로가기 키(ESC) 내비게이션 ──────────────────────────
+// Capacitor Android WebView에서 하드웨어 뒤로가기 버튼은
+// ESC 키(keyCode 27)로 매핑되어 keydown 이벤트로 발생한다.
+// 현재 활성 씬에 따라 적절한 뒤로가기 동작을 수행한다.
+
+/**
+ * Android 뒤로가기 버튼(ESC 키) 핸들러.
+ * 현재 활성 씬을 조회하여 씬별 뒤로가기 로직을 실행한다.
+ * @param {KeyboardEvent} e - 키보드 이벤트
+ */
+function handleBackButton(e) {
+  if (e.key !== 'Escape' && e.keyCode !== 27) return;
+  e.preventDefault();
+
+  // 현재 활성 씬 조회 (getScenes(true)는 isActive인 씬만 반환)
+  const scenes = game.scene.getScenes(true);
+  if (!scenes || scenes.length === 0) return;
+
+  const scene = scenes[0];
+  const key = scene.sys.settings.key;
+
+  // BootScene은 뒤로가기 무시
+  if (key === 'BootScene') return;
+
+  switch (key) {
+    case 'MenuScene':
+      // 종료 확인 다이얼로그 표시 (이미 열려 있으면 무시)
+      if (!window.__isExitDialogOpen) {
+        scene._openExitDialog();
+      }
+      break;
+
+    case 'WorldSelectScene':
+      // MenuScene으로 페이드아웃 전환
+      scene.cameras.main.fadeOut(200, 0, 0, 0);
+      scene.cameras.main.once('camerafadeoutcomplete', () => {
+        scene.scene.start('MenuScene');
+      });
+      break;
+
+    case 'LevelSelectScene':
+      // WorldSelectScene으로 페이드아웃 전환
+      scene.cameras.main.fadeOut(200, 0, 0, 0);
+      scene.cameras.main.once('camerafadeoutcomplete', () => {
+        scene.scene.start('WorldSelectScene');
+      });
+      break;
+
+    case 'EndlessMapSelectScene':
+      // MenuScene으로 페이드아웃 전환
+      scene.cameras.main.fadeOut(200, 0, 0, 0);
+      scene.cameras.main.once('camerafadeoutcomplete', () => {
+        scene.scene.start('MenuScene');
+      });
+      break;
+
+    case 'CollectionScene':
+      // MenuScene으로 즉시 전환 (기존 패턴: 페이드아웃 없이 scene.start)
+      scene.scene.start('MenuScene');
+      break;
+
+    case 'MergeCodexScene':
+      // 호출 씬에 따라 복귀 (기존 _goBack() 로직과 동일)
+      if (scene.fromScene === 'GameScene') {
+        scene.scene.stop('MergeCodexScene');
+        scene.scene.wake('GameScene');
+      } else {
+        scene.scene.start('CollectionScene');
+      }
+      break;
+
+    case 'StatsScene':
+      // MenuScene으로 즉시 전환 (기존 패턴: 페이드아웃 없이 scene.start)
+      scene.scene.start('MenuScene');
+      break;
+
+    case 'GameScene':
+      // 게임 중이면 일시정지, 이미 정지/게임오버 상태면 무시
+      if (!scene.isPaused && !scene.isGameOver) {
+        scene._pauseGame();
+      }
+      break;
+
+    case 'MapClearScene':
+      // WorldSelectScene으로 페이드아웃 전환
+      scene.cameras.main.fadeOut(200, 0, 0, 0);
+      scene.cameras.main.once('camerafadeoutcomplete', () => {
+        scene.scene.start('WorldSelectScene');
+      });
+      break;
+
+    case 'GameOverScene':
+      // MenuScene으로 페이드아웃 전환
+      scene.cameras.main.fadeOut(200, 0, 0, 0);
+      scene.cameras.main.once('camerafadeoutcomplete', () => {
+        scene.scene.start('MenuScene');
+      });
+      break;
+
+    default:
+      // 정의되지 않은 씬에서는 무시
+      break;
+  }
+}
+
+document.addEventListener('keydown', handleBackButton);

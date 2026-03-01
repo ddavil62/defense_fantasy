@@ -7,7 +7,7 @@
  * 시맨틱 버튼 컬러, 퍼플 다이아몬드 표시.
  */
 
-import { GAME_WIDTH, GAME_HEIGHT, COLORS, BTN_PRIMARY, BTN_META, BTN_BACK, BTN_SELL, BTN_META_CSS, BTN_BACK_CSS, BTN_SELL_CSS } from '../config.js';
+import { GAME_WIDTH, GAME_HEIGHT, COLORS, BTN_PRIMARY, BTN_META, BTN_BACK, BTN_SELL, BTN_DANGER, BTN_META_CSS, BTN_BACK_CSS, BTN_SELL_CSS } from '../config.js';
 import { CLASSIC_MAP } from '../data/maps.js';
 import { t } from '../i18n.js';
 
@@ -241,6 +241,103 @@ export class MenuScene extends Phaser.Scene {
       // 메뉴 BGM 재생
       sm.playBgm('menu');
     }
+  }
+
+  // ── 종료 확인 다이얼로그 ──────────────────────────────────────
+
+  /**
+   * 앱 종료 확인 다이얼로그를 표시한다.
+   * Android 뒤로가기 키(ESC) 입력 시 호출된다.
+   * 다이얼로그가 이미 열린 상태면 중복 생성하지 않는다.
+   * @private
+   */
+  _openExitDialog() {
+    if (window.__isExitDialogOpen) return;
+    window.__isExitDialogOpen = true;
+
+    const centerX = GAME_WIDTH / 2;
+    const centerY = GAME_HEIGHT / 2;
+
+    // 다이얼로그 요소를 관리할 컨테이너
+    const dialogContainer = this.add.container(0, 0).setDepth(100);
+
+    /**
+     * 다이얼로그를 닫고 플래그를 해제하는 헬퍼.
+     */
+    const closeDialog = () => {
+      window.__isExitDialogOpen = false;
+      dialogContainer.destroy();
+    };
+
+    // ── 반투명 오버레이 (뒤 요소 클릭 차단 + 외부 탭 시 닫기) ──
+    const overlay = this.add.rectangle(centerX, centerY, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.7)
+      .setInteractive();
+    overlay.on('pointerdown', closeDialog);
+    dialogContainer.add(overlay);
+
+    // ── 다이얼로그 패널 (다크 배경 + 골드 테두리) ──
+    const panelW = 240;
+    const panelH = 140;
+    const panel = this.add.rectangle(centerX, centerY, panelW, panelH, 0x05050f)
+      .setStrokeStyle(2, 0xc0a030)
+      .setInteractive(); // 패널 클릭이 오버레이까지 전파되지 않도록 차단
+    dialogContainer.add(panel);
+
+    // ── "게임을 종료하시겠습니까?" 텍스트 ──
+    const confirmText = this.add.text(centerX, centerY - 30, t('ui.exitConfirm'), {
+      fontSize: '16px',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
+      color: '#ffd700',
+      fontStyle: 'bold',
+      align: 'center',
+      wordWrap: { width: panelW - 32 },
+    }).setOrigin(0.5);
+    dialogContainer.add(confirmText);
+
+    // ── 확인 버튼 (위험 레드) ──
+    const btnW = 90;
+    const btnH = 34;
+    const btnY = centerY + 30;
+    const yesBg = this._createImageButton(
+      centerX - 58, btnY, 'btn_small_danger', btnW, btnH, BTN_DANGER, 0x636e72
+    );
+    yesBg.setDepth(101);
+    dialogContainer.add(yesBg);
+
+    const yesText = this.add.text(centerX - 58, btnY, t('ui.exitConfirmYes'), {
+      fontSize: '14px',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
+      color: '#ffffff',
+      fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(101);
+    dialogContainer.add(yesText);
+
+    yesBg.on('pointerdown', () => {
+      window.__isExitDialogOpen = false;
+      // 앱 종료 시도: navigator.app.exitApp() → window.close() 폴백
+      if (navigator.app && typeof navigator.app.exitApp === 'function') {
+        navigator.app.exitApp();
+      } else {
+        window.close();
+      }
+    });
+
+    // ── 취소 버튼 (틸 백) ──
+    const noBg = this._createImageButton(
+      centerX + 58, btnY, 'btn_small_back', btnW, btnH, BTN_BACK, 0x1a9c7e
+    );
+    noBg.setDepth(101);
+    dialogContainer.add(noBg);
+
+    const noText = this.add.text(centerX + 58, btnY, t('ui.exitConfirmNo'), {
+      fontSize: '14px',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
+      color: '#ffffff',
+      fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(101);
+    dialogContainer.add(noText);
+
+    noBg.on('pointerdown', closeDialog);
   }
 
   // ── 이미지 버튼 생성 헬퍼 ────────────────────────────────────

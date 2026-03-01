@@ -4,6 +4,56 @@
 
 ---
 
+## 2026-03-01 -- Android 뒤로가기 키(ESC) 내비게이션
+
+### 배경
+
+Android 기기에서 하드웨어 뒤로가기 버튼을 누르면 아무 반응이 없거나 WebView가 직전 URL 히스토리로 이동하는 비정상 동작을 했다. Android 사용자가 기대하는 네이티브 수준의 뒤로가기 UX를 제공하기 위해, 각 씬별 적절한 뒤로가기 동작을 구현했다.
+
+### 추가
+
+- **`js/main.js`** -- `handleBackButton` 함수 및 `document.addEventListener('keydown', ...)` 리스너 추가
+  - Capacitor Android WebView에서 하드웨어 뒤로가기 버튼은 ESC 키(keyCode 27)로 매핑됨
+  - `game.scene.getScenes(true)[0]`으로 현재 활성 씬 조회 후 switch 분기
+  - 10개 씬에 대한 뒤로가기 동작 정의 (BootScene은 무시)
+  - PC 브라우저에서도 ESC 키로 동일 동작
+- **`js/scenes/MenuScene.js`** -- `_openExitDialog()` 메서드 추가
+  - 반투명 오버레이(0x000000, alpha 0.7) + 다크 패널(240x140, 0x05050f, 골드 테두리 0xc0a030)
+  - "게임을 종료하시겠습니까?" 텍스트 (i18n: `ui.exitConfirm`)
+  - 확인 버튼(BTN_DANGER 레드): `navigator.app.exitApp()` -> `window.close()` 폴백
+  - 취소 버튼(BTN_BACK 틸): 다이얼로그 닫기
+  - 오버레이 외부 클릭 시 취소 처리
+  - `window.__isExitDialogOpen` 플래그로 다이얼로그 중복 생성 방지
+  - BTN_DANGER import 추가
+- **`js/i18n.js`** -- i18n 키 3개 추가
+  - `ui.exitConfirm`: ko "게임을 종료하시겠습니까?" / en "Exit the game?"
+  - `ui.exitConfirmYes`: ko "확인" / en "Yes"
+  - `ui.exitConfirmNo`: ko "취소" / en "No"
+
+### 씬별 뒤로가기 매핑
+
+| 씬 | 동작 | 전환 방식 |
+|---|---|---|
+| MenuScene | 종료 확인 다이얼로그 | `_openExitDialog()` |
+| WorldSelectScene | MenuScene | fadeOut 200ms |
+| LevelSelectScene | WorldSelectScene | fadeOut 200ms |
+| EndlessMapSelectScene | MenuScene | fadeOut 200ms |
+| CollectionScene | MenuScene | 즉시 scene.start |
+| MergeCodexScene | 호출 씬 복귀 | fromScene 기반 분기 |
+| StatsScene | MenuScene | 즉시 scene.start |
+| GameScene | 일시정지 | `_pauseGame()` (isPaused/isGameOver 시 무시) |
+| MapClearScene | WorldSelectScene | fadeOut 200ms |
+| GameOverScene | MenuScene | fadeOut 200ms |
+
+### 참고
+
+- 스펙: `.claude/specs/2026-03-01-back-button-navigation.md`
+- QA: `.claude/specs/2026-03-01-back-button-navigation-qa.md`
+- 스펙 차이: LevelSelectScene에서 worldId 미전달 (WorldSelectScene에 init() 메서드가 없고 기존 뒤로가기 버튼도 worldId를 전달하지 않으므로 기존 패턴과 일치)
+- QA LOW 소견: `window.__isExitDialogOpen` 플래그가 씬 재시작 시 리셋되지 않을 수 있으나, 정상 사용 흐름에서 재현 불가
+
+---
+
 ## 2026-03-01 -- Galmuri 픽셀 폰트 적용
 
 ### 배경

@@ -450,6 +450,10 @@ const STRINGS = {
     'ui.towerUnlocked': '타워 해금!',
     'ui.clearWorldToUnlock': '{world} 클리어 시 해금',
     'ui.confirm': '확인',
+    // 종료 확인 다이얼로그
+    'ui.exitConfirm': '게임을 종료하시겠습니까?',
+    'ui.exitConfirmYes': '확인',
+    'ui.exitConfirmNo': '취소',
   },
   en: {
     'tower.archer.name': 'Archer',
@@ -870,5 +874,9 @@ const STRINGS = {
     'ui.towerUnlocked': 'Tower Unlocked!',
     'ui.clearWorldToUnlock': 'Clear {world} to unlock',
     'ui.confirm': 'OK',
+    // Exit confirmation dialog
+    'ui.exitConfirm': 'Exit the game?',
+    'ui.exitConfirmYes': 'Yes',
+    'ui.exitConfirmNo': 'No',
   },
 };
