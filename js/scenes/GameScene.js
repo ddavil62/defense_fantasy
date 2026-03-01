@@ -1607,9 +1607,9 @@ export class GameScene extends Phaser.Scene {
    * @private
    */
   _createPauseButton() {
-    // 일시정지 버튼 - 원형 배경 + 아이콘
+    // 일시정지 버튼 - 원형 배경 + 아이콘 (depth 31+: HUD 배경(30) 위에 표시)
     this.pauseBtnBg = this.add.graphics();
-    this.pauseBtnBg.setDepth(25);
+    this.pauseBtnBg.setDepth(31);
     this.pauseBtnBg.fillStyle(BTN_SELL, 0.9);
     this.pauseBtnBg.fillCircle(310, 20, 12);
     this.pauseBtnBg.lineStyle(1, 0xffffff, 0.5);
@@ -1618,7 +1618,7 @@ export class GameScene extends Phaser.Scene {
     // 투명한 인터랙티브 원 (히트 영역)
     this.pauseBtn = this.add.circle(310, 20, 12)
       .setInteractive({ useHandCursor: true })
-      .setDepth(25)
+      .setDepth(31)
       .setAlpha(0.01);
 
     this.pauseBtnText = this.add.text(310, 20, '||', {
@@ -1626,7 +1626,7 @@ export class GameScene extends Phaser.Scene {
       fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffffff',
       fontStyle: 'bold',
-    }).setOrigin(0.5).setDepth(26);
+    }).setOrigin(0.5).setDepth(32);
 
     this.pauseBtn.on('pointerdown', () => {
       if (!this.isPaused && !this.isGameOver) {
@@ -1641,14 +1641,14 @@ export class GameScene extends Phaser.Scene {
     this.muteBtn = this.add.rectangle(278, 20, 24, 22, 0x636e72)
       .setStrokeStyle(2, isMuted ? 0xb2bec3 : 0x55efc4)
       .setInteractive({ useHandCursor: true })
-      .setDepth(25);
+      .setDepth(31);
 
     this.muteBtnText = this.add.text(278, 20, isMuted ? 'M' : '\u266A', {
       fontSize: '13px',
       fontFamily: 'Galmuri11, Arial, sans-serif',
       color: isMuted ? '#b2bec3' : '#55efc4',
       fontStyle: 'bold',
-    }).setOrigin(0.5).setDepth(25);
+    }).setOrigin(0.5).setDepth(32);
 
     this.muteBtn.on('pointerdown', () => {
       if (!sm) return;
