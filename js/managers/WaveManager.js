@@ -6,7 +6,8 @@
 import {
   WAVE_DEFINITIONS, ENEMY_STATS, SCALING,
   WAVE_ANNOUNCE_DURATION, WAVE_CLEAR_DURATION, WAVE_BREAK_DURATION,
-  calcWaveClearBonus, GAME_WIDTH, GAME_HEIGHT,
+  calcWaveClearBonus, calcHpScale, getBossHpMultiplier,
+  GAME_WIDTH, GAME_HEIGHT,
 } from '../config.js';
 
 /**
@@ -370,7 +371,7 @@ export class WaveManager {
    */
   _generateScaledWave(round) {
     const baseCount = SCALING.BASE_COUNT_ADD + Math.floor(round * SCALING.COUNT_PER_ROUND);
-    const hpScale = 1 + (round - 1) * SCALING.HP_SCALE_PER_ROUND;
+    const hpScale = calcHpScale(round);
     const speedScale = 1 + (round - 1) * SCALING.SPEED_SCALE_PER_ROUND;
     const goldScale = 1 + (round - 1) * SCALING.GOLD_SCALE_PER_ROUND;
     const spawnInterval = Math.max(
@@ -392,7 +393,7 @@ export class WaveManager {
         // R20+: 장갑 보스 사용
         enemies.push({
           type: 'boss_armored',
-          hp: Math.floor(ENEMY_STATS.boss_armored.hp * hpScale * SCALING.BOSS_HP_MULTIPLIER),
+          hp: Math.floor(ENEMY_STATS.boss_armored.hp * hpScale * getBossHpMultiplier(round)),
           speed: ENEMY_STATS.boss_armored.speed * speedScale * SCALING.BOSS_SPEED_BONUS,
           gold: Math.floor(ENEMY_STATS.boss_armored.gold * goldScale * 1.5),
           resistance: Math.min(SCALING.RESISTANCE_CAP, ENEMY_STATS.boss_armored.resistance + extraResistance),
@@ -400,7 +401,7 @@ export class WaveManager {
       } else {
         enemies.push({
           type: 'boss',
-          hp: Math.floor(ENEMY_STATS.boss.hp * hpScale * SCALING.BOSS_HP_MULTIPLIER),
+          hp: Math.floor(ENEMY_STATS.boss.hp * hpScale * getBossHpMultiplier(round)),
           speed: ENEMY_STATS.boss.speed * speedScale * SCALING.BOSS_SPEED_BONUS,
           gold: Math.floor(ENEMY_STATS.boss.gold * goldScale * 1.5),
         });

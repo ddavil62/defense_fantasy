@@ -294,6 +294,16 @@ const STRINGS = {
     'tower.void_maelstrom.name': '공허 소용돌이',
     'tower.void_maelstrom.desc': '방어 관통 관통 빔에 화상, 독, 밀치기를 동시에 건다.',
 
+    // ── 적 몬스터 이름 ──
+    'enemy.normal.name': '고블린',
+    'enemy.fast.name': '늑대',
+    'enemy.tank.name': '오우거',
+    'enemy.boss.name': '마왕',
+    'enemy.swarm.name': '미니 슬라임',
+    'enemy.splitter.name': '슬라임',
+    'enemy.armored.name': '흑기사',
+    'enemy.boss_armored.name': '골렘',
+
     // UI 공통
     'ui.damage': '공격력',
     'ui.range': '사거리',
@@ -704,6 +714,16 @@ const STRINGS = {
     'tower.star_forge.desc': 'Massive AoE extreme burn incinerates the battlefield.',
     'tower.void_maelstrom.name': 'Void Maelstrom',
     'tower.void_maelstrom.desc': 'Armor-piercing beam with burn, poison, and pushback.',
+
+    // ── Enemy monster names ──
+    'enemy.normal.name': 'Goblin',
+    'enemy.fast.name': 'Warg',
+    'enemy.tank.name': 'Ogre',
+    'enemy.boss.name': 'Demon Lord',
+    'enemy.swarm.name': 'Mini Slime',
+    'enemy.splitter.name': 'Slime',
+    'enemy.armored.name': 'Dark Knight',
+    'enemy.boss_armored.name': 'Golem',
 
     'ui.damage': 'ATK',
     'ui.range': 'RNG',

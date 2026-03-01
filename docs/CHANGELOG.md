@@ -4,6 +4,65 @@
 
 ---
 
+## 2026-03-01 -- 몬스터 판타지 컨셉 + 바이옴별 스프라이트 시스템
+
+### 배경
+
+적 8종이 모두 도형(원, 삼각형, 사각형)으로만 렌더링되어 판타지 TD 분위기와 맞지 않았다. 각 적 유형의 게임플레이 특성에 맞는 판타지 몬스터 컨셉을 매핑하고, 5개 월드별 바이옴 스킨 변형을 포함한 스프라이트 시스템을 구축했다.
+
+### 몬스터 컨셉 매핑
+
+| 유형 | 컨셉 | spriteBase |
+|------|------|------------|
+| normal | 고블린 (Goblin) | `goblin` |
+| fast | 늑대 (Warg) | `warg` |
+| tank | 오우거 (Ogre) | `ogre` |
+| swarm | 미니 슬라임 (Mini Slime) | `mini_slime` |
+| splitter | 슬라임 (Slime) | `slime` |
+| armored | 흑기사 (Dark Knight) | `dark_knight` |
+| boss | 마왕 (Demon Lord) | `demon_lord` |
+| boss_armored | 골렘 (Golem) | `golem` |
+
+### 추가
+
+- **`js/config.js`**
+  - `ENEMY_STATS` 각 타입에 `spriteBase` 필드 추가 (몬스터 컨셉 식별자)
+  - `getEnemySpriteKey(enemyType, worldId)` 함수 — 적 타입과 월드 ID를 조합하여 스프라이트 텍스처 키 반환
+- **`js/entities/Enemy.js`**
+  - `worldId` 필드 — 생성자 overrides에서 전달받아 바이옴 스프라이트 결정
+  - `sprite` 필드 — Phaser.GameObjects.Image, 텍스처 존재 시 생성
+  - `_applySpriteDebuffTint()` — 스프라이트에 디버프 색상 틴트 적용 (슬로우: 파랑, 화상: 빨강, 독: 초록)
+  - `_drawShapeFallback()` — 기존 도형 렌더링을 별도 메서드로 분리 (스프라이트 미존재 시 폴백)
+  - `destroy()`에 스프라이트 정리 추가
+- **`js/scenes/GameScene.js`**
+  - `preload()` — 현재 월드의 적 스프라이트 8종을 `assets/enemy/`에서 로드
+  - `currentWorldId` 필드 — 현재 맵의 월드 ID 저장
+  - `_spawnEnemy()`, `_spawnChildEnemy()`에 `worldId` 전달
+  - `getWorldByMapId` import 추가
+- **`js/i18n.js`**
+  - `enemy.{type}.name` 키 8종 추가 (ko/en)
+- **`public/assets/enemy/`** — 적 스프라이트 에셋 디렉토리 생성
+- **`docs/monster-art-guide.md`** — 40종 AI 이미지 생성 프롬프트 (8종 × 5바이옴)
+
+### 변경 없음
+
+- 적 스탯 (HP, 속도, 저항, 면역 등)
+- 웨이브 구성
+- 디버프/피해 시스템
+- HP 바, 사망 이펙트
+
+### 파일명 규칙
+
+`{worldId}_{spriteBase}.png` — 예: `forest_goblin.png`, `desert_warg.png`
+
+### 참고
+
+- 스프라이트가 없는 적은 기존 도형으로 자동 폴백 → 점진적 마이그레이션 가능
+- 엔드리스 모드(classic map)는 worldId가 없으므로 도형 폴백 사용
+- splitter 사망 → swarm 생성 시 동일 바이옴 미니슬라임 스프라이트 사용
+
+---
+
 ## 2026-02-27 -- 앱 백그라운드 전환 시 BGM 자동 일시정지
 
 ### 배경

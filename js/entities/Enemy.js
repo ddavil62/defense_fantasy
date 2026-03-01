@@ -5,7 +5,7 @@
  */
 
 import {
-  COLORS, VISUALS, ENEMY_STATS,
+  COLORS, VISUALS, ENEMY_STATS, getEnemySpriteKey,
 } from '../config.js';
 
 /** @const {number} 보스 시각적 반지름 (충돌 판정에는 영향 없음, 렌더링 전용) */
@@ -20,7 +20,7 @@ export class Enemy {
    * @param {Phaser.Scene} scene - 게임 씬
    * @param {string} type - 적 타입 ('normal','fast','tank','boss','swarm','splitter','armored','boss_armored')
    * @param {{ x: number, y: number }[]} path - 픽셀 웨이포인트 경로 배열
-   * @param {object} [overrides] - 스케일링용 스탯 오버라이드 (hp, speed, gold 등)
+   * @param {object} [overrides] - 스케일링용 스탯 오버라이드 (hp, speed, gold, worldId 등)
    */
   constructor(scene, type, path, overrides = {}) {
     /** @type {Phaser.Scene} 게임 씬 참조 */
@@ -28,6 +28,9 @@ export class Enemy {
 
     /** @type {string} 적 타입 */
     this.type = type;
+
+    /** @type {string|null} 현재 월드 ID (바이옴 스프라이트 결정용) */
+    this.worldId = overrides.worldId || null;
 
     /** @type {{ x: number, y: number }[]} 이동 경로 (픽셀 좌표 배열) */
     this.path = path;
@@ -109,13 +112,24 @@ export class Enemy {
     this.pathProgress = 0;
 
     // ── 그래픽 초기화 ──
-    /** @type {Phaser.GameObjects.Graphics} 적 도형 그래픽 */
+    /** @type {Phaser.GameObjects.Graphics} 적 도형/디버프 오버레이 그래픽 */
     this.graphics = scene.add.graphics();
     this.graphics.setDepth(15);
 
     /** @type {Phaser.GameObjects.Graphics} HP 바 그래픽 */
     this.hpBarGraphics = scene.add.graphics();
     this.hpBarGraphics.setDepth(16);
+
+    // ── 스프라이트 초기화 (바이옴별 몬스터 이미지) ──
+    /** @type {Phaser.GameObjects.Image|null} 적 스프라이트 (없으면 도형 폴백) */
+    this.sprite = null;
+    const spriteKey = getEnemySpriteKey(this.type, this.worldId);
+    if (spriteKey && scene.textures.exists(spriteKey)) {
+      this.sprite = scene.add.image(this.x, this.y, spriteKey);
+      const displaySize = this._getRadius() * 2;
+      this.sprite.setDisplaySize(displaySize, displaySize);
+      this.sprite.setDepth(15);
+    }
 
     this.draw();
   }
@@ -129,6 +143,44 @@ export class Enemy {
   draw() {
     this.graphics.clear();
 
+    if (this.sprite) {
+      // 스프라이트 모드: 위치만 갱신하고 디버프 틴트 적용
+      this.sprite.setPosition(this.x, this.y);
+      this._applySpriteDebuffTint();
+    } else {
+      // 폴백 모드: 기존 도형 렌더링
+      this._drawShapeFallback();
+    }
+
+    // 디버프 시각 인디케이터 표시 (스프라이트 위에도 반투명 오버레이)
+    this._drawDebuffIndicators();
+
+    this._drawHPBar();
+  }
+
+  /**
+   * 스프라이트에 디버프 틴트를 적용한다.
+   * 활성 디버프가 없으면 틴트를 제거한다.
+   * @private
+   */
+  _applySpriteDebuffTint() {
+    if (!this.sprite) return;
+    if (this.slowTimer > 0) {
+      this.sprite.setTint(0x74b9ff); // 감속: 파란 틴트
+    } else if (this.burnTimer > 0) {
+      this.sprite.setTint(0xff7675); // 화상: 빨간 틴트
+    } else if (this.poisonTimer > 0) {
+      this.sprite.setTint(0x00b894); // 독: 초록 틴트
+    } else {
+      this.sprite.clearTint();
+    }
+  }
+
+  /**
+   * 기존 도형 기반 렌더링 (스프라이트 미사용 시 폴백).
+   * @private
+   */
+  _drawShapeFallback() {
     switch (this.type) {
       case 'normal':
         this.graphics.fillStyle(COLORS.ENEMY_NORMAL, 1);
@@ -203,11 +255,6 @@ export class Enemy {
         break;
       }
     }
-
-    // 디버프 시각 인디케이터 표시
-    this._drawDebuffIndicators();
-
-    this._drawHPBar();
   }
 
   /**
@@ -689,6 +736,10 @@ export class Enemy {
    * 모든 그래픽을 제거하고 리소스를 정리한다.
    */
   destroy() {
+    if (this.sprite) {
+      this.sprite.destroy();
+      this.sprite = null;
+    }
     if (this.graphics) {
       this.graphics.destroy();
       this.graphics = null;

@@ -20,6 +20,7 @@ import {
   CONSUMABLE_ABILITIES,
   getMergeResult, MERGE_RECIPES, SAVE_KEY,
   BTN_SELL, BTN_META, BTN_DANGER, BTN_PRIMARY, BTN_BACK,
+  getEnemySpriteKey,
 } from '../config.js';
 
 // ── 매니저 ──
@@ -37,6 +38,7 @@ import { Enemy } from '../entities/Enemy.js';
 import { t } from '../i18n.js';
 // ── 데이터 ──
 import { CLASSIC_MAP } from '../data/maps.js';
+import { getWorldByMapId } from '../data/worlds.js';
 
 /**
  * 타워 디펜스 핵심 게임플레이 씬.
@@ -142,6 +144,26 @@ export class GameScene extends Phaser.Scene {
       goldRain: { useCount: 0, cooldownTimer: 0, active: false, remainingDuration: 0 },
       lightning: { useCount: 0, cooldownTimer: 0, active: false, remainingDuration: 0 },
     };
+  }
+
+  /**
+   * 현재 월드의 적 스프라이트를 사전 로드한다.
+   * 월드 ID에 맞는 8종 적 이미지를 assets/enemy/ 에서 로드한다.
+   */
+  preload() {
+    const world = getWorldByMapId(this.mapData.id);
+    /** @type {string|null} 현재 월드 ID (바이옴 스프라이트 결정용, 알려진 월드만) */
+    this.currentWorldId = world ? world.id : null;
+
+    if (this.currentWorldId) {
+      const enemyTypes = Object.keys(ENEMY_STATS);
+      for (const type of enemyTypes) {
+        const key = getEnemySpriteKey(type, this.currentWorldId);
+        if (key && !this.textures.exists(key)) {
+          this.load.image(key, `assets/enemy/${key}.png`);
+        }
+      }
+    }
   }
 
   /**
@@ -563,6 +585,7 @@ export class GameScene extends Phaser.Scene {
       gold: enemyData.gold,
       resistance: enemyData.resistance,
       damage: enemyData.damage,
+      worldId: this.currentWorldId,
     });
 
     // 분열 적(splitter)은 사망 시 자식 적을 스폰하는 콜백 등록
@@ -594,6 +617,7 @@ export class GameScene extends Phaser.Scene {
       hp: enemyData.hp,
       speed: enemyData.speed,
       gold: enemyData.gold,
+      worldId: this.currentWorldId,
     });
 
     // 부모의 위치에서 시작

@@ -639,10 +639,10 @@ export const MERGED_TOWER_STATS = {
     chainCount: 8, chainDecay: 0.85, chainRadius: 100,
   },
   inferno: {
-    damage: 6, fireRate: 1.2, range: 110,
+    damage: 22, fireRate: 1.2, range: 110,
     attackType: 'aoe_instant',
     splashRadius: 65,
-    burnDamage: 10, burnDuration: 4,
+    burnDamage: 14, burnDuration: 4,
   },
   quake: {
     damage: 80, fireRate: 3.5, range: 90,
@@ -656,7 +656,7 @@ export const MERGED_TOWER_STATS = {
     attackType: 'aoe_instant',
     splashRadius: 80,
     poisonDamage: 8, poisonDuration: 6,
-    armorReduction: 0.5, armorReductionDuration: 6,
+    armorReduction: 0.2, armorReductionDuration: 6,
   },
   typhoon: {
     damage: 8, fireRate: 2.0, range: 130,
@@ -665,7 +665,7 @@ export const MERGED_TOWER_STATS = {
     pushbackDistance: 120, pushbackTargets: 6,
   },
   solar_burst: {
-    damage: 55, fireRate: 2.5, range: 120,
+    damage: 70, fireRate: 2.2, range: 130,
     attackType: 'aoe_instant',
     splashRadius: 110,
   },
@@ -745,7 +745,7 @@ export const MERGED_TOWER_STATS = {
     projectileSpeed: 200,
   },
   pyromancer: {
-    damage: 30, fireRate: 1.8, range: 110,
+    damage: 45, fireRate: 1.8, range: 110,
     attackType: 'splash',
     splashRadius: 55,
     burnDamage: 6, burnDuration: 3,
@@ -996,7 +996,7 @@ export const MERGED_TOWER_STATS = {
     projectileSpeed: 200,
   },
   holy_dragon: {
-    damage: 40, fireRate: 2.2, range: 600,
+    damage: 60, fireRate: 2.2, range: 600,
     attackType: 'piercing_beam',
     burnDamage: 8, burnDuration: 3,
   },
@@ -1015,10 +1015,10 @@ export const MERGED_TOWER_STATS = {
     attackType: 'aoe_instant',
     splashRadius: 130,
     burnDamage: 12, burnDuration: 4,
-    poisonDamage: 20, poisonDuration: 8, armorReduction: 0.6, armorReductionDuration: 8,
+    poisonDamage: 20, poisonDuration: 8, armorReduction: 0.35, armorReductionDuration: 8,
   },
   cosmos_dragon: {
-    damage: 100, fireRate: 3.0, range: 210,
+    damage: 100, fireRate: 2.5, range: 210,
     attackType: 'aoe_instant',
     splashRadius: 150,
     burnDamage: 15, burnDuration: 5, poisonDamage: 12, poisonDuration: 6,
@@ -1041,7 +1041,7 @@ export const MERGED_TOWER_STATS = {
     attackType: 'aoe_instant',
     splashRadius: 120,
     poisonDamage: 25, poisonDuration: 9, maxPoisonStacks: 4,
-    armorReduction: 0.7, armorReductionDuration: 9,
+    armorReduction: 0.5, armorReductionDuration: 9,
   },
   absolute_frost_domain: {
     damage: 18, fireRate: 1.5, range: 190,
@@ -1050,9 +1050,9 @@ export const MERGED_TOWER_STATS = {
     slowAmount: 0.75, slowDuration: 4.5,
   },
   celestial_judgment: {
-    damage: 80, fireRate: 2.0, range: 600,
+    damage: 100, fireRate: 1.8, range: 600,
     attackType: 'piercing_beam',
-    burnDamage: 12, burnDuration: 4,
+    burnDamage: 15, burnDuration: 4,
   },
   superconductor_mage: {
     damage: 70, fireRate: 1.8, range: 175,
@@ -1061,10 +1061,10 @@ export const MERGED_TOWER_STATS = {
     burnDamage: 10, burnDuration: 4,
   },
   grand_pyromancer: {
-    damage: 18, fireRate: 1.5, range: 145,
+    damage: 30, fireRate: 1.5, range: 145,
     attackType: 'aoe_instant',
     splashRadius: 100,
-    burnDamage: 22, burnDuration: 6,
+    burnDamage: 28, burnDuration: 6,
   },
   lightning_tempest: {
     damage: 55, fireRate: 1.2, range: 165,
@@ -1076,6 +1076,7 @@ export const MERGED_TOWER_STATS = {
     attackType: 'splash',
     splashRadius: 100,
     slowAmount: 1.0, slowDuration: 0.5, burnDamage: 18, burnDuration: 5,
+    armorReduction: 0.15, armorReductionDuration: 5,
     projectileSpeed: 150,
   },
 
@@ -1198,7 +1199,7 @@ export const MERGED_TOWER_STATS = {
   // T4 merges (12)
   // ══════════════════════════════════════════════════════════════════
   void_sniper: {
-    damage: 180, fireRate: 1.0, range: 230,
+    damage: 220, fireRate: 1.0, range: 230,
     attackType: 'chain',
     chainCount: 12, chainDecay: 0.9, chainRadius: 140,
     burnDamage: 20, burnDuration: 6,
@@ -1206,7 +1207,7 @@ export const MERGED_TOWER_STATS = {
     projectileSpeed: 400,
   },
   annihilation_gale: {
-    damage: 90, fireRate: 1.5, range: 240,
+    damage: 120, fireRate: 1.5, range: 240,
     attackType: 'aoe_instant',
     splashRadius: 180,
     burnDamage: 20, burnDuration: 7,
@@ -1217,9 +1218,10 @@ export const MERGED_TOWER_STATS = {
     attackType: 'aoe_instant',
     splashRadius: 130,
     burnDamage: 50, burnDuration: 8,
+    armorReduction: 0.3, armorReductionDuration: 8,
   },
   glacial_epoch: {
-    damage: 40, fireRate: 1.2, range: 230,
+    damage: 60, fireRate: 1.2, range: 230,
     attackType: 'aoe_instant',
     splashRadius: 180,
     slowAmount: 0.95, slowDuration: 6.0,
@@ -1238,29 +1240,29 @@ export const MERGED_TOWER_STATS = {
     burnDamage: 20, burnDuration: 6,
   },
   storm_dominion: {
-    damage: 120, fireRate: 1.0, range: 220,
+    damage: 160, fireRate: 1.0, range: 220,
     attackType: 'chain',
     chainCount: 16, chainDecay: 0.9, chainRadius: 160,
-    burnDamage: 25, burnDuration: 6,
+    burnDamage: 35, burnDuration: 6,
+    armorPiercing: true,
   },
   maelstrom_herald: {
-    damage: 25, fireRate: 1.5, range: 220,
+    damage: 80, fireRate: 1.5, range: 220,
     attackType: 'aoe_instant',
     splashRadius: 140,
     pushbackDistance: 220, pushbackTargets: 14,
   },
   solar_cremation: {
-    damage: 30, fireRate: 1.2, range: 200,
+    damage: 60, fireRate: 1.2, range: 200,
     attackType: 'aoe_instant',
     splashRadius: 180,
     burnDamage: 45, burnDuration: 8,
   },
   world_breaker: {
-    damage: 280, fireRate: 3.0, range: 200,
+    damage: 160, fireRate: 3.0, range: 200,
     attackType: 'splash',
     splashRadius: 110,
     slowAmount: 1.0, slowDuration: 1.0,
-    armorPiercing: true,
     projectileSpeed: 150,
   },
   genesis_verdict: {
@@ -1273,9 +1275,9 @@ export const MERGED_TOWER_STATS = {
     damage: 60, fireRate: 1.8, range: 250,
     attackType: 'aoe_instant',
     splashRadius: 180,
-    poisonDamage: 50, poisonDuration: 14,
+    poisonDamage: 20, poisonDuration: 12,
     maxPoisonStacks: 6,
-    armorReduction: 0.9, armorReductionDuration: 14,
+    armorReduction: 0.45, armorReductionDuration: 12,
     burnDamage: 20, burnDuration: 6,
   },
 
@@ -1294,23 +1296,24 @@ export const MERGED_TOWER_STATS = {
     damage: 120, fireRate: 1.5, range: 280,
     attackType: 'aoe_instant',
     splashRadius: 220,
-    poisonDamage: 80, poisonDuration: 18,
+    poisonDamage: 30, poisonDuration: 12,
     maxPoisonStacks: 8,
-    armorReduction: 1.0, armorReductionDuration: 18,
+    armorReduction: 0.4, armorReductionDuration: 12,
     burnDamage: 35, burnDuration: 9,
   },
   absolute_dominion: {
-    damage: 200, fireRate: 0.8, range: 260,
+    damage: 250, fireRate: 0.8, range: 260,
     attackType: 'chain',
     chainCount: 18, chainDecay: 0.92, chainRadius: 180,
     slowAmount: 0.9, slowDuration: 5.0,
     pushbackDistance: 180, pushbackTargets: 15,
   },
   star_forge: {
-    damage: 60, fireRate: 1.0, range: 260,
+    damage: 120, fireRate: 0.8, range: 260,
     attackType: 'aoe_instant',
     splashRadius: 220,
-    burnDamage: 100, burnDuration: 12,
+    burnDamage: 120, burnDuration: 12,
+    armorReduction: 0.3, armorReductionDuration: 12,
   },
   void_maelstrom: {
     damage: 150, fireRate: 1.2, range: 600,
@@ -1381,6 +1384,7 @@ export const ENEMY_STATS = {
     color: 0xd63031,
     radius: 10,
     shape: 'circle',
+    spriteBase: 'goblin',
   },
   fast: {
     hp: 20,
@@ -1391,6 +1395,7 @@ export const ENEMY_STATS = {
     radius: 8,
     size: 16,
     shape: 'triangle',
+    spriteBase: 'warg',
   },
   tank: {
     hp: 120,
@@ -1400,6 +1405,7 @@ export const ENEMY_STATS = {
     color: 0xe17055,
     size: 18,
     shape: 'square',
+    spriteBase: 'ogre',
   },
   boss: {
     hp: 500,
@@ -1410,6 +1416,7 @@ export const ENEMY_STATS = {
     radius: 18,
     shape: 'boss_circle',
     immunities: ['pushback'],
+    spriteBase: 'demon_lord',
   },
   swarm: {
     hp: 15,
@@ -1419,6 +1426,7 @@ export const ENEMY_STATS = {
     color: 0x55efc4,
     radius: 6,
     shape: 'circle',
+    spriteBase: 'mini_slime',
   },
   splitter: {
     hp: 80,
@@ -1429,6 +1437,7 @@ export const ENEMY_STATS = {
     radius: 13,
     shape: 'circle',
     splitCount: 3,
+    spriteBase: 'slime',
   },
   armored: {
     hp: 100,
@@ -1439,6 +1448,7 @@ export const ENEMY_STATS = {
     color: 0x2d3436,
     size: 20,
     shape: 'square',
+    spriteBase: 'dark_knight',
   },
   boss_armored: {
     hp: 1500,
@@ -1450,8 +1460,22 @@ export const ENEMY_STATS = {
     radius: 20,
     shape: 'boss_armored',
     immunities: ['pushback'],
+    spriteBase: 'golem',
   },
 };
+
+// ── 적 스프라이트 키 생성 ────────────────────────────────────────
+/**
+ * 적 타입과 월드 ID를 조합하여 스프라이트 텍스처 키를 반환한다.
+ * @param {string} enemyType - 적 타입 (normal, fast, tank 등)
+ * @param {string} worldId - 월드 ID (forest, desert, tundra, volcano, shadow)
+ * @returns {string|null} 스프라이트 키 (예: 'forest_goblin') 또는 null
+ */
+export function getEnemySpriteKey(enemyType, worldId) {
+  const base = ENEMY_STATS[enemyType]?.spriteBase;
+  if (!base || !worldId) return null;
+  return `${worldId}_${base}`;
+}
 
 // ── 웨이브 정의 (R1~R20) ────────────────────────────────────────
 /**
@@ -1527,6 +1551,35 @@ export const SCALING = {
   ARMORED_SPAWN_CHANCE: 0.12,
 };
 
+// ── 구간별 HP 스케일링 ──────────────────────────────────────────
+/**
+ * 라운드별 HP 스케일 값을 구간별 차등으로 계산한다.
+ * R1~R20: 기존 선형(0.15/라운드), R21~R35: 완화(0.10), R36~R50: 점진(0.13), R51+: 원래(0.15)
+ * @param {number} round - 라운드 번호
+ * @returns {number} HP 스케일 배율
+ */
+export function calcHpScale(round) {
+  if (round <= 20) return 1 + (round - 1) * 0.15;         // R1~R20: 기존 유지
+  const baseR20 = 1 + 19 * 0.15;                          // = 3.85
+  if (round <= 35) return baseR20 + (round - 20) * 0.10;  // R21~R35: 완화 (T2~T3 활약)
+  const baseR35 = baseR20 + 15 * 0.10;                    // = 5.35
+  if (round <= 50) return baseR35 + (round - 35) * 0.13;  // R36~R50: 점진 상승 (T4 필요)
+  const baseR50 = baseR35 + 15 * 0.13;                    // = 7.30
+  return baseR50 + (round - 50) * 0.15;                   // R51+: 원래 비율 (T5 필요)
+}
+
+/**
+ * 라운드별 보스 HP 배율을 반환한다.
+ * 후반 라운드일수록 보스가 강해진다.
+ * @param {number} round - 라운드 번호
+ * @returns {number} 보스 HP 배율
+ */
+export function getBossHpMultiplier(round) {
+  if (round <= 30) return 2.0;
+  if (round <= 40) return 2.2;
+  return 2.5;
+}
+
 // ── 웨이브 흐름 ─────────────────────────────────────────────────
 /** @const {number} 웨이브 시작 텍스트 표시 시간 (ms) */
 export const WAVE_ANNOUNCE_DURATION = 1500;
@@ -1540,14 +1593,14 @@ export const WAVE_BREAK_DURATION = 3.0;
 // ── 보너스 골드 공식 ────────────────────────────────────────────
 /**
  * 웨이브 클리어 보너스 골드를 계산한다.
- * 공식: round * 4 + floor(currentHP / maxHP * 15)
+ * 공식: round * 5 + floor(currentHP / maxHP * 15)
  * @param {number} round - 현재 라운드 번호
  * @param {number} currentHP - 현재 기지 체력
  * @param {number} maxHP - 최대 기지 체력
  * @returns {number} 보너스 골드량
  */
 export function calcWaveClearBonus(round, currentHP, maxHP) {
-  return round * 4 + Math.floor(currentHP / maxHP * 15);
+  return round * 5 + Math.floor(currentHP / maxHP * 15);
 }
 
 // ── 시각 효과 상수 ──────────────────────────────────────────────
