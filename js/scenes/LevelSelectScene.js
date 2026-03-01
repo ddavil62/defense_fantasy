@@ -94,12 +94,17 @@ export class LevelSelectScene extends Phaser.Scene {
       const cardLeft = centerX - cardW / 2 + 14;
       const cardRight = centerX + cardW / 2 - 14;
 
-      // 카드 배경
-      const cardBg = this.add.rectangle(centerX, cardY, cardW, cardH, 0x0a0820);
+      // 카드 배경 (이미지 또는 폴백 사각형)
+      const cardBg = this.textures.exists('panel_level_card')
+        ? this.add.image(centerX, cardY, 'panel_level_card')
+        : this.add.rectangle(centerX, cardY, cardW, cardH, 0x0a0820);
 
       if (unlocked) {
         // ── 해금 카드 ──
-        cardBg.setStrokeStyle(2, BTN_PRIMARY);
+        // Image에는 setStrokeStyle이 없으므로 Rectangle 폴백에만 적용
+        if (cardBg instanceof Phaser.GameObjects.Rectangle) {
+          cardBg.setStrokeStyle(2, BTN_PRIMARY);
+        }
 
         // 좌측 상단: 맵 번호
         this.add.text(cardLeft, cardY - cardH / 2 + 10, `${index + 1}`, {
@@ -123,16 +128,25 @@ export class LevelSelectScene extends Phaser.Scene {
           color: '#636e72',
         }).setOrigin(0, 0);
 
-        // 우측 상단: 별점 표시 (채운 별: #ffd700, 빈 별: #333340)
-        let starDisplay = '';
-        for (let i = 0; i < 3; i++) {
-          starDisplay += i < stars ? '\u2605' : '\u2606';
+        // 우측 상단: 별점 표시 (이미지 아이콘 또는 유니코드 폴백)
+        const hasStarIcons = this.textures.exists('icon_star_filled') && this.textures.exists('icon_star_empty');
+        if (hasStarIcons) {
+          for (let si = 0; si < 3; si++) {
+            const starKey = si < stars ? 'icon_star_filled' : 'icon_star_empty';
+            this.add.image(cardRight - (2 - si) * 16 - 8, cardY - cardH / 2 + 18, starKey)
+              .setDisplaySize(14, 14);
+          }
+        } else {
+          let starDisplay = '';
+          for (let si = 0; si < 3; si++) {
+            starDisplay += si < stars ? '\u2605' : '\u2606';
+          }
+          this.add.text(cardRight, cardY - cardH / 2 + 10, starDisplay, {
+            fontSize: '14px',
+            fontFamily: 'Arial, sans-serif',
+            color: stars > 0 ? '#ffd700' : '#333340',
+          }).setOrigin(1, 0);
         }
-        this.add.text(cardRight, cardY - cardH / 2 + 10, starDisplay, {
-          fontSize: '14px',
-          fontFamily: 'Arial, sans-serif',
-          color: stars > 0 ? '#ffd700' : '#333340',
-        }).setOrigin(1, 0);
 
         // 우측 중단: 웨이브 수
         const totalW = isFinite(mapData.totalWaves) ? mapData.totalWaves : '?';
@@ -155,15 +169,15 @@ export class LevelSelectScene extends Phaser.Scene {
           diffGfx.fillCircle(dotStartX + d * 12, dotY, 4);
         }
 
-        // 하단 우측: START 버튼
+        // 하단 우측: START 버튼 (소형 80x26)
         const btnW = 80;
         const btnH = 26;
         const btnX = cardRight - btnW / 2;
         const btnY = cardY + cardH / 2 - btnH / 2 - 4;
 
-        const startBg = this.add.rectangle(btnX, btnY, btnW, btnH, BTN_PRIMARY)
-          .setInteractive({ useHandCursor: true })
-          .setStrokeStyle(1, 0xffd700);
+        const startBg = this._createImageButton(
+          btnX, btnY, 'btn_small_primary', btnW, btnH, BTN_PRIMARY, 0xffd700
+        );
 
         this.add.text(btnX, btnY, t('ui.start'), {
           fontSize: '13px',
@@ -175,7 +189,6 @@ export class LevelSelectScene extends Phaser.Scene {
         startBg.on('pointerdown', () => {
           this.cameras.main.fadeOut(200, 0, 0, 0);
           this.cameras.main.once('camerafadeoutcomplete', () => {
-            // 게임 시작 전 메뉴 BGM 정지
             const sm = this.registry.get('soundManager');
             if (sm) sm.stopBgm(false);
             this.scene.start('GameScene', {
@@ -184,12 +197,12 @@ export class LevelSelectScene extends Phaser.Scene {
             });
           });
         });
-
-        startBg.on('pointerover', () => startBg.setFillStyle(0xd4b440));
-        startBg.on('pointerout', () => startBg.setFillStyle(BTN_PRIMARY));
       } else {
         // ── 잠금 카드 ──
-        cardBg.setStrokeStyle(1, 0x4a4a5a);
+        // Image에는 setStrokeStyle이 없으므로 Rectangle 폴백에만 적용
+        if (cardBg instanceof Phaser.GameObjects.Rectangle) {
+          cardBg.setStrokeStyle(1, 0x4a4a5a);
+        }
 
         // 기본 카드 정보 표시 (흐릿하게)
         this.add.text(cardLeft, cardY - cardH / 2 + 10, `${index + 1}`, {
@@ -208,14 +221,52 @@ export class LevelSelectScene extends Phaser.Scene {
         // 반투명 검정 오버레이
         this.add.rectangle(centerX, cardY, cardW, cardH, 0x000000).setAlpha(0.55);
 
-        // 카드 중앙: 잠금 아이콘
-        this.add.text(centerX, cardY, '\uD83D\uDD12', {
-          fontSize: '20px',
-          fontFamily: 'Arial, sans-serif',
-          color: '#636e72',
-        }).setOrigin(0.5);
+        // 카드 중앙: 잠금 아이콘 (이미지 또는 유니코드 폴백)
+        if (this.textures.exists('icon_lock')) {
+          this.add.image(centerX, cardY, 'icon_lock').setDisplaySize(20, 20);
+        } else {
+          this.add.text(centerX, cardY, '\uD83D\uDD12', {
+            fontSize: '20px',
+            fontFamily: 'Arial, sans-serif',
+            color: '#636e72',
+          }).setOrigin(0.5);
+        }
       }
     });
+  }
+
+  // ── 이미지 버튼 생성 헬퍼 ────────────────────────────────────
+
+  /**
+   * 이미지 에셋이 존재하면 이미지 버튼을, 없으면 기존 rectangle 폴백을 생성한다.
+   * @param {number} x - 중심 X
+   * @param {number} y - 중심 Y
+   * @param {string} textureBase - 텍스처 기본 키
+   * @param {number} w - 폴백 너비
+   * @param {number} h - 폴백 높이
+   * @param {number} fillColor - 폴백 채우기 색상
+   * @param {number} strokeColor - 폴백 테두리 색상
+   * @returns {Phaser.GameObjects.Image|Phaser.GameObjects.Rectangle}
+   * @private
+   */
+  _createImageButton(x, y, textureBase, w, h, fillColor, strokeColor) {
+    const normalKey = `${textureBase}_normal`;
+    const pressedKey = `${textureBase}_pressed`;
+
+    if (this.textures.exists(normalKey)) {
+      const btn = this.add.image(x, y, normalKey)
+        .setInteractive({ useHandCursor: true });
+      if (this.textures.exists(pressedKey)) {
+        btn.on('pointerdown', () => btn.setTexture(pressedKey));
+        btn.on('pointerup', () => btn.setTexture(normalKey));
+        btn.on('pointerout', () => btn.setTexture(normalKey));
+      }
+      return btn;
+    }
+
+    return this.add.rectangle(x, y, w, h, fillColor)
+      .setInteractive({ useHandCursor: true })
+      .setStrokeStyle(1, strokeColor);
   }
 
   // ── 진행 데이터 조회 (세이브 기반) ────────────────────────────

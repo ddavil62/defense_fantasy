@@ -79,12 +79,17 @@ export class WorldSelectScene extends Phaser.Scene {
       const panelY = startY + index * (panelH + gap) + panelH / 2;
       const accent = WORLD_ACCENT[world.id] || 0xffd700;
 
-      // 패널 배경 (월드 테마의 bg 색상)
-      const bg = this.add.rectangle(centerX, panelY, panelW, panelH, world.theme.bg);
+      // 패널 배경 (이미지 또는 월드 테마 색상 폴백)
+      const bg = this.textures.exists('panel_world_card')
+        ? this.add.image(centerX, panelY, 'panel_world_card')
+        : this.add.rectangle(centerX, panelY, panelW, panelH, world.theme.bg);
 
       if (progress.unlocked) {
         // ── 해금 패널 ──
-        bg.setStrokeStyle(2, accent);
+        // Image에는 setStrokeStyle이 없으므로 Rectangle 폴백에만 적용
+        if (bg instanceof Phaser.GameObjects.Rectangle) {
+          bg.setStrokeStyle(2, accent);
+        }
         bg.setInteractive({ useHandCursor: true });
 
         // 호버 효과
@@ -128,7 +133,10 @@ export class WorldSelectScene extends Phaser.Scene {
         }).setOrigin(1, 0);
       } else {
         // ── 잠금 패널 ──
-        bg.setStrokeStyle(1, 0x4a4a5a);
+        // Image에는 setStrokeStyle이 없으므로 Rectangle 폴백에만 적용
+        if (bg instanceof Phaser.GameObjects.Rectangle) {
+          bg.setStrokeStyle(1, 0x4a4a5a);
+        }
         bg.setAlpha(0.5);
 
         const panelLeft = centerX - panelW / 2 + 14;
@@ -159,12 +167,17 @@ export class WorldSelectScene extends Phaser.Scene {
           color: '#636e72',
         }).setOrigin(1, 0);
 
-        // 우측 중앙: 잠금 아이콘
-        this.add.text(panelRight, panelY - panelH / 2 + 35, '\uD83D\uDD12', {
-          fontSize: '20px',
-          fontFamily: 'Arial, sans-serif',
-          color: '#636e72',
-        }).setOrigin(1, 0.5);
+        // 우측 중앙: 잠금 아이콘 (이미지 또는 유니코드 폴백)
+        if (this.textures.exists('icon_lock')) {
+          this.add.image(panelRight - 10, panelY - panelH / 2 + 35, 'icon_lock')
+            .setDisplaySize(20, 20);
+        } else {
+          this.add.text(panelRight, panelY - panelH / 2 + 35, '\uD83D\uDD12', {
+            fontSize: '20px',
+            fontFamily: 'Arial, sans-serif',
+            color: '#636e72',
+          }).setOrigin(1, 0.5);
+        }
 
         // 우측 하단: 별 N개 필요 문구
         const reqText = t('ui.starsRequired').replace('{n}', String(world.requiredStars));

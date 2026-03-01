@@ -164,10 +164,16 @@ export class TowerInfoOverlay {
     const panelY = GAME_HEIGHT / 2;
     const panelTop = panelY - panelH / 2;
 
-    // ── 패널 배경 ──
-    const panelBg = this.scene.add.rectangle(panelX, panelY, PANEL_W, panelH, COLORS.UI_PANEL)
-      .setStrokeStyle(2, BTN_PRIMARY)
-      .setInteractive();
+    // ── 패널 배경 (이미지 또는 사각형 폴백) ──
+    let panelBg;
+    if (this.scene.textures.exists('panel_info_overlay')) {
+      panelBg = this.scene.add.image(panelX, panelY, 'panel_info_overlay')
+        .setInteractive();
+    } else {
+      panelBg = this.scene.add.rectangle(panelX, panelY, PANEL_W, panelH, COLORS.UI_PANEL)
+        .setStrokeStyle(2, BTN_PRIMARY)
+        .setInteractive();
+    }
     this._container.add(panelBg);
 
     // ── 헤더 영역 (뒤로 버튼 + 닫기 버튼) ──
@@ -685,13 +691,22 @@ export class TowerInfoOverlay {
     const info = tower.getInfo();
     let curY = buttonsTopY + 10;
 
-    // ── 강화 버튼 ──
+    // ── 강화 버튼 (오버레이 전용 크기 유지: 200x32) ──
     if (info.canEnhance && info.enhanceLevel < MAX_ENHANCE_LEVEL) {
       const enhBtnW = 200;
       const enhBtnH = 32;
-      const enhBtn = this.scene.add.rectangle(panelX, curY, enhBtnW, enhBtnH, BTN_PRIMARY)
-        .setStrokeStyle(1, 0xffd700)
-        .setInteractive({ useHandCursor: true });
+      let enhBtn;
+      if (this.scene.textures.exists('btn_medium_primary_normal')) {
+        enhBtn = this.scene.add.image(panelX, curY, 'btn_medium_primary_normal')
+          .setInteractive({ useHandCursor: true });
+        enhBtn.on('pointerdown', () => enhBtn.setTexture('btn_medium_primary_pressed'));
+        enhBtn.on('pointerup', () => enhBtn.setTexture('btn_medium_primary_normal'));
+        enhBtn.on('pointerout', () => enhBtn.setTexture('btn_medium_primary_normal'));
+      } else {
+        enhBtn = this.scene.add.rectangle(panelX, curY, enhBtnW, enhBtnH, BTN_PRIMARY)
+          .setStrokeStyle(1, 0xffd700)
+          .setInteractive({ useHandCursor: true });
+      }
       this._container.add(enhBtn);
 
       const enhLabel = t('ui.enhance')
@@ -720,12 +735,21 @@ export class TowerInfoOverlay {
       curY += 24;
     }
 
-    // ── 판매 버튼 ──
+    // ── 판매 버튼 (오버레이 전용 크기 유지: 200x32) ──
     const sellBtnW = 200;
     const sellBtnH = 32;
-    const sellBtn = this.scene.add.rectangle(panelX, curY, sellBtnW, sellBtnH, BTN_DANGER)
-      .setStrokeStyle(1, 0x636e72)
-      .setInteractive({ useHandCursor: true });
+    let sellBtn;
+    if (this.scene.textures.exists('btn_medium_danger_normal')) {
+      sellBtn = this.scene.add.image(panelX, curY, 'btn_medium_danger_normal')
+        .setInteractive({ useHandCursor: true });
+      sellBtn.on('pointerdown', () => sellBtn.setTexture('btn_medium_danger_pressed'));
+      sellBtn.on('pointerup', () => sellBtn.setTexture('btn_medium_danger_normal'));
+      sellBtn.on('pointerout', () => sellBtn.setTexture('btn_medium_danger_normal'));
+    } else {
+      sellBtn = this.scene.add.rectangle(panelX, curY, sellBtnW, sellBtnH, BTN_DANGER)
+        .setStrokeStyle(1, 0x636e72)
+        .setInteractive({ useHandCursor: true });
+    }
     this._container.add(sellBtn);
 
     const sellText = this.scene.add.text(panelX, curY, `Sell ${info.sellPrice}G`, {

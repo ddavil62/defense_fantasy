@@ -135,11 +135,15 @@ export class MapClearScene extends Phaser.Scene {
     // ── 씬 진입 페이드인 ──
     this.cameras.main.fadeIn(300, 0, 0, 0);
 
-    // ── 결과 패널 ──
+    // ── 결과 패널 (이미지 또는 폴백 사각형) ──
     const panelW = 280;
     const panelH = 400;
-    this.add.rectangle(centerX, centerY, panelW, panelH, 0x0a0820)
-      .setStrokeStyle(2, 0xffd700);
+    if (this.textures.exists('panel_result')) {
+      this.add.image(centerX, centerY, 'panel_result');
+    } else {
+      this.add.rectangle(centerX, centerY, panelW, panelH, 0x0a0820)
+        .setStrokeStyle(2, 0xffd700);
+    }
 
     // ── MAP CLEAR 타이틀 (골드 글로우) ──
     this.add.text(centerX, centerY - 175, t('ui.mapClear'), {
@@ -165,12 +169,19 @@ export class MapClearScene extends Phaser.Scene {
     for (let i = 0; i < 3; i++) {
       const x = starStartX + i * starSpacing;
       const filled = i < stars;
-      const starText = this.add.text(x, starY, '\u2605', {
-        fontSize: '36px',
-        fontFamily: 'Arial, sans-serif',
-        color: filled ? '#ffd700' : '#333340',
-        fontStyle: 'bold',
-      }).setOrigin(0.5).setAlpha(0).setScale(0.3);
+
+      // 별점: 이미지 아이콘 또는 유니코드 폴백
+      const iconKey = filled ? 'icon_star_filled' : 'icon_star_empty';
+      const starObj = this.textures.exists(iconKey)
+        ? this.add.image(x, starY, iconKey).setDisplaySize(30, 30)
+        : this.add.text(x, starY, '\u2605', {
+            fontSize: '36px',
+            fontFamily: 'Arial, sans-serif',
+            color: filled ? '#ffd700' : '#333340',
+            fontStyle: 'bold',
+          }).setOrigin(0.5);
+      const starText = starObj;
+      starText.setOrigin(0.5).setAlpha(0).setScale(0.3);
 
       // 순차 팝업 애니메이션 (0.3초 간격)
       this.tweens.add({
@@ -281,12 +292,12 @@ export class MapClearScene extends Phaser.Scene {
       color: stars === 3 ? '#ffd700' : stars === 2 ? '#fdcb6e' : '#b2bec3',
     }).setOrigin(0.5);
 
-    // ── NEXT MAP 버튼 ──
+    // ── NEXT MAP 버튼 (대형 160x44로 표준화) ──
     const nextY = centerY + 85;
     const nextMapId = getNextMapId(this.mapData.id);
-    const nextBg = this.add.rectangle(centerX, nextY, 160, 40, BTN_PRIMARY)
-      .setInteractive({ useHandCursor: true })
-      .setStrokeStyle(2, 0xffd700);
+    const nextBg = this._createImageButton(
+      centerX, nextY, 'btn_large_primary', 160, 44, BTN_PRIMARY, 0xffd700
+    );
 
     // 다음 맵이 있으면 NEXT MAP, 없으면 월드 클리어 텍스트
     const nextLabel = nextMapId ? t('ui.nextMap') : t('ui.worldComplete');
@@ -301,25 +312,21 @@ export class MapClearScene extends Phaser.Scene {
       this.cameras.main.fadeOut(200, 0, 0, 0);
       this.cameras.main.once('camerafadeoutcomplete', () => {
         if (nextMapId) {
-          // 같은 월드 내 다음 맵으로 이동
           this.scene.start('GameScene', {
             mapData: getMapById(nextMapId),
             gameMode: this.gameMode,
           });
         } else {
-          // 월드 마지막 맵이면 WorldSelectScene으로 이동
           this.scene.start('WorldSelectScene');
         }
       });
     });
-    nextBg.on('pointerover', () => nextBg.setFillStyle(0xd4b440));
-    nextBg.on('pointerout', () => nextBg.setFillStyle(BTN_PRIMARY));
 
-    // ── RETRY 버튼 ──
+    // ── RETRY 버튼 (중형 160x36) ──
     const retryY = nextY + 48;
-    const retryBg = this.add.rectangle(centerX, retryY, 160, 36, BTN_BACK)
-      .setInteractive({ useHandCursor: true })
-      .setStrokeStyle(1, 0x1a9c7e);
+    const retryBg = this._createImageButton(
+      centerX, retryY, 'btn_medium_back', 160, 36, BTN_BACK, 0x1a9c7e
+    );
 
     this.add.text(centerX, retryY, 'RETRY', {
       fontSize: '15px',
@@ -337,14 +344,12 @@ export class MapClearScene extends Phaser.Scene {
         });
       });
     });
-    retryBg.on('pointerover', () => retryBg.setFillStyle(0x1f7d6e));
-    retryBg.on('pointerout', () => retryBg.setFillStyle(BTN_BACK));
 
-    // ── WORLD MAP 버튼 ──
+    // ── WORLD MAP 버튼 (중형 160x36) ──
     const worldY = retryY + 44;
-    const worldBg = this.add.rectangle(centerX, worldY, 160, 36, BTN_DANGER)
-      .setInteractive({ useHandCursor: true })
-      .setStrokeStyle(1, 0x636e72);
+    const worldBg = this._createImageButton(
+      centerX, worldY, 'btn_medium_danger', 160, 36, BTN_DANGER, 0x636e72
+    );
 
     this.add.text(centerX, worldY, t('ui.worldMap'), {
       fontSize: '15px',
@@ -359,8 +364,40 @@ export class MapClearScene extends Phaser.Scene {
         this.scene.start('WorldSelectScene');
       });
     });
-    worldBg.on('pointerover', () => worldBg.setFillStyle(0xa52040));
-    worldBg.on('pointerout', () => worldBg.setFillStyle(BTN_DANGER));
+  }
+
+  // ── 이미지 버튼 생성 헬퍼 ────────────────────────────────────
+
+  /**
+   * 이미지 에셋이 존재하면 이미지 버튼을, 없으면 기존 rectangle 폴백을 생성한다.
+   * @param {number} x - 중심 X
+   * @param {number} y - 중심 Y
+   * @param {string} textureBase - 텍스처 기본 키
+   * @param {number} w - 폴백 너비
+   * @param {number} h - 폴백 높이
+   * @param {number} fillColor - 폴백 채우기 색상
+   * @param {number} strokeColor - 폴백 테두리 색상
+   * @returns {Phaser.GameObjects.Image|Phaser.GameObjects.Rectangle}
+   * @private
+   */
+  _createImageButton(x, y, textureBase, w, h, fillColor, strokeColor) {
+    const normalKey = `${textureBase}_normal`;
+    const pressedKey = `${textureBase}_pressed`;
+
+    if (this.textures.exists(normalKey)) {
+      const btn = this.add.image(x, y, normalKey)
+        .setInteractive({ useHandCursor: true });
+      if (this.textures.exists(pressedKey)) {
+        btn.on('pointerdown', () => btn.setTexture(pressedKey));
+        btn.on('pointerup', () => btn.setTexture(normalKey));
+        btn.on('pointerout', () => btn.setTexture(normalKey));
+      }
+      return btn;
+    }
+
+    return this.add.rectangle(x, y, w, h, fillColor)
+      .setInteractive({ useHandCursor: true })
+      .setStrokeStyle(2, strokeColor);
   }
 
   // ── 세이브 데이터 입출력 ─────────────────────────────────────────

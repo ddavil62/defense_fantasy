@@ -39,6 +39,47 @@ export class BootScene extends Phaser.Scene {
     for (const id of mergeIds) {
       this.load.image(`tower_${id}`, `assets/tower/${id}.png`);
     }
+
+    // ── UI 에셋 로드 ──
+
+    // UI 버튼 (대형/중형/소형 × 색상 변형 × normal/pressed + disabled)
+    const btnSizes = ['large', 'medium', 'small'];
+    const btnColors = ['primary', 'meta', 'back', 'danger'];
+    for (const size of btnSizes) {
+      for (const color of btnColors) {
+        // small은 primary, back만 존재
+        if (size === 'small' && (color === 'meta' || color === 'danger')) continue;
+        this.load.image(`btn_${size}_${color}_normal`, `assets/ui/buttons/btn_${size}_${color}_normal.png`);
+        this.load.image(`btn_${size}_${color}_pressed`, `assets/ui/buttons/btn_${size}_${color}_pressed.png`);
+      }
+      this.load.image(`btn_${size}_disabled`, `assets/ui/buttons/btn_${size}_disabled.png`);
+    }
+
+    // UI 패널 (결과/일시정지/월드카드/레벨카드/타워정보)
+    for (const name of ['panel_result', 'panel_pause', 'panel_world_card', 'panel_level_card', 'panel_info_overlay']) {
+      this.load.image(name, `assets/ui/panels/${name}.png`);
+    }
+
+    // HUD 배경 및 타워 슬롯
+    this.load.image('hud_bar_bg', 'assets/ui/hud/hud_bar_bg.png');
+    this.load.image('tower_panel_bg', 'assets/ui/hud/tower_panel_bg.png');
+    for (const state of ['normal', 'selected', 'locked']) {
+      this.load.image(`tower_slot_${state}`, `assets/ui/hud/tower_slot_${state}.png`);
+    }
+    for (const state of ['normal', 'pressed']) {
+      this.load.image(`slot_action_${state}`, `assets/ui/hud/slot_action_${state}.png`);
+      this.load.image(`slot_mini_${state}`, `assets/ui/hud/slot_mini_${state}.png`);
+    }
+
+    // 장식 요소 (구분선, 코너)
+    this.load.image('divider_gold', 'assets/ui/decorations/divider_gold.png');
+    this.load.image('divider_header', 'assets/ui/decorations/divider_header.png');
+    this.load.image('corner_deco', 'assets/ui/decorations/corner_deco.png');
+
+    // 아이콘 (다이아/하트/검/별/자물쇠)
+    for (const name of ['icon_diamond', 'icon_heart', 'icon_sword', 'icon_star_filled', 'icon_star_empty', 'icon_lock']) {
+      this.load.image(name, `assets/ui/icons/${name}.png`);
+    }
   }
 
   /**

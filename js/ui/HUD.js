@@ -58,16 +58,21 @@ export class HUD {
    * @private
    */
   _create() {
-    // 배경 바 - 상단이 불투명하고 하단으로 갈수록 페이드아웃되는 그라데이션
-    this.bgGraphics = this.scene.add.graphics();
-    this.bgGraphics.setDepth(30);
-    const gradientSteps = 4;
-    const stepH = HUD_HEIGHT / gradientSteps;
-    for (let i = 0; i < gradientSteps; i++) {
-      // 상단은 불투명(0.95), 한 단계마다 0.12씩 투명도 증가
-      const alpha = 0.95 - (i * 0.12);
-      this.bgGraphics.fillStyle(COLORS.HUD_BG, alpha);
-      this.bgGraphics.fillRect(0, i * stepH, GAME_WIDTH, stepH);
+    // 배경 바 - 이미지 에셋 또는 그라데이션 폴백
+    if (this.scene.textures.exists('hud_bar_bg')) {
+      this.bgImage = this.scene.add.image(GAME_WIDTH / 2, HUD_HEIGHT / 2, 'hud_bar_bg')
+        .setDepth(30);
+      this.bgGraphics = null;
+    } else {
+      this.bgGraphics = this.scene.add.graphics();
+      this.bgGraphics.setDepth(30);
+      const gradientSteps = 4;
+      const stepH = HUD_HEIGHT / gradientSteps;
+      for (let i = 0; i < gradientSteps; i++) {
+        const alpha = 0.95 - (i * 0.12);
+        this.bgGraphics.fillStyle(COLORS.HUD_BG, alpha);
+        this.bgGraphics.fillRect(0, i * stepH, GAME_WIDTH, stepH);
+      }
     }
 
     // 위험 상태 테두리 그래픽 (초기에는 숨김)
@@ -75,26 +80,59 @@ export class HUD {
     this.dangerBorderGraphics.setDepth(32);
     this.dangerBorderGraphics.setAlpha(0);
 
-    // 웨이브 텍스트 (좌측) - 검 아이콘 포함
-    this.waveText = this.scene.add.text(10, HUD_HEIGHT / 2, '\u2694 Wave: 1', {
-      fontSize: '16px',
-      fontFamily: 'Arial, sans-serif',
-      color: '#ffffff',
-    }).setOrigin(0, 0.5).setDepth(31);
+    // 웨이브 아이콘 + 텍스트 (좌측)
+    if (this.scene.textures.exists('icon_sword')) {
+      this.waveIcon = this.scene.add.image(18, HUD_HEIGHT / 2, 'icon_sword')
+        .setDisplaySize(14, 14).setDepth(31);
+      this.waveText = this.scene.add.text(28, HUD_HEIGHT / 2, 'Wave: 1', {
+        fontSize: '16px',
+        fontFamily: 'Arial, sans-serif',
+        color: '#ffffff',
+      }).setOrigin(0, 0.5).setDepth(31);
+    } else {
+      this.waveIcon = null;
+      this.waveText = this.scene.add.text(10, HUD_HEIGHT / 2, '\u2694 Wave: 1', {
+        fontSize: '16px',
+        fontFamily: 'Arial, sans-serif',
+        color: '#ffffff',
+      }).setOrigin(0, 0.5).setDepth(31);
+    }
 
-    // 골드 텍스트 (중앙) - 다이아몬드 아이콘 포함
-    this.goldText = this.scene.add.text(150, HUD_HEIGHT / 2, '\u25C6 200', {
-      fontSize: '16px',
-      fontFamily: 'Arial, sans-serif',
-      color: GOLD_TEXT_CSS,
-    }).setOrigin(0.5, 0.5).setDepth(31);
+    // 골드 아이콘 + 텍스트 (중앙)
+    if (this.scene.textures.exists('icon_diamond')) {
+      this.goldIcon = this.scene.add.image(135, HUD_HEIGHT / 2, 'icon_diamond')
+        .setDisplaySize(14, 14).setDepth(31);
+      this.goldText = this.scene.add.text(150, HUD_HEIGHT / 2, '200', {
+        fontSize: '16px',
+        fontFamily: 'Arial, sans-serif',
+        color: GOLD_TEXT_CSS,
+      }).setOrigin(0.5, 0.5).setDepth(31);
+    } else {
+      this.goldIcon = null;
+      this.goldText = this.scene.add.text(150, HUD_HEIGHT / 2, '\u25C6 200', {
+        fontSize: '16px',
+        fontFamily: 'Arial, sans-serif',
+        color: GOLD_TEXT_CSS,
+      }).setOrigin(0.5, 0.5).setDepth(31);
+    }
 
-    // HP 텍스트 (우측) - 하트 아이콘 포함
-    this.hpText = this.scene.add.text(235, HUD_HEIGHT / 2, '\u2665 20', {
-      fontSize: '16px',
-      fontFamily: 'Arial, sans-serif',
-      color: '#ffffff',
-    }).setOrigin(0, 0.5).setDepth(31);
+    // HP 아이콘 + 텍스트 (우측)
+    if (this.scene.textures.exists('icon_heart')) {
+      this.hpIcon = this.scene.add.image(237, HUD_HEIGHT / 2, 'icon_heart')
+        .setDisplaySize(14, 14).setDepth(31);
+      this.hpText = this.scene.add.text(248, HUD_HEIGHT / 2, '20', {
+        fontSize: '16px',
+        fontFamily: 'Arial, sans-serif',
+        color: '#ffffff',
+      }).setOrigin(0, 0.5).setDepth(31);
+    } else {
+      this.hpIcon = null;
+      this.hpText = this.scene.add.text(235, HUD_HEIGHT / 2, '\u2665 20', {
+        fontSize: '16px',
+        fontFamily: 'Arial, sans-serif',
+        color: '#ffffff',
+      }).setOrigin(0, 0.5).setDepth(31);
+    }
 
     // 카운트다운 텍스트 (웨이브 텍스트 아래, 휴식 시간에만 표시)
     this.countdownText = this.scene.add.text(10, HUD_HEIGHT + 4, '', {
@@ -117,10 +155,11 @@ export class HUD {
    * @param {number|null} [total=null] - 총 웨이브 수 (null 또는 Infinity면 엔드리스)
    */
   updateWave(round, total = null) {
+    const prefix = this.waveIcon ? '' : '\u2694 ';
     if (total !== null && isFinite(total)) {
-      this.waveText.setText(`\u2694 Wave: ${round}/${total}`);
+      this.waveText.setText(`${prefix}Wave: ${round}/${total}`);
     } else {
-      this.waveText.setText(`\u2694 Wave: ${round}`);
+      this.waveText.setText(`${prefix}Wave: ${round}`);
     }
   }
 
@@ -129,7 +168,8 @@ export class HUD {
    * @param {number} amount - 현재 보유 골드
    */
   updateGold(amount) {
-    this.goldText.setText(`\u25C6 ${amount}`);
+    const prefix = this.goldIcon ? '' : '\u25C6 ';
+    this.goldText.setText(`${prefix}${amount}`);
   }
 
   /**
@@ -141,7 +181,8 @@ export class HUD {
    */
   updateHP(current, max) {
     this._currentHP = current;
-    this.hpText.setText(`\u2665 ${current}`);
+    const prefix = this.hpIcon ? '' : '\u2665 ';
+    this.hpText.setText(`${prefix}${current}`);
 
     if (current > HP_DANGER_THRESHOLD) {
       this.hpText.setColor('#ffffff');
@@ -237,9 +278,13 @@ export class HUD {
    */
   destroy() {
     if (this.bgGraphics) this.bgGraphics.destroy();
+    if (this.bgImage) this.bgImage.destroy();
     if (this.dangerBorderGraphics) this.dangerBorderGraphics.destroy();
+    if (this.waveIcon) this.waveIcon.destroy();
     if (this.waveText) this.waveText.destroy();
+    if (this.goldIcon) this.goldIcon.destroy();
     if (this.goldText) this.goldText.destroy();
+    if (this.hpIcon) this.hpIcon.destroy();
     if (this.hpText) this.hpText.destroy();
     if (this.countdownText) this.countdownText.destroy();
     if (this.previewGraphics) this.previewGraphics.destroy();

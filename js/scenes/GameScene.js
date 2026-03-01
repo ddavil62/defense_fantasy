@@ -1740,6 +1740,38 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
+   * 일시정지 오버레이용 이미지 버튼을 생성한다.
+   * 에셋이 없으면 기존 rectangle 폴백을 사용한다.
+   * @param {number} x - 중심 X
+   * @param {number} y - 중심 Y
+   * @param {string} textureBase - 텍스처 기본 키
+   * @param {number} w - 폴백 너비
+   * @param {number} h - 폴백 높이
+   * @param {number} fillColor - 폴백 채우기 색상
+   * @param {number} strokeColor - 폴백 테두리 색상
+   * @returns {Phaser.GameObjects.Image|Phaser.GameObjects.Rectangle}
+   * @private
+   */
+  _createPauseImageButton(x, y, textureBase, w, h, fillColor, strokeColor) {
+    const normalKey = `${textureBase}_normal`;
+    const pressedKey = `${textureBase}_pressed`;
+
+    if (this.textures.exists(normalKey)) {
+      const btn = this.add.image(x, y, normalKey)
+        .setInteractive({ useHandCursor: true }).setDepth(52);
+      if (this.textures.exists(pressedKey)) {
+        btn.on('pointerdown', () => btn.setTexture(pressedKey));
+        btn.on('pointerup', () => btn.setTexture(normalKey));
+        btn.on('pointerout', () => btn.setTexture(normalKey));
+      }
+      return btn;
+    }
+
+    return this.add.rectangle(x, y, w, h, fillColor)
+      .setInteractive({ useHandCursor: true }).setDepth(52);
+  }
+
+  /**
    * 일시정지 오버레이를 표시한다.
    * 어두운 배경 위에 Resume / 머지 도감 / Main Menu 버튼과
    * 볼륨 컨트롤(SFX/BGM/MUTE)을 배치한다.
@@ -1756,10 +1788,11 @@ export class GameScene extends Phaser.Scene {
     ).setAlpha(0.97).setInteractive();
     this.pauseOverlay.add(overlay);
 
-    // 중앙 패널 (금색 테두리)
-    const panel = this.add.rectangle(
-      180, 310, 220, 260, 0x05050f
-    ).setStrokeStyle(2, BTN_PRIMARY).setDepth(51);
+    // 중앙 패널 (이미지 또는 폴백 사각형)
+    const panel = this.textures.exists('panel_pause')
+      ? this.add.image(180, 310, 'panel_pause').setDepth(51)
+      : this.add.rectangle(180, 310, 220, 260, 0x05050f)
+          .setStrokeStyle(2, BTN_PRIMARY).setDepth(51);
     this.pauseOverlay.add(panel);
 
     // "PAUSED" 텍스트 (금색 + 글로우)
@@ -1778,10 +1811,10 @@ export class GameScene extends Phaser.Scene {
     }).setOrigin(0.5).setDepth(52);
     this.pauseOverlay.add(pausedText);
 
-    // Resume(재개) 버튼
-    const resumeBtn = this.add.rectangle(
-      180, 252, 180, 30, BTN_BACK
-    ).setInteractive({ useHandCursor: true }).setDepth(52);
+    // Resume(재개) 버튼 (중형 높이 36으로 표준화, 너비 180 유지)
+    const resumeBtn = this._createPauseImageButton(
+      180, 252, 'btn_medium_back', 180, 36, BTN_BACK, 0x1a9c7e
+    );
     this.pauseOverlay.add(resumeBtn);
 
     const resumeText = this.add.text(180, 252, 'Resume', {
@@ -1796,13 +1829,13 @@ export class GameScene extends Phaser.Scene {
       this._resumeGame();
     });
 
-    // 머지 도감 버튼 (일시정지 유지 상태로 MergeCodexScene 전환)
-    const codexBtn = this.add.rectangle(
-      180, 288, 180, 30, BTN_META
-    ).setInteractive({ useHandCursor: true }).setDepth(52);
+    // 머지 도감 버튼 (중형 높이 36으로 표준화)
+    const codexBtn = this._createPauseImageButton(
+      180, 292, 'btn_medium_meta', 180, 36, BTN_META, COLORS.DIAMOND
+    );
     this.pauseOverlay.add(codexBtn);
 
-    const codexText = this.add.text(180, 288, t('ui.mergeCodex'), {
+    const codexText = this.add.text(180, 292, t('ui.mergeCodex'), {
       fontSize: '14px',
       fontFamily: 'Arial, sans-serif',
       color: '#ffffff',
@@ -1817,13 +1850,13 @@ export class GameScene extends Phaser.Scene {
       this.scene.sleep('GameScene');
     });
 
-    // 메인 메뉴 버튼 (게임 포기)
-    const menuBtn = this.add.rectangle(
-      180, 324, 180, 30, BTN_DANGER
-    ).setInteractive({ useHandCursor: true }).setDepth(52);
+    // 메인 메뉴 버튼 (중형 높이 36으로 표준화)
+    const menuBtn = this._createPauseImageButton(
+      180, 332, 'btn_medium_danger', 180, 36, BTN_DANGER, 0x636e72
+    );
     this.pauseOverlay.add(menuBtn);
 
-    const menuText = this.add.text(180, 324, 'Main Menu', {
+    const menuText = this.add.text(180, 332, 'Main Menu', {
       fontSize: '14px',
       fontFamily: 'Arial, sans-serif',
       color: '#ffffff',
@@ -1849,7 +1882,7 @@ export class GameScene extends Phaser.Scene {
    * @private
    */
   _createVolumeControls(sm) {
-    const baseY = 360;
+    const baseY = 370;
     const labelStyle = {
       fontSize: '12px',
       fontFamily: 'Arial, sans-serif',
@@ -1966,10 +1999,17 @@ export class GameScene extends Phaser.Scene {
     const y = PANEL_Y + 68;
     const btnSize = VISUALS.ACTION_BUTTON_SIZE;
 
-    this.hpRecoverBg = this.add.rectangle(x, y, btnSize, btnSize, BTN_META)
-      .setStrokeStyle(1, 0x636e72)
-      .setInteractive({ useHandCursor: true })
-      .setDepth(31);
+    // HP 회복 버튼 배경 (액션 슬롯 이미지 또는 사각형 폴백)
+    if (this.textures.exists('slot_action_normal')) {
+      this.hpRecoverBg = this.add.image(x, y, 'slot_action_normal')
+        .setInteractive({ useHandCursor: true })
+        .setDepth(31);
+    } else {
+      this.hpRecoverBg = this.add.rectangle(x, y, btnSize, btnSize, BTN_META)
+        .setStrokeStyle(1, 0x636e72)
+        .setInteractive({ useHandCursor: true })
+        .setDepth(31);
+    }
 
     this.hpRecoverText = this.add.text(x, y, '+HP', {
       fontSize: '10px',
@@ -2001,13 +2041,27 @@ export class GameScene extends Phaser.Scene {
     const isFull = this.baseHP >= this.maxBaseHP;
 
     if (isFull) {
-      this.hpRecoverBg.setFillStyle(BTN_SELL);
+      // Image 객체에는 setFillStyle이 없으므로 setTint로 대체
+      if (this.hpRecoverBg instanceof Phaser.GameObjects.Rectangle) {
+        this.hpRecoverBg.setFillStyle(BTN_SELL);
+      } else {
+        this.hpRecoverBg.setTint(0x888888);
+      }
       this.hpRecoverBg.setAlpha(0.4);
       this.hpRecoverCostText.setText(t('ui.hpRecoverFull'));
       this.hpRecoverCostText.setColor('#636e72');
     } else {
       const canAfford = this.goldManager.canAfford(cost);
-      this.hpRecoverBg.setFillStyle(canAfford ? BTN_META : BTN_SELL);
+      if (this.hpRecoverBg instanceof Phaser.GameObjects.Rectangle) {
+        this.hpRecoverBg.setFillStyle(canAfford ? BTN_META : BTN_SELL);
+      } else {
+        // Image: 구매 가능하면 원래 색, 불가하면 어둡게
+        if (canAfford) {
+          this.hpRecoverBg.clearTint();
+        } else {
+          this.hpRecoverBg.setTint(0x888888);
+        }
+      }
       this.hpRecoverBg.setAlpha(canAfford ? 1 : 0.5);
       this.hpRecoverCostText.setText(`${cost}G`);
       this.hpRecoverCostText.setColor(canAfford ? '#ffd700' : '#ff4757');
@@ -2061,10 +2115,18 @@ export class GameScene extends Phaser.Scene {
       const def = CONSUMABLE_ABILITIES[key];
       const x = baseX + i * spacing;
 
-      const bg = this.add.rectangle(x, y, btnSize, btnSize, BTN_META)
-        .setStrokeStyle(1, 0x636e72)
-        .setInteractive({ useHandCursor: true })
-        .setDepth(31);
+      // 소모품 버튼 배경 (미니 슬롯 이미지 또는 사각형 폴백)
+      let bg;
+      if (this.textures.exists('slot_mini_normal')) {
+        bg = this.add.image(x, y, 'slot_mini_normal')
+          .setInteractive({ useHandCursor: true })
+          .setDepth(31);
+      } else {
+        bg = this.add.rectangle(x, y, btnSize, btnSize, BTN_META)
+          .setStrokeStyle(1, 0x636e72)
+          .setInteractive({ useHandCursor: true })
+          .setDepth(31);
+      }
 
       const iconText = this.add.text(x, y - 2, def.icon, {
         fontSize: '12px',
@@ -2112,7 +2174,12 @@ export class GameScene extends Phaser.Scene {
       const onCooldown = state.cooldownTimer > 0;
 
       if (onCooldown) {
-        btn.bg.setFillStyle(BTN_SELL);
+        // Image 객체에는 setFillStyle이 없으므로 setTint로 대체
+        if (btn.bg instanceof Phaser.GameObjects.Rectangle) {
+          btn.bg.setFillStyle(BTN_SELL);
+        } else {
+          btn.bg.setTint(0x888888);
+        }
         btn.bg.setAlpha(0.3);
         btn.iconText.setAlpha(0.3);
         btn.costText.setText('');
@@ -2120,7 +2187,16 @@ export class GameScene extends Phaser.Scene {
         btn.cdText.setAlpha(1);
       } else {
         const canAfford = this.goldManager.canAfford(cost);
-        btn.bg.setFillStyle(canAfford ? BTN_META : BTN_SELL);
+        if (btn.bg instanceof Phaser.GameObjects.Rectangle) {
+          btn.bg.setFillStyle(canAfford ? BTN_META : BTN_SELL);
+        } else {
+          // Image: 구매 가능하면 원래 색, 불가하면 어둡게
+          if (canAfford) {
+            btn.bg.clearTint();
+          } else {
+            btn.bg.setTint(0x888888);
+          }
+        }
         btn.bg.setAlpha(canAfford ? 1 : 0.5);
         btn.iconText.setAlpha(1);
         btn.costText.setText(`${cost}G`);
@@ -2128,13 +2204,28 @@ export class GameScene extends Phaser.Scene {
         btn.cdText.setAlpha(0);
       }
 
-      // 활성 중인 능력은 테두리 색상 강조 표시
-      if (key === 'goldRain' && state.active) {
-        btn.bg.setStrokeStyle(2, 0xffd700);
-      } else if (key === 'slowAll' && state.active) {
-        btn.bg.setStrokeStyle(2, 0x74b9ff);
+      // 활성 중인 능력은 시각 효과로 강조 표시
+      if (btn.bg instanceof Phaser.GameObjects.Rectangle) {
+        if (key === 'goldRain' && state.active) {
+          btn.bg.setStrokeStyle(2, 0xffd700);
+        } else if (key === 'slowAll' && state.active) {
+          btn.bg.setStrokeStyle(2, 0x74b9ff);
+        } else {
+          btn.bg.setStrokeStyle(1, 0x636e72);
+        }
       } else {
-        btn.bg.setStrokeStyle(1, 0x636e72);
+        // Image: 활성 중인 능력은 밝은 tint로 강조
+        if ((key === 'goldRain' && state.active) || (key === 'slowAll' && state.active)) {
+          const activeTint = key === 'goldRain' ? 0xffd700 : 0x74b9ff;
+          btn.bg.setTint(activeTint);
+        } else if (!onCooldown) {
+          // 쿨다운이 아니고 활성도 아니면 원래 색상 복원
+          const canAfford = this.goldManager.canAfford(cost);
+          if (canAfford) {
+            btn.bg.clearTint();
+          }
+          // 구매 불가 시에는 위 분기에서 이미 tint 적용됨
+        }
       }
     }
   }

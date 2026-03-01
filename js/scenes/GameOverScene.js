@@ -93,12 +93,16 @@ export class GameOverScene extends Phaser.Scene {
     // MenuScene에서 참조할 수 있도록 레지스트리 갱신
     this.registry.set('saveData', saveData);
 
-    // ── 결과 패널 (어두운 보라+검정 배경, 골드 테두리) ──
+    // ── 결과 패널 (이미지 또는 폴백 사각형) ──
     const isCampaign = this.gameMode === 'campaign';
     const panelW = 280;
     const panelH = isCampaign ? 420 : 380;
-    this.add.rectangle(centerX, centerY, panelW, panelH, 0x0a0820)
-      .setStrokeStyle(2, BTN_PRIMARY);
+    if (this.textures.exists('panel_result')) {
+      this.add.image(centerX, centerY, 'panel_result');
+    } else {
+      this.add.rectangle(centerX, centerY, panelW, panelH, 0x0a0820)
+        .setStrokeStyle(2, BTN_PRIMARY);
+    }
 
     // ── GAME OVER 타이틀 (다크 레드 + 그림자 글로우) ──
     this.add.text(centerX, centerY - 165, 'GAME OVER', {
@@ -225,11 +229,11 @@ export class GameOverScene extends Phaser.Scene {
       }).setOrigin(0.5);
     }
 
-    // ── RETRY 버튼 (BTN_PRIMARY 골드) ──
+    // ── RETRY 버튼 (대형 160x44로 표준화) ──
     const retryY = centerY + 75;
-    const restartBg = this.add.rectangle(centerX, retryY, 160, 40, BTN_PRIMARY)
-      .setInteractive({ useHandCursor: true })
-      .setStrokeStyle(2, 0xffffff);
+    const restartBg = this._createImageButton(
+      centerX, retryY, 'btn_large_primary', 160, 44, BTN_PRIMARY, 0xffffff
+    );
 
     this.add.text(centerX, retryY, 'RETRY', {
       fontSize: '18px',
@@ -248,15 +252,12 @@ export class GameOverScene extends Phaser.Scene {
       });
     });
 
-    restartBg.on('pointerover', () => restartBg.setFillStyle(0xd4b440));
-    restartBg.on('pointerout', () => restartBg.setFillStyle(BTN_PRIMARY));
-
     if (isCampaign) {
-      // ── WORLD MAP 버튼 (BTN_BACK 틸, 캠페인 모드 전용) ──
+      // ── WORLD MAP 버튼 (중형 160x36, 캠페인 모드 전용) ──
       const worldMapY = retryY + 50;
-      const worldMapBg = this.add.rectangle(centerX, worldMapY, 160, 36, BTN_BACK)
-        .setInteractive({ useHandCursor: true })
-        .setStrokeStyle(1, 0x1a9c7e);
+      const worldMapBg = this._createImageButton(
+        centerX, worldMapY, 'btn_medium_back', 160, 36, BTN_BACK, 0x1a9c7e
+      );
 
       this.add.text(centerX, worldMapY, 'WORLD MAP', {
         fontSize: '15px',
@@ -272,14 +273,11 @@ export class GameOverScene extends Phaser.Scene {
         });
       });
 
-      worldMapBg.on('pointerover', () => worldMapBg.setFillStyle(0x1f7d6e));
-      worldMapBg.on('pointerout', () => worldMapBg.setFillStyle(BTN_BACK));
-
-      // ── MENU 버튼 (BTN_DANGER 레드, 작게) ──
+      // ── MENU 버튼 (중형 160x36으로 표준화) ──
       const menuY = worldMapY + 44;
-      const menuBg = this.add.rectangle(centerX, menuY, 160, 30, BTN_DANGER)
-        .setInteractive({ useHandCursor: true })
-        .setStrokeStyle(1, 0x636e72);
+      const menuBg = this._createImageButton(
+        centerX, menuY, 'btn_medium_danger', 160, 36, BTN_DANGER, 0x636e72
+      );
 
       this.add.text(centerX, menuY, 'MENU', {
         fontSize: '14px',
@@ -294,15 +292,12 @@ export class GameOverScene extends Phaser.Scene {
           this.scene.start('MenuScene');
         });
       });
-
-      menuBg.on('pointerover', () => menuBg.setFillStyle(0xa52040));
-      menuBg.on('pointerout', () => menuBg.setFillStyle(BTN_DANGER));
     } else {
-      // ── MENU 버튼 (BTN_DANGER 레드, 엔드리스 모드) ──
+      // ── MENU 버튼 (중형 160x36, 엔드리스 모드) ──
       const menuY = retryY + 50;
-      const menuBg = this.add.rectangle(centerX, menuY, 160, 36, BTN_DANGER)
-        .setInteractive({ useHandCursor: true })
-        .setStrokeStyle(1, 0x636e72);
+      const menuBg = this._createImageButton(
+        centerX, menuY, 'btn_medium_danger', 160, 36, BTN_DANGER, 0x636e72
+      );
 
       this.add.text(centerX, menuY, 'MENU', {
         fontSize: '16px',
@@ -317,10 +312,41 @@ export class GameOverScene extends Phaser.Scene {
           this.scene.start('MenuScene');
         });
       });
-
-      menuBg.on('pointerover', () => menuBg.setFillStyle(0xa52040));
-      menuBg.on('pointerout', () => menuBg.setFillStyle(BTN_DANGER));
     }
+  }
+
+  // ── 이미지 버튼 생성 헬퍼 ────────────────────────────────────
+
+  /**
+   * 이미지 에셋이 존재하면 이미지 버튼을, 없으면 기존 rectangle 폴백을 생성한다.
+   * @param {number} x - 중심 X
+   * @param {number} y - 중심 Y
+   * @param {string} textureBase - 텍스처 기본 키
+   * @param {number} w - 폴백 너비
+   * @param {number} h - 폴백 높이
+   * @param {number} fillColor - 폴백 채우기 색상
+   * @param {number} strokeColor - 폴백 테두리 색상
+   * @returns {Phaser.GameObjects.Image|Phaser.GameObjects.Rectangle}
+   * @private
+   */
+  _createImageButton(x, y, textureBase, w, h, fillColor, strokeColor) {
+    const normalKey = `${textureBase}_normal`;
+    const pressedKey = `${textureBase}_pressed`;
+
+    if (this.textures.exists(normalKey)) {
+      const btn = this.add.image(x, y, normalKey)
+        .setInteractive({ useHandCursor: true });
+      if (this.textures.exists(pressedKey)) {
+        btn.on('pointerdown', () => btn.setTexture(pressedKey));
+        btn.on('pointerup', () => btn.setTexture(normalKey));
+        btn.on('pointerout', () => btn.setTexture(normalKey));
+      }
+      return btn;
+    }
+
+    return this.add.rectangle(x, y, w, h, fillColor)
+      .setInteractive({ useHandCursor: true })
+      .setStrokeStyle(2, strokeColor);
   }
 
   /**

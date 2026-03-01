@@ -97,10 +97,11 @@ export class MenuScene extends Phaser.Scene {
       }).setOrigin(0.5);
     }
 
-    // ── CAMPAIGN 버튼 (골드 프라이머리) ──
-    const campaignBg = this.add.rectangle(centerX, 380 + offsetY, 160, 44, BTN_PRIMARY)
-      .setInteractive({ useHandCursor: true })
-      .setStrokeStyle(2, 0xffd700);
+    // ── CAMPAIGN 버튼 (골드 프라이머리, 대형 160x44) ──
+    const campaignBg = this._createImageButton(
+      centerX, 380 + offsetY, 'btn_large_primary',
+      160, 44, BTN_PRIMARY, 0xffd700
+    );
 
     this.add.text(centerX, 380 + offsetY, t('ui.campaign'), {
       fontSize: '16px',
@@ -116,17 +117,15 @@ export class MenuScene extends Phaser.Scene {
       });
     });
 
-    campaignBg.on('pointerover', () => campaignBg.setFillStyle(0xd4b440));
-    campaignBg.on('pointerout', () => campaignBg.setFillStyle(BTN_PRIMARY));
-
     // ── ENDLESS 버튼 (캠페인 전체 클리어 시 해금) ──
     const endlessUnlocked = this._isEndlessUnlocked(saveData);
 
     if (endlessUnlocked) {
-      // 활성 상태: 골드 프라이머리 버튼
-      const endlessBg = this.add.rectangle(centerX, 435 + offsetY, 160, 40, BTN_PRIMARY)
-        .setInteractive({ useHandCursor: true })
-        .setStrokeStyle(2, 0xffd700);
+      // 활성 상태: 골드 프라이머리 버튼 (대형 160x44로 표준화)
+      const endlessBg = this._createImageButton(
+        centerX, 435 + offsetY, 'btn_large_primary',
+        160, 44, BTN_PRIMARY, 0xffd700
+      );
 
       this.add.text(centerX, 435 + offsetY, t('ui.endless'), {
         fontSize: '15px',
@@ -141,12 +140,12 @@ export class MenuScene extends Phaser.Scene {
           this.scene.start('EndlessMapSelectScene');
         });
       });
-      endlessBg.on('pointerover', () => endlessBg.setFillStyle(0xd4b440));
-      endlessBg.on('pointerout', () => endlessBg.setFillStyle(BTN_PRIMARY));
     } else {
-      // 비활성 상태: 회색 잠금 버튼
-      this.add.rectangle(centerX, 435 + offsetY, 160, 40, BTN_SELL)
-        .setStrokeStyle(1, 0x636e72);
+      // 비활성 상태: 회색 잠금 버튼 (대형 disabled)
+      this._createImageButton(
+        centerX, 435 + offsetY, 'btn_large_disabled',
+        160, 44, BTN_SELL, 0x636e72, true
+      );
 
       this.add.text(centerX, 435 + offsetY, t('ui.endless'), {
         fontSize: '15px',
@@ -163,10 +162,11 @@ export class MenuScene extends Phaser.Scene {
       }).setOrigin(0.5);
     }
 
-    // ── COLLECTION 버튼 (퍼플 메타) ──
-    const collBg = this.add.rectangle(centerX, 492 + offsetY, 160, 40, BTN_META)
-      .setInteractive({ useHandCursor: true })
-      .setStrokeStyle(2, COLORS.DIAMOND);
+    // ── COLLECTION 버튼 (퍼플 메타, 대형 160x44로 표준화) ──
+    const collBg = this._createImageButton(
+      centerX, 492 + offsetY, 'btn_large_meta',
+      160, 44, BTN_META, COLORS.DIAMOND
+    );
 
     this.add.text(centerX, 492 + offsetY, 'COLLECTION', {
       fontSize: '15px',
@@ -182,13 +182,11 @@ export class MenuScene extends Phaser.Scene {
       });
     });
 
-    collBg.on('pointerover', () => collBg.setFillStyle(0x7d3f96));
-    collBg.on('pointerout', () => collBg.setFillStyle(BTN_META));
-
-    // ── STATISTICS 버튼 (틸 백) ──
-    const statsBg = this.add.rectangle(centerX, 544 + offsetY, 160, 40, BTN_BACK)
-      .setInteractive({ useHandCursor: true })
-      .setStrokeStyle(1, 0x1a9c7e);
+    // ── STATISTICS 버튼 (틸 백, 대형 160x44로 표준화) ──
+    const statsBg = this._createImageButton(
+      centerX, 544 + offsetY, 'btn_large_back',
+      160, 44, BTN_BACK, 0x1a9c7e
+    );
 
     this.add.text(centerX, 544 + offsetY, 'STATISTICS', {
       fontSize: '15px',
@@ -204,17 +202,17 @@ export class MenuScene extends Phaser.Scene {
       });
     });
 
-    statsBg.on('pointerover', () => statsBg.setFillStyle(0x1f7d6e));
-    statsBg.on('pointerout', () => statsBg.setFillStyle(BTN_BACK));
-
-    // ── 음소거 토글 버튼 (활성: BTN_BACK 틸, 비활성: BTN_SELL 그레이) ──
+    // ── 음소거 토글 버튼 (소형 80x26, 활성: back 틸, 비활성: disabled 그레이) ──
     /** @type {import('../managers/SoundManager.js').SoundManager|null} */
     const sm = this.registry.get('soundManager');
     if (sm) {
       const isMuted = sm.muted;
-      const muteBg = this.add.rectangle(centerX, 596 + offsetY, 80, 28, isMuted ? BTN_SELL : BTN_BACK)
-        .setStrokeStyle(1, isMuted ? 0x636e72 : 0x1a9c7e)
-        .setInteractive({ useHandCursor: true });
+      const muteTexKey = isMuted ? 'btn_small_disabled' : 'btn_small_back_normal';
+      const muteBg = this._createImageButton(
+        centerX, 596 + offsetY, isMuted ? 'btn_small_disabled' : 'btn_small_back',
+        80, 26, isMuted ? BTN_SELL : BTN_BACK, isMuted ? 0x636e72 : 0x1a9c7e,
+        false
+      );
 
       const muteLabel = this.add.text(centerX, 596 + offsetY,
         isMuted ? '\u266A OFF' : '\u266A ON',
@@ -231,13 +229,63 @@ export class MenuScene extends Phaser.Scene {
         const m = sm.muted;
         muteLabel.setText(m ? '\u266A OFF' : '\u266A ON');
         muteLabel.setColor(m ? BTN_SELL_CSS : BTN_BACK_CSS);
-        muteBg.setFillStyle(m ? BTN_SELL : BTN_BACK);
-        muteBg.setStrokeStyle(1, m ? 0x636e72 : 0x1a9c7e);
+        // 음소거 상태에 따라 텍스처 전환
+        if (this.textures.exists('btn_small_disabled') && this.textures.exists('btn_small_back_normal')) {
+          muteBg.setTexture(m ? 'btn_small_disabled' : 'btn_small_back_normal');
+        } else {
+          muteBg.setFillStyle(m ? BTN_SELL : BTN_BACK);
+          muteBg.setStrokeStyle(1, m ? 0x636e72 : 0x1a9c7e);
+        }
       });
 
       // 메뉴 BGM 재생
       sm.playBgm('menu');
     }
+  }
+
+  // ── 이미지 버튼 생성 헬퍼 ────────────────────────────────────
+
+  /**
+   * 이미지 에셋이 존재하면 이미지 버튼을, 없으면 기존 rectangle 폴백을 생성한다.
+   * pressed 상태의 텍스처 전환(pointerdown/up/out)도 자동 처리한다.
+   * @param {number} x - 중심 X 좌표
+   * @param {number} y - 중심 Y 좌표
+   * @param {string} textureBase - 텍스처 기본 키 (e.g. 'btn_large_primary')
+   * @param {number} w - 폴백 사각형 너비
+   * @param {number} h - 폴백 사각형 높이
+   * @param {number} fillColor - 폴백 사각형 채우기 색상
+   * @param {number} strokeColor - 폴백 사각형 테두리 색상
+   * @param {boolean} [isDisabled=false] - 비활성 버튼 여부 (인터랙티브 비설정)
+   * @returns {Phaser.GameObjects.Image|Phaser.GameObjects.Rectangle} 생성된 버튼
+   * @private
+   */
+  _createImageButton(x, y, textureBase, w, h, fillColor, strokeColor, isDisabled = false) {
+    // disabled 텍스처는 '_normal'이 아닌 단일 키
+    const isDisabledTexture = textureBase.endsWith('_disabled');
+    const normalKey = isDisabledTexture ? textureBase : `${textureBase}_normal`;
+    const pressedKey = isDisabledTexture ? textureBase : `${textureBase}_pressed`;
+
+    if (this.textures.exists(normalKey)) {
+      const btn = this.add.image(x, y, normalKey);
+      if (!isDisabled) {
+        btn.setInteractive({ useHandCursor: true });
+        // pressed 상태 텍스처 전환
+        if (this.textures.exists(pressedKey) && !isDisabledTexture) {
+          btn.on('pointerdown', () => btn.setTexture(pressedKey));
+          btn.on('pointerup', () => btn.setTexture(normalKey));
+          btn.on('pointerout', () => btn.setTexture(normalKey));
+        }
+      }
+      return btn;
+    }
+
+    // 이미지 폴백: 기존 rectangle 방식
+    const rect = this.add.rectangle(x, y, w, h, fillColor)
+      .setStrokeStyle(2, strokeColor);
+    if (!isDisabled) {
+      rect.setInteractive({ useHandCursor: true });
+    }
+    return rect;
   }
 
   // ── 엔드리스 해금 판정 ────────────────────────────────────────

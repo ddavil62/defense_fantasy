@@ -47,8 +47,8 @@ const config = {
     activePointers: 1, // 모바일 싱글 터치만 허용
   },
   render: {
-    pixelArt: false,
-    antialias: true,
+    pixelArt: true,
+    antialias: false,
   },
 };
 

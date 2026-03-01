@@ -104,21 +104,28 @@ export class TowerPanel {
    * @private
    */
   _create() {
-    // 패널 배경
-    const panelBg = this.scene.add.rectangle(
-      GAME_WIDTH / 2, PANEL_Y + PANEL_HEIGHT / 2,
-      GAME_WIDTH, PANEL_HEIGHT,
-      COLORS.UI_PANEL
-    ).setAlpha(0.9);
-    this.container.add(panelBg);
+    // 패널 배경 (이미지 또는 사각형 폴백)
+    if (this.scene.textures.exists('tower_panel_bg')) {
+      const panelBg = this.scene.add.image(
+        GAME_WIDTH / 2, PANEL_Y + PANEL_HEIGHT / 2, 'tower_panel_bg'
+      );
+      this.container.add(panelBg);
+    } else {
+      const panelBg = this.scene.add.rectangle(
+        GAME_WIDTH / 2, PANEL_Y + PANEL_HEIGHT / 2,
+        GAME_WIDTH, PANEL_HEIGHT,
+        COLORS.UI_PANEL
+      ).setAlpha(0.9);
+      this.container.add(panelBg);
 
-    // 상단 구분선
-    const divider = this.scene.add.rectangle(
-      GAME_WIDTH / 2, PANEL_Y + 1,
-      GAME_WIDTH, 2,
-      COLORS.BUTTON_ACTIVE
-    ).setAlpha(0.5);
-    this.container.add(divider);
+      // 상단 구분선 (이미지 패널 사용 시 불필요)
+      const divider = this.scene.add.rectangle(
+        GAME_WIDTH / 2, PANEL_Y + 1,
+        GAME_WIDTH, 2,
+        COLORS.BUTTON_ACTIVE
+      ).setAlpha(0.5);
+      this.container.add(divider);
+    }
 
     // 타워 선택 버튼 (2행 x 5열)
     this._createTowerButtons();
@@ -174,13 +181,18 @@ export class TowerPanel {
       const cost = stats.levels[1].cost;
       const isLocked = TOWER_STATS[type].locked && !this.unlockedTowers.includes(type);
 
-      // 버튼 배경 - 잠금 타워는 반투명 처리
-      const bg = this.scene.add.rectangle(x, y, btnSize, btnSize, 0x1a1a2e)
-        .setStrokeStyle(2, isLocked ? COLORS.LOCK_ICON : 0x636e72);
-      // 잠금 타워도 긴 누르기(설명 보기)를 위해 인터랙티브 활성화
-      bg.setInteractive({ useHandCursor: !isLocked });
-      if (isLocked) {
-        bg.setAlpha(0.4);
+      // 버튼 배경 - 타워 슬롯 이미지 또는 사각형 폴백
+      const slotKey = isLocked ? 'tower_slot_locked' : 'tower_slot_normal';
+      let bg;
+      if (this.scene.textures.exists(slotKey)) {
+        bg = this.scene.add.image(x, y, slotKey);
+        bg.setInteractive({ useHandCursor: !isLocked });
+        if (isLocked) bg.setAlpha(0.4);
+      } else {
+        bg = this.scene.add.rectangle(x, y, btnSize, btnSize, 0x1a1a2e)
+          .setStrokeStyle(2, isLocked ? COLORS.LOCK_ICON : 0x636e72);
+        bg.setInteractive({ useHandCursor: !isLocked });
+        if (isLocked) bg.setAlpha(0.4);
       }
       this.container.add(bg);
 
@@ -374,10 +386,16 @@ export class TowerPanel {
     const x = GAME_WIDTH - 75;
     const y = PANEL_Y + 28;
 
-    this.sellBg = this.scene.add.rectangle(x, y, btnSize, btnSize, BTN_DANGER)
-      .setStrokeStyle(1, 0x636e72)
-      .setInteractive({ useHandCursor: true })
-      .setAlpha(0.5);
+    if (this.scene.textures.exists('slot_action_normal')) {
+      this.sellBg = this.scene.add.image(x, y, 'slot_action_normal')
+        .setInteractive({ useHandCursor: true })
+        .setAlpha(0.5);
+    } else {
+      this.sellBg = this.scene.add.rectangle(x, y, btnSize, btnSize, BTN_DANGER)
+        .setStrokeStyle(1, 0x636e72)
+        .setInteractive({ useHandCursor: true })
+        .setAlpha(0.5);
+    }
     this.container.add(this.sellBg);
 
     this.sellText = this.scene.add.text(x, y, 'S', {
@@ -408,9 +426,14 @@ export class TowerPanel {
     const x = GAME_WIDTH - 38;
     const y = PANEL_Y + 28;
 
-    this.speedBg = this.scene.add.rectangle(x, y, btnSize, btnSize, BTN_SELL)
-      .setStrokeStyle(1, 0x636e72)
-      .setInteractive({ useHandCursor: true });
+    if (this.scene.textures.exists('slot_action_normal')) {
+      this.speedBg = this.scene.add.image(x, y, 'slot_action_normal')
+        .setInteractive({ useHandCursor: true });
+    } else {
+      this.speedBg = this.scene.add.rectangle(x, y, btnSize, btnSize, BTN_SELL)
+        .setStrokeStyle(1, 0x636e72)
+        .setInteractive({ useHandCursor: true });
+    }
     this.container.add(this.speedBg);
 
     // 배속 텍스트 뒤의 원형 하이라이트 (1x 초과일 때 표시)
@@ -649,11 +672,21 @@ export class TowerPanel {
     for (const btn of this.towerButtons) {
       if (btn.isLocked) continue;
       if (btn.type === this.selectedTowerType) {
-        btn.bg.setStrokeStyle(2, BTN_PRIMARY);
-        btn.bg.setFillStyle(0x2a2a3e);
+        // 선택된 타워: selected 슬롯 이미지 또는 색상 변경
+        if (btn.bg.setTexture && this.scene.textures.exists('tower_slot_selected')) {
+          btn.bg.setTexture('tower_slot_selected');
+        } else {
+          btn.bg.setStrokeStyle(2, BTN_PRIMARY);
+          btn.bg.setFillStyle(0x2a2a3e);
+        }
       } else {
-        btn.bg.setStrokeStyle(2, 0x636e72);
-        btn.bg.setFillStyle(0x1a1a2e);
+        // 비선택 타워: normal 슬롯 이미지 또는 기본 색상
+        if (btn.bg.setTexture && this.scene.textures.exists('tower_slot_normal')) {
+          btn.bg.setTexture('tower_slot_normal');
+        } else {
+          btn.bg.setStrokeStyle(2, 0x636e72);
+          btn.bg.setFillStyle(0x1a1a2e);
+        }
       }
     }
   }
