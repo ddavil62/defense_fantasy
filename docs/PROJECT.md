@@ -320,6 +320,7 @@ npx cap open android  # 또는 npx cap open ios
 - UI 이미지 에셋 적용: Playwright 테스트 12개 + 시각적 검증 6건, QA PASS (R2, R1 크래시 버그 7건 + pixelArt 설정 수정 후 PASS)
 - Galmuri 픽셀 폰트 적용: Playwright 테스트 13개 (정상 9 + 예외 4) + 시각적 검증 3건, QA PASS
 - Android 뒤로가기 키 내비게이션: Playwright 테스트 20개 (정상 15 + 예외 5) + 시각적 검증 7건, QA PASS
+- 유틸리티 카드 레이아웃 수직 재배치: Playwright 테스트 18개 (정상 7 + 시각 3 + 예외 5 + 안정성 3) + 시각적 검증 7건, QA PASS
 
 ## 시스템별 상세 문서
 

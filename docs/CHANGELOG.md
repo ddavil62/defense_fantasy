@@ -4,6 +4,31 @@
 
 ---
 
+## 2026-03-01 -- 유틸리티 카드 레이아웃 수직 재배치
+
+### 배경
+
+컬렉션 화면(CollectionScene)의 UTILITY 섹션 카드(Base HP+, Gold Boost, Wave Bonus+)에서 이름 텍스트가 카드(104px) 밖으로 삐져나오는 버그가 있었다. 아이콘과 이름을 수평 배치(아이콘 x+18, 이름 x+32)하여 텍스트에 72px만 사용 가능했고, "Wave Bonus+"(약 75~80px)가 초과했다.
+
+### 변경
+
+- **`js/scenes/CollectionScene.js`** -- `_createUtilityCard` 메서드 내 아이콘/이름/티어/효과 텍스트 좌표 변경
+  - 아이콘: `(x + 18, y + 16)` -> `(cx, y + 18)` (카드 상단 중앙)
+  - 이름: `(x + 32, y + 16)`, origin `(0, 0.5)` -> `(cx, y + 34)`, origin `(0.5, 0.5)` (아이콘 아래 중앙 정렬)
+  - Tier 텍스트: `y + 40` -> `y + 52`
+  - 효과 텍스트: `y + 56` -> `y + 66`
+  - 카드 전체 폭(104px)을 텍스트에 활용하여 오버플로 해결
+  - 타워 카드(`_createTowerCard`)의 수직 레이아웃 패턴과 시각적 일관성 확보
+
+### 참고
+
+- 스펙: `.claude/specs/2026-03-01-utility-card-layout.md`
+- QA: `.claude/specs/2026-03-01-utility-card-layout-qa.md`
+- UTIL_W(104px), UTIL_H(80px) 상수 변경 없음
+- `_drawUtilityIcon` 메서드 변경 없음
+
+---
+
 ## 2026-03-01 -- Android 뒤로가기 키(ESC) 내비게이션
 
 ### 배경

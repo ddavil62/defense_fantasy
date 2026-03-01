@@ -570,20 +570,21 @@ export class CollectionScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true });
     this.tabContent.add(bg);
 
-    // 아이콘 + 이름
+    // 아이콘 (카드 상단 중앙)
     const iconG = this.add.graphics();
-    this._drawUtilityIcon(iconG, key, x + 18, y + 16);
+    this._drawUtilityIcon(iconG, key, cx, y + 18);
     this.tabContent.add(iconG);
 
-    const nameText = this.add.text(x + 32, y + 16, util.name, {
+    // 이름 (아이콘 아래 중앙 정렬)
+    const nameText = this.add.text(cx, y + 34, util.name, {
       fontSize: '12px',
       fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffffff',
-    }).setOrigin(0, 0.5);
+    }).setOrigin(0.5, 0.5);
     this.tabContent.add(nameText);
 
     // 현재 티어 표시
-    const tierText = this.add.text(cx, y + 40, `Tier ${tier}/${maxTier}`, {
+    const tierText = this.add.text(cx, y + 52, `Tier ${tier}/${maxTier}`, {
       fontSize: '11px',
       fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffd700',
@@ -597,7 +598,7 @@ export class CollectionScene extends Phaser.Scene {
     } else {
       effectStr = util.tiers[tier - 1].desc;
     }
-    const effectText = this.add.text(cx, y + 56, effectStr, {
+    const effectText = this.add.text(cx, y + 66, effectStr, {
       fontSize: '10px',
       fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#b2bec3',
