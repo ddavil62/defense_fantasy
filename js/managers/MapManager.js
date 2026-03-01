@@ -43,13 +43,27 @@ export class MapManager {
   // ── 맵 렌더링 ──────────────────────────────────────────────────
 
   /**
-   * 그래픽 프리미티브를 사용하여 타일맵 그리드를 렌더링한다.
-   * 셀 타입별로 다른 색상과 테두리 스타일을 적용한다.
+   * 타일맵 그리드를 렌더링한다.
+   * 월드 배경 이미지가 있으면 하단 레이어에 배치하고,
+   * 그 위에 반투명 셀 오버레이를 그린다.
    */
   renderMap() {
     this.graphics = this.scene.add.graphics();
     this.highlightGraphics = this.scene.add.graphics();
     this.highlightGraphics.setDepth(5);
+
+    // 월드 배경 이미지 렌더링 (텍스처가 존재하면)
+    const worldId = this.scene.currentWorldId;
+    const bgKey = worldId ? `bg_${worldId}` : null;
+    const hasBgImage = bgKey && this.scene.textures.exists(bgKey);
+
+    if (hasBgImage) {
+      // 배경 이미지: HUD 아래 맵 영역에 배치 (depth -1, 모든 그리드 아래)
+      const bgImage = this.scene.add.image(0, HUD_HEIGHT, bgKey);
+      bgImage.setOrigin(0, 0);
+      bgImage.setDisplaySize(GRID_COLS * CELL_SIZE, GRID_ROWS * CELL_SIZE);
+      bgImage.setDepth(-1);
+    }
 
     // 테마가 있으면 테마 색상, 없으면 기본 색상 사용
     const theme = this.mapData.theme;
@@ -60,37 +74,48 @@ export class MapManager {
         const x = col * CELL_SIZE;
         const y = row * CELL_SIZE + HUD_HEIGHT;
 
-        // 셀 타입별 배경색 결정
+        // 셀 타입별 배경색 및 투명도 결정
+        // 배경 이미지가 있으면 빈 타일은 투명하게, 경로는 반투명 오버레이
         let fillColor;
+        let fillAlpha = 1;
+
         switch (cellType) {
           case CELL_EMPTY:
-            fillColor = theme?.emptyTile ?? 0x1a1a2e;   // 어두운 남색 (빈 타일)
+            if (hasBgImage) {
+              fillAlpha = 0;   // 배경 이미지가 보이도록 완전 투명
+            } else {
+              fillColor = theme?.emptyTile ?? 0x1a1a2e;
+            }
             break;
           case CELL_PATH:
-            fillColor = theme?.path ?? 0x1e1e38;   // 짙은 남색 (경로)
+            fillColor = theme?.path ?? 0x1e1e38;
+            fillAlpha = hasBgImage ? 0.35 : 1;   // 배경 이미지 위 반투명 경로
             break;
           case CELL_BASE:
-            fillColor = 0x2a1a00;   // 어두운 금색 (기지)
+            fillColor = 0x2a1a00;
             break;
           case CELL_SPAWN:
-            fillColor = 0x1a0000;   // 어두운 빨강 (스폰)
+            fillColor = 0x1a0000;
             break;
           case CELL_WALL:
-            fillColor = 0x080810;   // 거의 검정 (벽)
+            fillColor = 0x080810;
+            fillAlpha = hasBgImage ? 0.7 : 1;
             break;
           default:
             fillColor = 0x1a1a2e;
         }
 
-        // 셀 채우기
-        this.graphics.fillStyle(fillColor, 1);
-        this.graphics.fillRect(x, y, CELL_SIZE, CELL_SIZE);
+        // 셀 채우기 (투명이 아닌 경우만)
+        if (fillAlpha > 0) {
+          this.graphics.fillStyle(fillColor, fillAlpha);
+          this.graphics.fillRect(x, y, CELL_SIZE, CELL_SIZE);
+        }
 
         // 셀 타입별 테두리/시각 처리
         switch (cellType) {
           case CELL_EMPTY:
-            // 빈 타일에 미세한 격자선 (석재 바닥 느낌)
-            this.graphics.lineStyle(1, 0x252535, 0.4);
+            // 빈 타일에 미세한 격자선
+            this.graphics.lineStyle(1, 0x252535, hasBgImage ? 0.2 : 0.4);
             this.graphics.strokeRect(x, y, CELL_SIZE, CELL_SIZE);
             break;
 

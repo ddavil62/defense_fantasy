@@ -156,12 +156,19 @@ export class GameScene extends Phaser.Scene {
     this.currentWorldId = world ? world.id : null;
 
     if (this.currentWorldId) {
+      // 월드별 적 스프라이트 로드
       const enemyTypes = Object.keys(ENEMY_STATS);
       for (const type of enemyTypes) {
         const key = getEnemySpriteKey(type, this.currentWorldId);
         if (key && !this.textures.exists(key)) {
           this.load.image(key, `assets/enemy/${key}.png`);
         }
+      }
+
+      // 월드별 배경 이미지 로드
+      const bgKey = `bg_${this.currentWorldId}`;
+      if (!this.textures.exists(bgKey)) {
+        this.load.image(bgKey, `assets/bg/${bgKey}.png`);
       }
     }
   }
