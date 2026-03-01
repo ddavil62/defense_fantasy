@@ -598,10 +598,18 @@ export class Tower {
     this.mergeId = mergeData.id;
     this.tier = mergeData.tier;
 
-    // 합성 시 T1 스프라이트 제거 → Graphics 폴백
+    // 기존 스프라이트 제거
     if (this.sprite) {
       this.sprite.destroy();
       this.sprite = null;
+    }
+
+    // 합성 타워 스프라이트 로드 (텍스처가 존재하면 이미지 사용)
+    const textureKey = `tower_${mergeData.id}`;
+    if (this.scene.textures.exists(textureKey)) {
+      this.sprite = this.scene.add.sprite(this.x, this.y, textureKey);
+      this.sprite.setDisplaySize(64, 64);
+      this.sprite.setDepth(10);
     }
 
     // MERGED_TOWER_STATS에서 합성 타워 스탯 로드

@@ -3,7 +3,7 @@
  * localStorage에서 저장 데이터를 로드하고 SoundManager를 초기화한 뒤 MenuScene으로 전환한다.
  */
 
-import { SAVE_KEY, migrateSaveData } from '../config.js';
+import { SAVE_KEY, migrateSaveData, MERGE_RECIPES } from '../config.js';
 import { SoundManager } from '../managers/SoundManager.js';
 
 /**
@@ -21,7 +21,7 @@ export class BootScene extends Phaser.Scene {
    * T1 기본 타워 10종의 스프라이트 이미지를 로드한다.
    */
   preload() {
-    // T1 기본 타워 스프라이트 (500x500 PNG, 투명 배경)
+    // T1 기본 타워 스프라이트 (128×128 PNG, 투명 배경)
     const towerTypes = [
       'archer', 'mage', 'ice', 'lightning', 'flame',
       'rock', 'poison', 'wind', 'light', 'dragon',
@@ -29,6 +29,15 @@ export class BootScene extends Phaser.Scene {
     for (const type of towerTypes) {
       const name = type.charAt(0).toUpperCase() + type.slice(1);
       this.load.image(`tower_${type}`, `assets/tower/${name}.png`);
+    }
+
+    // T2~T5 합성 타워 스프라이트 (128×128 PNG, 투명 배경)
+    const mergeIds = new Set();
+    for (const recipe of Object.values(MERGE_RECIPES)) {
+      mergeIds.add(recipe.id);
+    }
+    for (const id of mergeIds) {
+      this.load.image(`tower_${id}`, `assets/tower/${id}.png`);
     }
   }
 
