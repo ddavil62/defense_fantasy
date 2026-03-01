@@ -185,8 +185,8 @@ export class EndlessMapSelectScene extends Phaser.Scene {
     const cardW = 320;
     const cardH = 86;
     const cardY = 130;
-    const cardLeft = centerX - cardW / 2 + 14;
-    const cardRight = centerX + cardW / 2 - 14;
+    const cardLeft = centerX - cardW / 2 + 35;  // 기둥 장식(≈31px) 안쪽으로 배치
+    const cardRight = centerX + cardW / 2 - 35; // 우측 기둥 장식(≈24px) 안쪽으로 배치
 
     // 카드 배경
     const cardBg = this.add.rectangle(centerX, cardY, cardW, cardH, 0x0a0820)
@@ -202,11 +202,12 @@ export class EndlessMapSelectScene extends Phaser.Scene {
     }).setOrigin(0, 0);
     this._cardObjects.push(nameText);
 
-    // 카드 좌측 하단: 설명
+    // 카드 좌측 하단: 설명 (카드 내부 폭에 맞춰 줄바꿈)
     const descText = this.add.text(cardLeft, cardY - cardH / 2 + 40, t('ui.classicMapDesc'), {
       fontSize: '12px',
       fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#b2bec3',
+      wordWrap: { width: 160 },
     }).setOrigin(0, 0);
     this._cardObjects.push(descText);
 
@@ -266,8 +267,8 @@ export class EndlessMapSelectScene extends Phaser.Scene {
       if (!mapData) return;
 
       const cardY = startY + index * (cardH + gap) + cardH / 2;
-      const cardLeft = centerX - cardW / 2 + 14;
-      const cardRight = centerX + cardW / 2 - 14;
+      const cardLeft = centerX - cardW / 2 + 35;  // 기둥 장식(≈31px) 안쪽으로 배치
+      const cardRight = centerX + cardW / 2 - 35; // 우측 기둥 장식(≈24px) 안쪽으로 배치
 
       // 카드 배경
       const accent = TAB_ACCENT[worldId] || 0xffd700;
@@ -292,11 +293,12 @@ export class EndlessMapSelectScene extends Phaser.Scene {
       }).setOrigin(0, 0);
       this._cardObjects.push(nameText);
 
-      // 좌측 하단: 맵 설명
+      // 좌측 하단: 맵 설명 (카드 내부 폭에 맞춰 줄바꿈)
       const descText = this.add.text(cardLeft, cardY - cardH / 2 + 52, t(mapData.meta.descKey), {
         fontSize: '10px',
         fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#636e72',
+        wordWrap: { width: 160 },
       }).setOrigin(0, 0);
       this._cardObjects.push(descText);
 

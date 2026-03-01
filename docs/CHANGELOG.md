@@ -4,6 +4,36 @@
 
 ---
 
+## 2026-03-01 -- 레벨 선택 카드 텍스트 오버플로우 수정
+
+### 배경
+
+LevelSelectScene 및 EndlessMapSelectScene의 맵 카드에서 텍스트가 좌우 기둥 장식(`panel_level_card.png`의 좌측 0~30px, 우측 296~319px 구간) 영역을 침범하거나 설명 텍스트가 우측으로 삐져나오는 문제가 있었다. 기존 패딩 14px 적용 시 cardLeft=34px로 기둥 끝(51px)보다 안쪽이었고, 설명 텍스트에 wordWrap이 없어 긴 한국어 문장이 카드 밖으로 넘쳤다.
+
+### 변경
+
+- **`js/scenes/LevelSelectScene.js`** -- cardLeft/cardRight 패딩 14px -> 35px 변경 (cardLeft=55px, cardRight=305px), 해금 카드 설명 텍스트에 `wordWrap: { width: 160 }` 추가
+- **`js/scenes/EndlessMapSelectScene.js`** -- `_renderClassicCard`: 패딩 14px -> 35px 변경, 설명 텍스트에 `wordWrap: { width: 160 }` 추가 / `_renderWorldCards`: 동일하게 패딩 변경 및 wordWrap 추가
+
+### 좌표 변경
+
+| 항목 | 변경 전 | 변경 후 |
+|---|---|---|
+| 패딩 | 14px | 35px |
+| cardLeft | 34px | 55px (기둥 끝 51px보다 4px 안쪽) |
+| cardRight | 326px | 305px (기둥 시작 316px보다 11px 안쪽) |
+| 설명 wordWrap | 없음 | 160px |
+
+### 참고
+
+- 스펙: `.claude/specs/2026-03-01-level-card-text-overflow.md`
+- QA: `.claude/specs/2026-03-01-level-card-text-overflow-qa.md`
+- 카드 크기(320x86px / 월드 카드 320x76px) 변경 없음
+- 이미지 에셋(`panel_level_card.png`) 수정 없음
+- QA LOW 소견: EndlessMapSelectScene 월드 카드(cardH=76px)에서 설명 텍스트 2줄 렌더링 시 카드 하단 2~4px 초과 가능 (가용 24px, 10px 폰트 2줄 ~28px). 시각적으로 거의 인지되지 않는 수준
+
+---
+
 ## 2026-03-01 -- 유틸리티 카드 레이아웃 수직 재배치
 
 ### 배경

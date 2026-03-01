@@ -91,8 +91,8 @@ export class LevelSelectScene extends Phaser.Scene {
       const unlocked = this._isMapUnlocked(index);
       const stars = this._getMapStars(mapId);
       const cardY = startY + index * (cardH + gap + 4) + cardH / 2;
-      const cardLeft = centerX - cardW / 2 + 14;
-      const cardRight = centerX + cardW / 2 - 14;
+      const cardLeft = centerX - cardW / 2 + 35;  // 기둥 장식(≈31px) 안쪽으로 배치
+      const cardRight = centerX + cardW / 2 - 35; // 우측 기둥 장식(≈24px) 안쪽으로 배치
 
       // 카드 배경 (이미지 또는 폴백 사각형)
       const cardBg = this.textures.exists('panel_level_card')
@@ -121,11 +121,12 @@ export class LevelSelectScene extends Phaser.Scene {
           color: '#ffffff',
         }).setOrigin(0, 0);
 
-        // 좌측 하단: 맵 설명
+        // 좌측 하단: 맵 설명 (카드 내부 폭에 맞춰 줄바꿈)
         this.add.text(cardLeft, cardY - cardH / 2 + 58, t(mapData.meta.descKey), {
           fontSize: '11px',
           fontFamily: 'Galmuri11, Arial, sans-serif',
           color: '#636e72',
+          wordWrap: { width: 160 },
         }).setOrigin(0, 0);
 
         // 우측 상단: 별점 표시 (이미지 아이콘 또는 유니코드 폴백)
