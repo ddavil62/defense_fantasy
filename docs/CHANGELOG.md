@@ -4,6 +4,61 @@
 
 ---
 
+## 2026-03-01 -- UI 이미지 에셋 46장 생성 및 코드 적용
+
+### 배경
+
+모든 UI 요소가 `add.rectangle()` 프로그래밍 방식 도형으로 구성되어 타워/몬스터의 픽셀아트와 시각적 일관성이 없었다. gpt-image-1.5 API로 픽셀아트 UI 이미지 46장을 생성하고 모든 씬의 버튼/패널/HUD/아이콘을 이미지로 교체했다.
+
+### 추가
+
+- **`public/assets/ui/`** -- UI 이미지 에셋 46장 배치
+  - `buttons/` -- 버튼 23장 (대형 160x44 9장, 중형 160x36 9장, 소형 80x26 5장)
+    - 4색(primary/meta/back/danger) x normal/pressed + disabled
+    - 소형은 primary/back만 존재
+  - `panels/` -- 패널 배경 5장 (결과 280x420, 일시정지 220x260, 월드카드 320x88, 레벨카드 320x86, 타워정보 300x360)
+  - `hud/` -- HUD/슬롯 9장 (HUD바 360x40, 타워패널 360x120, 타워슬롯 40x40 x3상태, 액션슬롯 32x32 x2상태, 미니슬롯 24x24 x2상태)
+  - `decorations/` -- 장식 3장 (골드구분선, 헤더라인, 코너장식)
+  - `icons/` -- 아이콘 6장 (다이아몬드/하트/검 16x16, 별채움/별빈/자물쇠 20x20)
+- **`js/scenes/BootScene.js`** -- preload()에 UI 에셋 46장 일괄 로드 추가
+- 각 씬에 `_createImageButton()` 유틸리티 메서드 추가 (MenuScene, MapClearScene, GameOverScene, LevelSelectScene)
+  - `textures.exists()` 체크 후 Image 생성, 미존재 시 Rectangle 폴백
+  - pointerdown/pointerup/pointerout 핸들러로 pressed 텍스처 전환
+
+### 변경
+
+- **`js/main.js`** -- `pixelArt: true`, `antialias: false` 설정 (픽셀아트 계단 엣지 렌더링)
+- **`js/scenes/MenuScene.js`** -- 모든 버튼을 이미지 버튼으로 교체, ENDLESS/COLLECTION/STATISTICS 높이 44px로 통일 (대형 표준), 음소거 토글 소형(80x26)으로 표준화
+- **`js/scenes/WorldSelectScene.js`** -- 월드 카드 배경을 `panel_world_card` 이미지로 교체, 잠금 아이콘을 `icon_lock` 이미지로 교체
+- **`js/scenes/LevelSelectScene.js`** -- 맵 카드 배경을 `panel_level_card` 이미지로 교체, 별점을 `icon_star_filled`/`icon_star_empty` 이미지로 교체, START 버튼 이미지 교체
+- **`js/scenes/MapClearScene.js`** -- 결과 패널을 `panel_result` 이미지로 교체, 별점 아이콘 이미지 교체, 버튼 3종 이미지 교체
+- **`js/scenes/GameOverScene.js`** -- 결과 패널을 `panel_result` 이미지로 교체, 버튼 이미지 교체
+- **`js/scenes/GameScene.js`** -- 일시정지 패널을 `panel_pause` 이미지로 교체, 일시정지 버튼 이미지 교체, HP회복/소모품 버튼에 `slot_action`/`slot_mini` 이미지 적용
+- **`js/ui/HUD.js`** -- HUD 배경을 `hud_bar_bg` 이미지로 교체, 아이콘(다이아몬드/하트/검) 유니코드 -> 이미지 교체
+- **`js/ui/TowerPanel.js`** -- 패널 배경을 `tower_panel_bg` 이미지로 교체, 타워 슬롯을 `tower_slot_normal`/`selected`/`locked` 이미지로 교체, 액션슬롯 이미지 교체
+- **`js/ui/TowerInfoOverlay.js`** -- 패널 배경을 `panel_info_overlay` 이미지로 교체, 강화/판매 버튼 이미지 교체
+
+### 수정
+
+- **런타임 크래시 7건** (R1 QA FAIL -> R2 수정 후 PASS)
+  - `WorldSelectScene.js`: Image 객체에 `setStrokeStyle` 호출 크래시 2건 -> `instanceof Phaser.GameObjects.Rectangle` 가드 추가
+  - `LevelSelectScene.js`: 동일 크래시 2건 -> instanceof 가드 추가
+  - `GameScene.js`: Image 객체에 `setFillStyle` 호출 크래시 2건 + `setStrokeStyle` 크래시 1건 -> instanceof 분기 + `setTint`/`clearTint` 대체
+
+### 참고
+
+- 스펙: `.claude/specs/2026-03-01-ui-image-assets.md`
+- 수정 리포트: `.claude/specs/2026-03-01-ui-image-assets-fix-report.md`
+- QA: `.claude/specs/2026-03-01-ui-image-assets-qa.md`
+
+### 잔존 이슈 (수정 범위 외)
+
+- 일시정지 버튼 너비 불일치 (이미지 160px vs 의도 180px) -- 기능 정상
+- TowerInfoOverlay 강화/판매 버튼 크기 불일치 (이미지 160x36 vs 스펙 200x32) -- 기능 정상
+- 장식 에셋 3종 (divider_gold, divider_header, corner_deco) 로드만 되고 미사용
+
+---
+
 ## 2026-03-01 -- 몬스터 판타지 컨셉 + 바이옴별 스프라이트 시스템
 
 ### 배경
