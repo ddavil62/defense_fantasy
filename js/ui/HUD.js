@@ -102,18 +102,18 @@ export class HUD {
     if (this.scene.textures.exists('icon_diamond')) {
       this.goldIcon = this.scene.add.image(135, HUD_HEIGHT / 2, 'icon_diamond')
         .setDisplaySize(14, 14).setDepth(31);
-      this.goldText = this.scene.add.text(150, HUD_HEIGHT / 2, '200', {
+      this.goldText = this.scene.add.text(146, HUD_HEIGHT / 2, '200', {
         fontSize: '16px',
         fontFamily: 'Galmuri11, Arial, sans-serif',
         color: GOLD_TEXT_CSS,
-      }).setOrigin(0.5, 0.5).setDepth(31);
+      }).setOrigin(0, 0.5).setDepth(31);
     } else {
       this.goldIcon = null;
-      this.goldText = this.scene.add.text(150, HUD_HEIGHT / 2, '\u25C6 200', {
+      this.goldText = this.scene.add.text(135, HUD_HEIGHT / 2, '\u25C6 200', {
         fontSize: '16px',
         fontFamily: 'Galmuri11, Arial, sans-serif',
         color: GOLD_TEXT_CSS,
-      }).setOrigin(0.5, 0.5).setDepth(31);
+      }).setOrigin(0, 0.5).setDepth(31);
     }
 
     // HP 아이콘 + 텍스트 (우측)
