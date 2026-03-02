@@ -347,6 +347,7 @@ const STRINGS = {
     'meta.bonus': '+{pct}%',
     'meta.max': 'MAX',
     'meta.total.level': '총 강화 {total}',
+    'meta.noBonuses': '보너스 없음',
     // 컬렉션 UI
     'collection.tab.meta': '메타업그레이드',
     'collection.tab.codex': '합성도감',
@@ -794,6 +795,7 @@ const STRINGS = {
     'meta.bonus': '+{pct}%',
     'meta.max': 'MAX',
     'meta.total.level': 'Total Lv.{total}',
+    'meta.noBonuses': 'No bonuses yet',
     // Collection UI
     'collection.tab.meta': 'Meta Upgrade',
     'collection.tab.codex': 'Merge Codex',

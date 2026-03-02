@@ -9,7 +9,7 @@ import {
   GAME_WIDTH, GAME_HEIGHT, COLORS,
   TOWER_STATS, MERGE_RECIPES, MERGED_TOWER_STATS,
   CODEX_TIER_BG, ATTACK_TYPE_COLORS_CSS,
-  META_UPGRADE_CONFIG,
+  META_UPGRADE_CONFIG, SAVE_KEY,
 } from '../config.js';
 import { t } from '../i18n.js';
 import { TowerInfoOverlay } from '../ui/TowerInfoOverlay.js';
@@ -108,7 +108,7 @@ export class MergeCodexScene extends Phaser.Scene {
 
     // 세이브 데이터에서 메타 업그레이드 정보 로드
     /** @type {object} 타워별 메타 업그레이드 선택 정보 */
-    const saveData = JSON.parse(localStorage.getItem('fantasyDefenceSave') || '{}');
+    const saveData = JSON.parse(localStorage.getItem(SAVE_KEY) || '{}');
     this._towerMetaUpgrades = saveData.towerUpgrades || {};
   }
 

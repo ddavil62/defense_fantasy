@@ -929,13 +929,20 @@ export class CollectionScene extends Phaser.Scene {
   _purchaseTowerUpgrade(towerType, slot, cost) {
     if ((this.saveData.diamond || 0) < cost) return;
 
-    this.saveData.diamond -= cost;
+    // maxLevel 초과 방어
+    const maxLevels = META_UPGRADE_CONFIG.towers[towerType];
+    if (!maxLevels) return;
 
     if (!this.saveData.towerUpgrades) this.saveData.towerUpgrades = {};
     if (!this.saveData.towerUpgrades[towerType]) {
       this.saveData.towerUpgrades[towerType] = { damage: 0, fireRate: 0, range: 0 };
     }
-    this.saveData.towerUpgrades[towerType][slot] += 1;
+
+    const currentLevel = this.saveData.towerUpgrades[towerType][slot] || 0;
+    if (currentLevel >= maxLevels[slot]) return;
+
+    this.saveData.diamond -= cost;
+    this.saveData.towerUpgrades[towerType][slot] = currentLevel + 1;
 
     this._saveToDB(this.saveData);
     this._refreshDiamondDisplay();
@@ -959,7 +966,7 @@ export class CollectionScene extends Phaser.Scene {
     const rangeLv = upgrades.range || 0;
 
     if (damageLv === 0 && fireRateLv === 0 && rangeLv === 0) {
-      return 'No bonuses yet';
+      return t('meta.noBonuses');
     }
 
     const parts = [];
