@@ -957,7 +957,8 @@ function simulateGame(strategy) {
               applyBurn(current);
               applyPoison(current);
               hit.add(current);
-              chainDmg *= tower.chainDecay;
+              // 연쇄 감쇠 가속: hit i의 데미지 = damage × decay^(i*(i+1)/2)
+              chainDmg *= Math.pow(tower.chainDecay, i + 1);
               // 다음 점프 대상: 범위 내에서 아직 안 맞은 가장 가까운 적
               let nextTarget = null;
               let minDist = Infinity;

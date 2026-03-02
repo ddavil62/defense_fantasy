@@ -31,6 +31,66 @@ const MAX_BASE_HP = 20;
 /** @const {number} 배치 가능 슬롯 수 (밸런스 오버홀: 50→30) */
 const MAX_SLOTS = 30;
 
+// ── 메타 업그레이드 설정 (config.js의 META_UPGRADE_CONFIG 동기화) ──
+
+/**
+ * 타워별 메타 업그레이드 최대 레벨.
+ * damage/fireRate/range 3개 슬롯, BONUS_PER_LEVEL = 0.10 (+10%/Lv).
+ * @type {Object}
+ */
+const META_UPGRADE = {
+  BONUS_PER_LEVEL: 0.10,
+  towers: {
+    archer:    { damage: 3, fireRate: 5, range: 3 },
+    mage:      { damage: 5, fireRate: 3, range: 3 },
+    ice:       { damage: 2, fireRate: 3, range: 5 },
+    lightning: { damage: 5, fireRate: 3, range: 3 },
+    flame:     { damage: 3, fireRate: 5, range: 3 },
+    rock:      { damage: 5, fireRate: 2, range: 3 },
+    poison:    { damage: 2, fireRate: 3, range: 5 },
+    wind:      { damage: 3, fireRate: 5, range: 3 },
+    light:     { damage: 5, fireRate: 3, range: 3 },
+    dragon:    { damage: 5, fireRate: 2, range: 5 },
+  },
+};
+
+/**
+ * 메타 레벨 프리셋별 실제 적용 레벨을 계산한다.
+ * @param {string} sourceType - T1 원본 타입
+ * @param {'none'|'half'|'full'} metaLevel - 메타 프리셋
+ * @returns {{damageLvl: number, fireRateLvl: number}} 적용할 레벨
+ */
+function getMetaLevels(sourceType, metaLevel) {
+  if (metaLevel === 'none' || !META_UPGRADE.towers[sourceType]) {
+    return { damageLvl: 0, fireRateLvl: 0 };
+  }
+  const cfg = META_UPGRADE.towers[sourceType];
+  if (metaLevel === 'full') {
+    return { damageLvl: cfg.damage, fireRateLvl: cfg.fireRate };
+  }
+  // half: 최대 레벨의 절반 (내림)
+  return {
+    damageLvl: Math.floor(cfg.damage / 2),
+    fireRateLvl: Math.floor(cfg.fireRate / 2),
+  };
+}
+
+/**
+ * 메타 업그레이드에 의한 DPS 배율을 계산한다.
+ * damage만 1.1^n으로 증가 (DoT 제외), fireRate는 0.9^m으로 감소.
+ * @param {string} sourceType - T1 원본 타입
+ * @param {'none'|'half'|'full'} metaLevel - 메타 프리셋
+ * @returns {{damageMult: number, fireRateMult: number}} damage 배율과 fireRate 배율
+ */
+function getMetaMultipliers(sourceType, metaLevel) {
+  const { damageLvl, fireRateLvl } = getMetaLevels(sourceType, metaLevel);
+  const bonus = META_UPGRADE.BONUS_PER_LEVEL;
+  return {
+    damageMult: Math.pow(1 + bonus, damageLvl),         // 1.1^n
+    fireRateMult: Math.pow(1 - bonus, fireRateLvl),     // 0.9^m (값이 작을수록 빠름)
+  };
+}
+
 // ── 현재 밸런스 수치 세트 ──────────────────────────────────────────
 
 /**
@@ -309,7 +369,8 @@ const MULTI_TARGET_MULTIPLIER = {
 };
 
 /**
- * 체인 공격의 총 데미지 배율을 계산한다 (기하급수 합).
+ * 체인 공격의 총 데미지 배율을 계산한다 (제곱 감쇠 공식).
+ * hit i의 데미지 배율 = decay^(i*(i+1)/2) (삼각수 지수)
  * @param {number} chainCount - 체인 횟수
  * @param {number} chainDecay - 감쇠율
  * @returns {number} 총 배율
@@ -319,18 +380,28 @@ function chainMultiplier(chainCount, chainDecay) {
   let current = 1.0;
   for (let i = 0; i < chainCount; i++) {
     total += current;
-    current *= chainDecay;
+    // 다음 타격: decay^((i+1)*(i+2)/2) = current × decay^(i+1)
+    current *= Math.pow(chainDecay, i + 1);
   }
   return total;
 }
 
 /**
- * 타워의 유효 DPS를 계산한다 (멀티타겟, DoT 포함).
+ * 타워의 유효 DPS를 계산한다 (멀티타겟, DoT, 메타 업그레이드 포함).
+ * 메타 업그레이드는 damage에만 1.1^n 적용, fireRate에 0.9^m 적용.
+ * DoT(burn/poison) 자체 데미지는 메타 미반영, fireRate 감소로 재적용 빈도만 증가.
  * @param {Object} stats - 타워 스탯 객체
+ * @param {{damageMult: number, fireRateMult: number}} [meta] - 메타 배율
  * @returns {number} 유효 DPS
  */
-function calcEffectiveDps(stats) {
-  const baseDps = stats.damage / stats.fireRate;
+function calcEffectiveDps(stats, meta) {
+  // 메타 적용된 기본 스탯
+  const dmgMult = meta ? meta.damageMult : 1;
+  const frMult = meta ? meta.fireRateMult : 1;
+  const effectiveDamage = stats.damage * dmgMult;
+  const effectiveFireRate = stats.fireRate * frMult;
+
+  const baseDps = effectiveDamage / effectiveFireRate;
   let multiplier = 1.0;
 
   switch (stats.attackType) {
@@ -352,14 +423,14 @@ function calcEffectiveDps(stats) {
 
   let dps = baseDps * multiplier;
 
-  // DoT 추가 DPS (화상)
+  // DoT 추가 DPS (화상) — burnDamage 자체는 메타 미반영, fireRate만 영향
   if (stats.burnDamage && stats.burnDuration) {
-    dps += (stats.burnDamage * stats.burnDuration) / stats.fireRate;
+    dps += (stats.burnDamage * stats.burnDuration) / effectiveFireRate;
   }
 
-  // DoT 추가 DPS (독)
+  // DoT 추가 DPS (독) — poisonDamage 자체는 메타 미반영, fireRate만 영향
   if (stats.poisonDamage && stats.poisonDuration) {
-    dps += (stats.poisonDamage * stats.poisonDuration) / stats.fireRate;
+    dps += (stats.poisonDamage * stats.poisonDuration) / effectiveFireRate;
   }
 
   return dps;
@@ -505,12 +576,19 @@ function calcAveragePassTime(round) {
 
 /**
  * 타워를 배치하고 DPS를 추적하는 진영 관리 클래스.
+ * 메타 업그레이드 지원: 각 타워의 sourceType(원본 T1 타입)을 추적하여
+ * 메타 보너스를 DPS에 반영한다.
  */
 class TowerArmy {
-  constructor() {
-    /** @type {Array<{id: string, tier: number, cost: number, dps: number}>} */
+  /**
+   * @param {'none'|'half'|'full'} [metaLevel='none'] - 메타 업그레이드 프리셋
+   */
+  constructor(metaLevel = 'none') {
+    /** @type {Array<{id: string, tier: number, cost: number, dps: number, sourceType: string}>} */
     this.towers = [];
     this.totalDps = 0;
+    /** @type {'none'|'half'|'full'} 메타 업그레이드 프리셋 */
+    this.metaLevel = metaLevel;
   }
 
   /**
@@ -520,14 +598,16 @@ class TowerArmy {
    */
   addT1(type) {
     const stats = TOWER_STATS[type];
-    const dps = calcEffectiveDps(stats);
-    this.towers.push({ id: type, tier: 1, cost: stats.cost, dps });
+    const meta = getMetaMultipliers(type, this.metaLevel);
+    const dps = calcEffectiveDps(stats, meta);
+    this.towers.push({ id: type, tier: 1, cost: stats.cost, dps, sourceType: type });
     this.totalDps += dps;
     return stats.cost;
   }
 
   /**
    * 두 타워를 합성한다 (인덱스 기반). 첫 번째 타워가 합성 결과로 변환되고 두 번째는 제거.
+   * 합성 결과는 첫 번째 타워(idxA)의 sourceType을 상속한다 (게임 로직과 동일).
    * @param {number} idxA - 첫 번째 타워 인덱스
    * @param {number} idxB - 두 번째 타워 인덱스
    * @param {string} mergeId - 합성 결과 ID
@@ -539,13 +619,17 @@ class TowerArmy {
 
     const oldDpsA = this.towers[idxA].dps;
     const oldDpsB = this.towers[idxB].dps;
-    const newDps = calcEffectiveDps(mergedStats);
+    // 합성 결과 타워는 idxA의 sourceType 상속 → 메타 보너스 유지
+    const inheritedSourceType = this.towers[idxA].sourceType;
+    const meta = getMetaMultipliers(inheritedSourceType, this.metaLevel);
+    const newDps = calcEffectiveDps(mergedStats, meta);
 
     this.towers[idxA] = {
       id: mergeId,
       tier: mergedStats.tier,
       cost: 0, // 합성 비용 = 0
       dps: newDps,
+      sourceType: inheritedSourceType,
     };
 
     // 두 번째 타워 제거
@@ -1305,13 +1389,14 @@ const SCENARIO_BUILDERS = {
  * @param {{name: string, fn: StrategyFn}} scenario - 시나리오 객체
  * @param {Object} params - 밸런스 파라미터
  * @param {number} maxRounds - 최대 라운드 수
+ * @param {'none'|'half'|'full'} [metaLevel='none'] - 메타 업그레이드 프리셋
  * @returns {SimResult} 시뮬레이션 결과
  */
-function simulate(scenario, params, maxRounds) {
+function simulate(scenario, params, maxRounds, metaLevel = 'none') {
   let gold = params.initialGold;
   let baseHp = MAX_BASE_HP;
   let goldCumulative = params.initialGold;
-  const army = new TowerArmy();
+  const army = new TowerArmy(metaLevel);
   /** @type {RoundSnapshot[]} */
   const snapshots = [];
   let gameOverRound = 0;
@@ -1535,6 +1620,7 @@ function main() {
       rounds: { type: 'string', default: '100' },
       compare: { type: 'boolean', default: false },
       override: { type: 'string', default: '' },
+      meta: { type: 'string', default: 'none' },
       help: { type: 'boolean', default: false, short: 'h' },
     },
     strict: false,
@@ -1552,12 +1638,15 @@ Fantasy TD 밸런스 시뮬레이터 (라운드 단위 추상 시뮬레이션)
                           가능한 값: ${Object.keys(SCENARIO_BUILDERS).join(', ')}, all
   --rounds <N>            최대 라운드 수 (기본: 100)
   --compare               현재 수치 vs 제안 수치 비교 모드
+  --meta <none|half|full> 메타 업그레이드 프리셋 (기본: none)
+                          none: 메타 미적용, half: 최대의 절반, full: 최대 레벨
   --override '<JSON>'     밸런스 파라미터 오버라이드 (JSON 문자열)
   -h, --help              도움말 표시
 
 예시:
   node fantasydefence/tools/balance-simulator.mjs --scenarios all --rounds 60
   node fantasydefence/tools/balance-simulator.mjs --compare --rounds 80
+  node fantasydefence/tools/balance-simulator.mjs --meta full --rounds 80
   node fantasydefence/tools/balance-simulator.mjs --override '{"initialGold":300}'
 `);
     return;
@@ -1565,6 +1654,7 @@ Fantasy TD 밸런스 시뮬레이터 (라운드 단위 추상 시뮬레이션)
 
   const maxRounds = parseInt(values.rounds, 10) || 100;
   const isCompare = values.compare;
+  const metaLevel = ['none', 'half', 'full'].includes(values.meta) ? values.meta : 'none';
 
   // 시나리오 선택
   let scenarioNames;
@@ -1592,6 +1682,7 @@ Fantasy TD 밸런스 시뮬레이터 (라운드 단위 추상 시뮬레이션)
   console.log('='.repeat(60));
   console.log(' Fantasy TD 밸런스 시뮬레이터');
   console.log(` 최대 라운드: ${maxRounds}, 시나리오: ${scenarioNames.join(', ')}`);
+  console.log(` 메타 업그레이드: ${metaLevel}`);
   if (isCompare) console.log(' 모드: 현재 수치 vs 제안 수치 비교');
   console.log('='.repeat(60));
   console.log('');
@@ -1612,10 +1703,10 @@ Fantasy TD 밸런스 시뮬레이터 (라운드 단위 추상 시뮬레이션)
     // 비교 모드
     const proposedParams = structuredClone(PROPOSED_PARAMS);
 
-    const currentResults = scenarios.map(s => simulate(s, currentParams, maxRounds));
+    const currentResults = scenarios.map(s => simulate(s, currentParams, maxRounds, metaLevel));
     // 비교 모드에서는 시나리오를 새로 생성해야 함 (TowerArmy 상태 초기화)
     const scenariosForProposed = scenarioNames.map(name => SCENARIO_BUILDERS[name]());
-    const proposedResults = scenariosForProposed.map(s => simulate(s, proposedParams, maxRounds));
+    const proposedResults = scenariosForProposed.map(s => simulate(s, proposedParams, maxRounds, metaLevel));
 
     // 개별 결과 출력
     for (let i = 0; i < scenarios.length; i++) {
@@ -1629,7 +1720,7 @@ Fantasy TD 밸런스 시뮬레이터 (라운드 단위 추상 시뮬레이션)
     printSummaryTable(proposedResults, '제안 수치');
   } else {
     // 일반 모드
-    const results = scenarios.map(s => simulate(s, currentParams, maxRounds));
+    const results = scenarios.map(s => simulate(s, currentParams, maxRounds, metaLevel));
 
     // 개별 결과 출력
     for (const result of results) {

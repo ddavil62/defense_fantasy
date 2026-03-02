@@ -1073,8 +1073,9 @@ export class GameScene extends Phaser.Scene {
         currentTarget.pushBack(tower.stats.pushbackDistance);
       }
 
-      // 연쇄마다 데미지 감소
-      currentDamage *= chainDecay;
+      // 연쇄마다 감쇠 가속: hit i에서 decay^(i+1)씩 추가 적용 (삼각수 지수 공식)
+      // 결과적으로 hit i의 데미지 = damage × decay^(i*(i+1)/2)
+      currentDamage *= Math.pow(chainDecay, i + 1);
 
       // 체인 반경 내에서 아직 맞지 않은 가장 가까운 적을 다음 대상으로 선택
       let nextTarget = null;

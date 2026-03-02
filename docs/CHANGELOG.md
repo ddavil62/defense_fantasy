@@ -4,6 +4,30 @@
 
 ---
 
+## 2026-03-03 -- 체인 공격 감쇠 공식 변경 (삼각수 지수 감쇠)
+
+### 변경
+
+- **`js/scenes/GameScene.js`** -- `_applyChain` 메서드의 체인 데미지 감쇠 공식을 선형 지수(`decay^n`)에서 삼각수 지수(`decay^(n*(n+1)/2)`)로 변경. 구현: `currentDamage *= Math.pow(chainDecay, i + 1)` (L1076-1078)
+- **`tools/balance-simulator.mjs`** -- `chainMultiplier` 함수 동일 공식 적용 (L378-387)
+- **`tools/balance-sim.js`** -- `case 'chain'` 블록 동일 공식 적용 (L960-961)
+
+### 영향
+
+- 고타수 체인 타워의 실효 DPS가 대폭 감소한다. chainMultiplier(16, decay=0.9) 기준: 8.15x -> 3.91x (-52%)
+- 타워 스탯(`chainCount`, `chainDecay`, `damage` 등)은 변경 없음
+- AoE, splash, beam 등 체인 외 공격 타입은 영향 없음
+- 디버프(슬로우, 화상, 독, 밀치기) 적용 로직은 변경 없음
+
+### 참고
+
+- 스펙: `.claude/specs/2026-03-03-chain-decay-exponential.md`
+- QA: `.claude/specs/2026-03-03-chain-decay-exponential-qa.md`
+- Playwright 테스트 28건 전체 PASS
+- 세이브 데이터 변경 없음 (SAVE_DATA_VERSION 4 유지)
+
+---
+
 ## 2026-03-03 -- 밸런스 전면 조정 (Balance Overhaul)
 
 ### 추가

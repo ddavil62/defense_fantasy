@@ -334,6 +334,7 @@ npx cap open android  # 또는 npx cap open ios
 - AdMob 통합 Phase 3 (보상형 광고: Gold 2배 + 클리어 보상 2배): Playwright 테스트 39개 (정상 24 + 예외 9 + 회귀 4 + UI 안정성 3) + 시각적 검증 9건, QA PASS
 - AdMob 통합 Phase 4 (일일 제한 검증 + 통합 QA): Playwright 테스트 48개 (일일 제한 8 + 전면 광고 2 + Diamond 3 + 부활 4 + Gold 2배 3 + 클리어 2배 3 + 교차 기능 3 + Mock 3 + 비기능 4 + 시각적 5 + 엣지케이스 7 + 회귀 3) + 시각적 검증 9건, QA PASS -- **AdMob 통합 전체 완료**
 - 밸런스 전면 조정 (Balance Overhaul): Playwright 테스트 31개 (정상 27 + 예외 4, 29 PASS / 2 환경 제약 SKIP) + 정적 코드 분석, QA PASS (1차 FAIL 합성 실패 시 타워 투명화 버그 수정 후 PASS)
+- 체인 공격 감쇠 공식 변경 (삼각수 지수 감쇠): Playwright 테스트 28개 (정상 16 + 예외 7 + 브라우저 5) + 수학적 검증 + 정적 코드 분석, QA PASS
 
 ## 시스템별 상세 문서
 

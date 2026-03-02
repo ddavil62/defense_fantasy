@@ -39,7 +39,7 @@
 - `single` -- 단일 대상 투사체
 - `splash` -- 범위 폭발 투사체
 - `aoe_instant` -- 즉발 원형 광역 (투사체 없음)
-- `chain` -- 체인 연쇄 즉발 (번개)
+- `chain` -- 체인 연쇄 즉발 (번개). 삼각수 지수 감쇠: hit n의 데미지 = `damage x decay^(n*(n+1)/2)`. 타수가 늘어날수록 감쇠가 가속된다
 - `dot_single` -- 단일 대상 지속 피해 (투사체)
 - `dot_splash` -- 범위 지속 피해
 - `piercing_beam` -- 일직선 관통 빔 (즉발)
