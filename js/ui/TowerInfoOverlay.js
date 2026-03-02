@@ -187,54 +187,46 @@ export class TowerInfoOverlay {
 
     const isSourceView = this.mode === 'game' && this._history.length === 0;
 
-    // ── Phase 1: 임시 panelTop에서 콘텐츠 렌더링 ──
-    // 충분히 높은 위치에서 시작, 렌더링 후 실제 높이로 재배치한다.
-    const tempPanelTop = 30;
+    // ── 넉넉한 고정 패널 높이 ──
+    // 화면(640px)의 대부분을 차지하여 상위 조합 영역 오버플로를 방지한다.
+    // game 모드 액션 버튼이 있으면 추가 공간 확보.
+    const actionH = (isSourceView && this._sourceTower) ? 90 : 0;
+    const panelH = 540 + actionH;
+    const panelY = GAME_HEIGHT / 2;
+    const panelTop = panelY - panelH / 2;
 
-    this._renderHeader(panelX, tempPanelTop);
-
-    let contentBottomY;
-    if (entry.tier === 1) {
-      contentBottomY = this._renderT1Panel(entry, panelX, tempPanelTop, usedInList);
-    } else {
-      contentBottomY = this._renderTreePanel(entry, panelX, tempPanelTop, usedInList);
-    }
-
-    // game 모드 액션 버튼
-    if (isSourceView && this._sourceTower) {
-      this._renderActionButtons(panelX, contentBottomY);
-      contentBottomY += 90;
-    }
-
-    // ── Phase 2: 실제 패널 높이 계산 및 중앙 재배치 ──
-    const BOTTOM_PAD = 16;
-    const actualPanelH = contentBottomY - tempPanelTop + BOTTOM_PAD;
-    const desiredPanelTop = Math.max(10, (GAME_HEIGHT - actualPanelH) / 2);
-    const shiftY = desiredPanelTop - tempPanelTop;
-
-    // 배경막(index 0)을 제외한 모든 콘텐츠 요소를 shiftY만큼 이동
-    for (let i = 1; i < this._container.list.length; i++) {
-      this._container.list[i].y += shiftY;
-    }
-
-    // ── 패널 배경 생성 (실측 크기로) ──
-    const panelCenterY = desiredPanelTop + actualPanelH / 2;
+    // ── 패널 배경 (이미지 또는 사각형 폴백) ──
     let panelBg;
     if (this.scene.textures.exists('panel_info_overlay')) {
       panelBg = this.scene.add.nineslice(
-        panelX, panelCenterY,
+        panelX, panelY,
         'panel_info_overlay',
         null,
-        PANEL_W, actualPanelH,
+        PANEL_W, panelH,
         NS_LEFT, NS_RIGHT, NS_TOP, NS_BOTTOM
       ).setInteractive();
     } else {
-      panelBg = this.scene.add.rectangle(panelX, panelCenterY, PANEL_W, actualPanelH, COLORS.UI_PANEL)
+      panelBg = this.scene.add.rectangle(panelX, panelY, PANEL_W, panelH, COLORS.UI_PANEL)
         .setStrokeStyle(2, BTN_PRIMARY)
         .setInteractive();
     }
-    // 배경막(0) 바로 뒤에 삽입하여 콘텐츠 아래 깔리게 한다
-    this._container.addAt(panelBg, 1);
+    this._container.add(panelBg);
+
+    // ── 헤더 영역 (뒤로 버튼 + 닫기 버튼) ──
+    this._renderHeader(panelX, panelTop);
+
+    // ── 콘텐츠 영역 (티어에 따라 분기) ──
+    let contentBottomY;
+    if (entry.tier === 1) {
+      contentBottomY = this._renderT1Panel(entry, panelX, panelTop, usedInList);
+    } else {
+      contentBottomY = this._renderTreePanel(entry, panelX, panelTop, usedInList);
+    }
+
+    // ── game 모드 액션 버튼 (원래 타워 보기 중에만 표시) ──
+    if (isSourceView && this._sourceTower) {
+      this._renderActionButtons(panelX, contentBottomY);
+    }
   }
 
   /**
