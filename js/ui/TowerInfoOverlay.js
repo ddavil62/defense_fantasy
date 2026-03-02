@@ -15,8 +15,8 @@ import { t } from '../i18n.js';
 
 // ── 레이아웃 상수 ──────────────────────────────────────────────
 
-/** @const {number} 오버레이 패널 너비 (px) */
-const PANEL_W = 300;
+/** @const {number} 오버레이 패널 너비 (px) — 게임 너비(360) 대비 75% */
+const PANEL_W = 270;
 
 /** @const {number} NineSlice 상단 슬라이스 (루비 장식 포함) */
 const NS_TOP = 48;
@@ -293,11 +293,18 @@ export class TowerInfoOverlay {
     }).setOrigin(0.5);
     this._container.add(nameText);
 
-    // 색상 원 + 티어 배지
-    const circleG = this.scene.add.graphics();
-    circleG.fillStyle(entry.color, 1);
-    circleG.fillCircle(panelX - 30, panelTop + 65, 14);
-    this._container.add(circleG);
+    // 타워 아이콘 (이미지 우선, 폴백 시 색상 원) + 티어 배지
+    const towerTexKey = `tower_${entry.id}`;
+    if (this.scene.textures.exists(towerTexKey)) {
+      const iconImg = this.scene.add.image(panelX - 30, panelTop + 65, towerTexKey)
+        .setDisplaySize(28, 28);
+      this._container.add(iconImg);
+    } else {
+      const circleG = this.scene.add.graphics();
+      circleG.fillStyle(entry.color, 1);
+      circleG.fillCircle(panelX - 30, panelTop + 65, 14);
+      this._container.add(circleG);
+    }
 
     const tierBadge = this.scene.add.text(panelX + 5, panelTop + 65, 'T1', {
       fontSize: '11px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#ffd700',
@@ -405,12 +412,20 @@ export class TowerInfoOverlay {
     const resultY = panelTop + 90;
     const resultR = 28;
 
-    const resultCircle = this.scene.add.graphics();
-    resultCircle.fillStyle(entry.color, 1);
-    resultCircle.fillCircle(panelX, resultY, resultR);
-    resultCircle.lineStyle(2, BTN_PRIMARY, 1);
-    resultCircle.strokeCircle(panelX, resultY, resultR);
-    this._container.add(resultCircle);
+    // 결과 타워 아이콘 (이미지 우선, 폴백 시 색상 원)
+    const resultTexKey = `tower_${entry.id}`;
+    if (this.scene.textures.exists(resultTexKey)) {
+      const resultImg = this.scene.add.image(panelX, resultY, resultTexKey)
+        .setDisplaySize(resultR * 2, resultR * 2);
+      this._container.add(resultImg);
+    } else {
+      const resultCircle = this.scene.add.graphics();
+      resultCircle.fillStyle(entry.color, 1);
+      resultCircle.fillCircle(panelX, resultY, resultR);
+      resultCircle.lineStyle(2, BTN_PRIMARY, 1);
+      resultCircle.strokeCircle(panelX, resultY, resultR);
+      this._container.add(resultCircle);
+    }
 
     // ── 동적 Y 누산 시작 (결과 원 아래) ──
     const resultName = this.scene.add.text(panelX, panelTop + 128, entry.displayName, {
@@ -519,14 +534,21 @@ export class TowerInfoOverlay {
    * @private
    */
   _renderMaterialNode(matEntry, cx, cy, r, matBaseY, currentEntry) {
-    const circle = this.scene.add.graphics();
-    circle.fillStyle(matEntry.color, 1);
-    circle.fillCircle(cx, cy, r);
-    // T2+ 재료는 금색 테두리로 드릴다운 가능함을 시각적으로 표시
-    const borderColor = matEntry.tier >= 2 ? BTN_PRIMARY : 0x636e72;
-    circle.lineStyle(2, borderColor, 1);
-    circle.strokeCircle(cx, cy, r);
-    this._container.add(circle);
+    // 재료 타워 아이콘 (이미지 우선, 폴백 시 색상 원)
+    const matTexKey = `tower_${matEntry.id}`;
+    if (this.scene.textures.exists(matTexKey)) {
+      const matImg = this.scene.add.image(cx, cy, matTexKey)
+        .setDisplaySize(r * 2, r * 2);
+      this._container.add(matImg);
+    } else {
+      const circle = this.scene.add.graphics();
+      circle.fillStyle(matEntry.color, 1);
+      circle.fillCircle(cx, cy, r);
+      const borderColor = matEntry.tier >= 2 ? BTN_PRIMARY : 0x636e72;
+      circle.lineStyle(2, borderColor, 1);
+      circle.strokeCircle(cx, cy, r);
+      this._container.add(circle);
+    }
 
     // 재료 이름 (6자 초과 시 말줄임) — 원 하단 기준 상대 오프셋
     const displayName = matEntry.displayName.length > 6
