@@ -58,20 +58,16 @@ const game = new Phaser.Game(config);
 // Playwright 테스트에서 게임 인스턴스에 접근할 수 있도록 전역에 노출
 window.__game = game;
 
-// ── Android 뒤로가기 키(ESC) 내비게이션 ──────────────────────────
-// Capacitor Android WebView에서 하드웨어 뒤로가기 버튼은
-// ESC 키(keyCode 27)로 매핑되어 keydown 이벤트로 발생한다.
-// 현재 활성 씬에 따라 적절한 뒤로가기 동작을 수행한다.
+// ── Android 뒤로가기 내비게이션 ──────────────────────────────────
+// 1. Capacitor @capacitor/app 플러그인의 backButton 이벤트 (네이티브 환경)
+// 2. ESC 키 keydown 이벤트 (웹 환경 폴백 + 데스크톱 테스트)
+// 두 경로 모두 동일한 handleBackNavigation() 함수를 호출한다.
 
 /**
- * Android 뒤로가기 버튼(ESC 키) 핸들러.
- * 현재 활성 씬을 조회하여 씬별 뒤로가기 로직을 실행한다.
- * @param {KeyboardEvent} e - 키보드 이벤트
+ * 뒤로가기 핵심 로직. 현재 활성 씬을 조회하여 씬별 뒤로가기 동작을 수행한다.
+ * Capacitor backButton 리스너와 ESC keydown 핸들러 양쪽에서 호출된다.
  */
-function handleBackButton(e) {
-  if (e.key !== 'Escape' && e.keyCode !== 27) return;
-  e.preventDefault();
-
+function handleBackNavigation() {
   // 현재 활성 씬 조회 (getScenes(true)는 isActive인 씬만 반환)
   const scenes = game.scene.getScenes(true);
   if (!scenes || scenes.length === 0) return;
@@ -187,6 +183,31 @@ function handleBackButton(e) {
       // 정의되지 않은 씬에서는 무시
       break;
   }
+}
+
+// ── Capacitor @capacitor/app backButton 리스너 (네이티브 환경) ──
+// 기본 동작(앱 종료/홈 이동)을 차단하고 게임 내 뒤로가기로 대체한다.
+// 웹 환경에서는 import가 실패하므로 catch로 무시한다.
+try {
+  import('@capacitor/app').then(({ App }) => {
+    App.addListener('backButton', () => {
+      handleBackNavigation();
+    });
+  }).catch(() => {
+    // 웹 환경: @capacitor/app 미설치 또는 로드 실패 — ESC 키 폴백 사용
+  });
+} catch {
+  // 정적 import 실패 시 무시
+}
+
+/**
+ * ESC 키 핸들러 (웹 환경 폴백 + 데스크톱 테스트용).
+ * @param {KeyboardEvent} e - 키보드 이벤트
+ */
+function handleBackButton(e) {
+  if (e.key !== 'Escape' && e.keyCode !== 27) return;
+  e.preventDefault();
+  handleBackNavigation();
 }
 
 document.addEventListener('keydown', handleBackButton);
