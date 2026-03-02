@@ -4,6 +4,35 @@
 
 ---
 
+## 2026-03-02 -- 소모품 버튼 UX 개선 (아이콘 + 툴팁)
+
+### 추가
+
+- **`public/assets/ui/icons/icon_consumable_slow.png`** -- 눈꽃 아이콘 24x24px (Pillow 생성)
+- **`public/assets/ui/icons/icon_consumable_gold.png`** -- 금화 아이콘 24x24px (Pillow 생성)
+- **`public/assets/ui/icons/icon_consumable_lightning.png`** -- 번개 아이콘 24x24px (Pillow 생성)
+- **`js/scenes/GameScene.js`** -- `_showConsumableTooltip(key)` 신규 메서드: i18n 기반 능력 이름/효과 설명/현재 비용/쿨다운 표시, 화면 좌우 경계(0~360px) 보정
+- **`js/scenes/GameScene.js`** -- `_hideConsumableTooltip(key)` 신규 메서드: 툴팁 4종(bg/title/desc/meta) setVisible(false)
+- **`js/i18n.js`** -- 소모품 효과 설명 i18n 키 6개 추가 (ko/en 각 3개: `consumable.slowAll.desc`, `consumable.goldRain.desc`, `consumable.lightning.desc`)
+
+### 변경
+
+- **`js/config.js`** -- CONSUMABLE_ABILITIES 각 항목의 `icon` 필드를 텍스처 키로 변경 ('S'->'icon_consumable_slow', '$'->'icon_consumable_gold', 'Z'->'icon_consumable_lightning'), `iconFallback` 필드 추가 (폴백 문자 'S'/'$'/'Z' 보존)
+- **`js/scenes/BootScene.js`** -- `preload()`에 소모품 아이콘 3종 로드 추가
+- **`js/scenes/GameScene.js`** -- `_createConsumableButtons()`: 기존 텍스트(iconText) 대신 PNG 이미지(iconImage, 16x16 displaySize) 사용, `textures.exists()` 분기로 텍스트 폴백 유지. 버튼별 툴팁 오브젝트(bg 130x52/title/desc/meta, depth 50) 생성. PC pointerover/pointerout 즉시 표시/숨김, 모바일 500ms 롱프레스 표시 + pointerup/pointerout 숨김 이벤트 등록
+- **`js/scenes/GameScene.js`** -- `_updateConsumableButtons()`: iconText -> iconImage/iconText 분기 alpha 처리
+- **`js/scenes/GameScene.js`** -- `_destroyGoldSinkUI()`: iconImage, tooltipBg/Title/Desc/Meta destroy, longPressTimer remove 추가
+
+### 참고
+
+- 스펙: `.claude/specs/2026-03-02-consumable-button-ux.md`
+- QA: `.claude/specs/2026-03-02-consumable-button-ux-qa.md`
+- 아이콘 PNG는 OPENAI_API_KEY 미설정으로 GPT Image API 대신 Python Pillow로 생성. 추후 교체 가능
+- `iconFallback` 필드는 스펙에 명시되지 않았으나 폴백 가독성 향상을 위해 추가됨
+- UI 이미지 에셋 총계: 46장 -> 49장 (아이콘 3장 추가)
+
+---
+
 ## 2026-03-02 -- 타워 정보 패널 텍스트 겹침 수정
 
 ### 배경

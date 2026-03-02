@@ -80,6 +80,11 @@ export class BootScene extends Phaser.Scene {
     for (const name of ['icon_diamond', 'icon_heart', 'icon_sword', 'icon_star_filled', 'icon_star_empty', 'icon_lock']) {
       this.load.image(name, `assets/ui/icons/${name}.png`);
     }
+
+    // 소모품 능력 아이콘 (슬로우/골드/번개)
+    for (const name of ['icon_consumable_slow', 'icon_consumable_gold', 'icon_consumable_lightning']) {
+      this.load.image(name, `assets/ui/icons/${name}.png`);
+    }
   }
 
   /**

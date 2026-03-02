@@ -1751,7 +1751,8 @@ export const CONSUMABLE_ABILITIES = {
     duration: 5,
     slowAmount: 0.5,
     color: 0x74b9ff,
-    icon: 'S',
+    icon: 'icon_consumable_slow',
+    iconFallback: 'S',
   },
   goldRain: {
     baseCost: 400,
@@ -1759,7 +1760,8 @@ export const CONSUMABLE_ABILITIES = {
     cooldown: 45,
     duration: 10,
     color: 0xffd700,
-    icon: '$',
+    icon: 'icon_consumable_gold',
+    iconFallback: '$',
   },
   lightning: {
     baseCost: 500,
@@ -1768,7 +1770,8 @@ export const CONSUMABLE_ABILITIES = {
     duration: 0,
     damage: 100,
     color: 0xfdcb6e,
-    icon: 'Z',
+    icon: 'icon_consumable_lightning',
+    iconFallback: 'Z',
   },
 };
 

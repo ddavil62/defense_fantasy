@@ -2114,6 +2114,9 @@ export class GameScene extends Phaser.Scene {
     /** @type {object} 각 능력의 버튼 UI 참조 */
     this.consumableButtons = {};
 
+    /** @type {boolean} 터치 디바이스 여부 */
+    const isTouch = this.sys.game.device.input.touch;
+
     for (let i = 0; i < keys.length; i++) {
       const key = keys[i];
       const def = CONSUMABLE_ABILITIES[key];
@@ -2132,12 +2135,23 @@ export class GameScene extends Phaser.Scene {
           .setDepth(31);
       }
 
-      const iconText = this.add.text(x, y - 2, def.icon, {
-        fontSize: '12px',
-        fontFamily: 'Galmuri11, Arial, sans-serif',
-        color: '#ffffff',
-        fontStyle: 'bold',
-      }).setOrigin(0.5).setDepth(31);
+      // 아이콘: 텍스처가 존재하면 이미지, 없으면 텍스트 폴백
+      let iconImage = null;
+      let iconText = null;
+      if (this.textures.exists(def.icon)) {
+        iconImage = this.add.image(x, y - 2, def.icon)
+          .setDisplaySize(16, 16)
+          .setOrigin(0.5)
+          .setDepth(31);
+      } else {
+        // 에셋 로드 실패 시 기존 텍스트 방식 폴백
+        iconText = this.add.text(x, y - 2, def.iconFallback || def.icon, {
+          fontSize: '12px',
+          fontFamily: 'Galmuri11, Arial, sans-serif',
+          color: '#ffffff',
+          fontStyle: 'bold',
+        }).setOrigin(0.5).setDepth(31);
+      }
 
       const costText = this.add.text(x, y + 10, '', {
         fontSize: '6px',
@@ -2153,11 +2167,76 @@ export class GameScene extends Phaser.Scene {
         fontStyle: 'bold',
       }).setOrigin(0.5).setDepth(32).setAlpha(0);
 
-      this.consumableButtons[key] = { bg, iconText, costText, cdText, x, y };
+      // ── 툴팁 오브젝트 생성 (초기 비표시) ──
+      const tooltipBg = this.add.rectangle(x, y - 44, 130, 52, 0x000000)
+        .setAlpha(0.85).setOrigin(0.5).setDepth(50).setVisible(false);
+      const tooltipTitle = this.add.text(x, y - 62, '', {
+        fontSize: '10px',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
+        color: '#ffffff',
+        fontStyle: 'bold',
+      }).setOrigin(0.5).setDepth(50).setVisible(false);
+      const tooltipDesc = this.add.text(x, y - 48, '', {
+        fontSize: '8px',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
+        color: '#b2bec3',
+        wordWrap: { width: 120 },
+      }).setOrigin(0.5).setDepth(50).setVisible(false);
+      const tooltipMeta = this.add.text(x, y - 28, '', {
+        fontSize: '7px',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
+        color: '#ffd700',
+      }).setOrigin(0.5).setDepth(50).setVisible(false);
 
-      bg.on('pointerdown', () => {
-        this._useConsumable(key);
-      });
+      this.consumableButtons[key] = {
+        bg, iconImage, iconText, costText, cdText, x, y,
+        tooltipBg, tooltipTitle, tooltipDesc, tooltipMeta,
+        longPressTimer: null,
+      };
+
+      // ── 이벤트 등록 ──
+      if (isTouch) {
+        // 모바일: 롱프레스(500ms) 시 툴팁 표시, 짧은 탭은 능력 발동
+        bg.on('pointerdown', () => {
+          const timer = this.time.delayedCall(500, () => {
+            this._showConsumableTooltip(key);
+            this.consumableButtons[key]._tooltipShown = true;
+          });
+          this.consumableButtons[key].longPressTimer = timer;
+          this.consumableButtons[key]._tooltipShown = false;
+        });
+        bg.on('pointerup', () => {
+          const btn = this.consumableButtons[key];
+          if (btn.longPressTimer) {
+            btn.longPressTimer.remove(false);
+            btn.longPressTimer = null;
+          }
+          // 툴팁이 표시되지 않았으면 능력 발동
+          if (!btn._tooltipShown) {
+            this._useConsumable(key);
+          }
+          this._hideConsumableTooltip(key);
+        });
+        bg.on('pointerout', () => {
+          const btn = this.consumableButtons[key];
+          if (btn.longPressTimer) {
+            btn.longPressTimer.remove(false);
+            btn.longPressTimer = null;
+          }
+          this._hideConsumableTooltip(key);
+        });
+      } else {
+        // PC: 호버 시 툴팁 표시, 클릭 시 능력 발동
+        bg.on('pointerover', () => {
+          this._showConsumableTooltip(key);
+        });
+        bg.on('pointerout', () => {
+          this._hideConsumableTooltip(key);
+        });
+        bg.on('pointerdown', () => {
+          this._useConsumable(key);
+        });
+      }
     }
 
     this._updateConsumableButtons();
@@ -2185,7 +2264,9 @@ export class GameScene extends Phaser.Scene {
           btn.bg.setTint(0x888888);
         }
         btn.bg.setAlpha(0.3);
-        btn.iconText.setAlpha(0.3);
+        // 아이콘 이미지 또는 텍스트 폴백의 알파 처리
+        if (btn.iconImage) btn.iconImage.setAlpha(0.3);
+        if (btn.iconText) btn.iconText.setAlpha(0.3);
         btn.costText.setText('');
         btn.cdText.setText(`${Math.ceil(state.cooldownTimer)}`);
         btn.cdText.setAlpha(1);
@@ -2202,7 +2283,9 @@ export class GameScene extends Phaser.Scene {
           }
         }
         btn.bg.setAlpha(canAfford ? 1 : 0.5);
-        btn.iconText.setAlpha(1);
+        // 아이콘 이미지 또는 텍스트 폴백의 알파 복원
+        if (btn.iconImage) btn.iconImage.setAlpha(1);
+        if (btn.iconText) btn.iconText.setAlpha(1);
         btn.costText.setText(`${cost}G`);
         btn.costText.setColor(canAfford ? '#ffd700' : '#ff4757');
         btn.cdText.setAlpha(0);
@@ -2232,6 +2315,66 @@ export class GameScene extends Phaser.Scene {
         }
       }
     }
+  }
+
+  /**
+   * 소모품 능력 버튼의 툴팁을 표시한다.
+   * 능력 이름, 효과 설명, 현재 비용, 쿨다운 정보를 갱신하고 보이도록 한다.
+   * 화면 좌우 경계(0~360px)를 벗어나지 않도록 위치를 보정한다.
+   * @param {string} key - 능력 키 ('slowAll' | 'goldRain' | 'lightning')
+   * @private
+   */
+  _showConsumableTooltip(key) {
+    if (!this.consumableButtons || !this.consumableButtons[key]) return;
+    const btn = this.consumableButtons[key];
+    const def = CONSUMABLE_ABILITIES[key];
+    const state = this.consumableState[key];
+
+    // i18n으로 이름 및 설명 조회
+    const name = t(`ui.${key}`);
+    const desc = t(`consumable.${key}.desc`);
+    const cost = def.baseCost + state.useCount * def.costIncrement;
+    const metaStr = `${cost}G | ${t('ui.cooldown').replace('{sec}', def.cooldown)}`;
+
+    // 텍스트 갱신
+    btn.tooltipTitle.setText(name);
+    btn.tooltipDesc.setText(desc);
+    btn.tooltipMeta.setText(metaStr);
+
+    // 기본 위치: 버튼 중심 x, 버튼 위쪽 44px
+    let tx = btn.x;
+    const ty = btn.y - 44;
+
+    // 화면 좌우 경계 보정 (툴팁 폭 130px의 절반 = 65)
+    const halfW = 65;
+    if (tx - halfW < 0) tx = halfW;
+    if (tx + halfW > GAME_WIDTH) tx = GAME_WIDTH - halfW;
+
+    // 위치 적용
+    btn.tooltipBg.setPosition(tx, ty);
+    btn.tooltipTitle.setPosition(tx, ty - 18);
+    btn.tooltipDesc.setPosition(tx, ty - 4);
+    btn.tooltipMeta.setPosition(tx, ty + 16);
+
+    // 표시
+    btn.tooltipBg.setVisible(true);
+    btn.tooltipTitle.setVisible(true);
+    btn.tooltipDesc.setVisible(true);
+    btn.tooltipMeta.setVisible(true);
+  }
+
+  /**
+   * 소모품 능력 버튼의 툴팁을 숨긴다.
+   * @param {string} key - 능력 키 ('slowAll' | 'goldRain' | 'lightning')
+   * @private
+   */
+  _hideConsumableTooltip(key) {
+    if (!this.consumableButtons || !this.consumableButtons[key]) return;
+    const btn = this.consumableButtons[key];
+    btn.tooltipBg.setVisible(false);
+    btn.tooltipTitle.setVisible(false);
+    btn.tooltipDesc.setVisible(false);
+    btn.tooltipMeta.setVisible(false);
   }
 
   /**
@@ -2407,9 +2550,20 @@ export class GameScene extends Phaser.Scene {
       for (const key of Object.keys(this.consumableButtons)) {
         const btn = this.consumableButtons[key];
         if (btn.bg) btn.bg.destroy();
+        if (btn.iconImage) btn.iconImage.destroy();
         if (btn.iconText) btn.iconText.destroy();
         if (btn.costText) btn.costText.destroy();
         if (btn.cdText) btn.cdText.destroy();
+        // 툴팁 오브젝트 파괴
+        if (btn.tooltipBg) btn.tooltipBg.destroy();
+        if (btn.tooltipTitle) btn.tooltipTitle.destroy();
+        if (btn.tooltipDesc) btn.tooltipDesc.destroy();
+        if (btn.tooltipMeta) btn.tooltipMeta.destroy();
+        // 롱프레스 타이머 정리
+        if (btn.longPressTimer) {
+          btn.longPressTimer.remove(false);
+          btn.longPressTimer = null;
+        }
       }
       this.consumableButtons = null;
     }

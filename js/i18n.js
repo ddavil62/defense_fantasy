@@ -324,6 +324,10 @@ const STRINGS = {
     'ui.goldRain': '황금비',
     'ui.lightning': '번개 일격',
     'ui.cooldown': '쿨다운 {sec}초',
+    // 소모품 효과 설명 (툴팁용)
+    'consumable.slowAll.desc': '모든 적의 이동속도를 50% 감소시킨다. (5초)',
+    'consumable.goldRain.desc': '10초간 적 처치 시 골드 획득량이 2배가 된다.',
+    'consumable.lightning.desc': '모든 적에게 100의 즉발 피해를 입힌다.',
     // 분기 특화 태그
     'branch.tag.aoe': '범위형',
     'branch.tag.stun': '강감속',
@@ -748,6 +752,10 @@ const STRINGS = {
     'ui.goldRain': 'Gold Rain',
     'ui.lightning': 'Lightning Strike',
     'ui.cooldown': 'CD {sec}s',
+    // Consumable effect descriptions (tooltip)
+    'consumable.slowAll.desc': 'Reduces all enemy movement speed by 50% for 5 seconds.',
+    'consumable.goldRain.desc': 'Doubles gold earned from kills for 10 seconds.',
+    'consumable.lightning.desc': 'Deals 100 instant damage to all enemies.',
     // Branch specialization tags
     'branch.tag.aoe': 'AOE',
     'branch.tag.stun': 'Stun',
