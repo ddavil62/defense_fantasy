@@ -146,7 +146,7 @@ export class MapClearScene extends Phaser.Scene {
     }
 
     // ── MAP CLEAR 타이틀 (골드 글로우) ──
-    this.add.text(centerX, centerY - 175, t('ui.mapClear'), {
+    this.add.text(centerX, centerY - 160, t('ui.mapClear'), {
       fontSize: '26px',
       fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffd700',
@@ -158,11 +158,11 @@ export class MapClearScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     // 구분선
-    this.add.rectangle(centerX, centerY - 148, panelW - 40, 1, 0xffd700)
+    this.add.rectangle(centerX, centerY - 135, panelW - 40, 1, 0xffd700)
       .setAlpha(0.4);
 
     // ── 별점 표시 (순차 애니메이션) ──
-    const starY = centerY - 110;
+    const starY = centerY - 100;
     const starSpacing = 50;
     const starStartX = centerX - starSpacing;
 
@@ -293,7 +293,7 @@ export class MapClearScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     // ── NEXT MAP 버튼 (대형 160x44로 표준화) ──
-    const nextY = centerY + 85;
+    const nextY = centerY + 75;
     const nextMapId = getNextMapId(this.mapData.id);
     const nextBg = this._createImageButton(
       centerX, nextY, 'btn_large_primary', 160, 44, BTN_PRIMARY, 0xffd700
@@ -323,7 +323,7 @@ export class MapClearScene extends Phaser.Scene {
     });
 
     // ── RETRY 버튼 (중형 160x36) ──
-    const retryY = nextY + 48;
+    const retryY = nextY + 42;
     const retryBg = this._createImageButton(
       centerX, retryY, 'btn_medium_back', 160, 36, BTN_BACK, 0x1a9c7e
     );
@@ -346,7 +346,7 @@ export class MapClearScene extends Phaser.Scene {
     });
 
     // ── WORLD MAP 버튼 (중형 160x36) ──
-    const worldY = retryY + 44;
+    const worldY = retryY + 38;
     const worldBg = this._createImageButton(
       centerX, worldY, 'btn_medium_danger', 160, 36, BTN_DANGER, 0x636e72
     );
