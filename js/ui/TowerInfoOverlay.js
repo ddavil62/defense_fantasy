@@ -27,6 +27,9 @@ const NS_LEFT = 24;
 /** @const {number} NineSlice 우측 슬라이스 (골드 기둥) */
 const NS_RIGHT = 24;
 
+/** @const {number} 텍스트 wordWrap 최대 너비 (패널 너비 − NineSlice 좌우 − 여백) */
+const CONTENT_W = PANEL_W - NS_LEFT - NS_RIGHT - 10;
+
 /** @const {number} T1 패널 텍스트 요소 간 최소 여백 (px) */
 const T1_CONTENT_GAP = 8;
 /** @const {number} T1 패널 섹션 간 여백 (공격 배지 위 등) (px) */
@@ -315,7 +318,7 @@ export class TowerInfoOverlay {
     if (flavorStr !== flavorKey) {
       const flavorText = this.scene.add.text(panelX, curY, flavorStr, {
         fontSize: '11px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#a0a0a0', fontStyle: 'italic',
-        wordWrap: { width: 260 }, align: 'center',
+        wordWrap: { width: CONTENT_W }, align: 'center',
       }).setOrigin(0.5, 0);
       this._container.add(flavorText);
       curY += flavorText.height + T1_CONTENT_GAP;
@@ -327,7 +330,7 @@ export class TowerInfoOverlay {
     if (descStr !== descKey) {
       const descText = this.scene.add.text(panelX, curY, descStr, {
         fontSize: '11px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#d0d0d0',
-        wordWrap: { width: 260 }, align: 'center',
+        wordWrap: { width: CONTENT_W }, align: 'center',
       }).setOrigin(0.5, 0);
       this._container.add(descText);
       curY += descText.height + T1_SECTION_GAP;
@@ -436,7 +439,7 @@ export class TowerInfoOverlay {
     if (treeDescStr !== treeDescKey) {
       const treeDescText = this.scene.add.text(panelX, treeNextY, treeDescStr, {
         fontSize: '11px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#a0a0a0',
-        wordWrap: { width: 260 }, align: 'center',
+        wordWrap: { width: CONTENT_W }, align: 'center',
       }).setOrigin(0.5, 0);
       this._container.add(treeDescText);
       treeNextY += treeDescText.height + 4;
