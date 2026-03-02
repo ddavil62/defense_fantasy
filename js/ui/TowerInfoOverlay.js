@@ -177,61 +177,64 @@ export class TowerInfoOverlay {
 
     // 상위 조합 목록 계산
     const usedInList = this._findUsedInRecipes(entry.id);
+    const panelX = GAME_WIDTH / 2;
 
-    // 패널 높이 계산
-    const hasUsedIn = usedInList.length > 0;
-    const usedInViewH = hasUsedIn ? 100 : 0;
     // 강화 레벨 여부 플래그 (하위 렌더링에서 참조)
     this._isSourceWithEnhance = this.mode === 'game'
       && this._history.length === 0
       && this._sourceTower
       && (this._sourceTower.getInfo().enhanceLevel > 0);
 
-    // enhanceOffset은 curY 누산 방식으로 자동 처리되므로 고정 baseH를 사용
-    // 강화 레벨이 있으면 +16px 여유를 확보
-    const enhanceOffset = this._isSourceWithEnhance ? 16 : 0;
-    const baseH = entry.tier >= 2 ? (316 + enhanceOffset) : (240 + enhanceOffset);
-    // game 모드에서 원래 타워(depth 0)를 보고 있을 때 버튼 영역 추가
     const isSourceView = this.mode === 'game' && this._history.length === 0;
-    const actionH = isSourceView ? 90 : 0;
-    const panelH = baseH + usedInViewH + actionH;
-    const panelX = GAME_WIDTH / 2;
-    const panelY = GAME_HEIGHT / 2;
-    const panelTop = panelY - panelH / 2;
 
-    // ── 패널 배경 (이미지 또는 사각형 폴백) ──
+    // ── Phase 1: 임시 panelTop에서 콘텐츠 렌더링 ──
+    // 충분히 높은 위치에서 시작, 렌더링 후 실제 높이로 재배치한다.
+    const tempPanelTop = 30;
+
+    this._renderHeader(panelX, tempPanelTop);
+
+    let contentBottomY;
+    if (entry.tier === 1) {
+      contentBottomY = this._renderT1Panel(entry, panelX, tempPanelTop, usedInList);
+    } else {
+      contentBottomY = this._renderTreePanel(entry, panelX, tempPanelTop, usedInList);
+    }
+
+    // game 모드 액션 버튼
+    if (isSourceView && this._sourceTower) {
+      this._renderActionButtons(panelX, contentBottomY);
+      contentBottomY += 90;
+    }
+
+    // ── Phase 2: 실제 패널 높이 계산 및 중앙 재배치 ──
+    const BOTTOM_PAD = 16;
+    const actualPanelH = contentBottomY - tempPanelTop + BOTTOM_PAD;
+    const desiredPanelTop = Math.max(10, (GAME_HEIGHT - actualPanelH) / 2);
+    const shiftY = desiredPanelTop - tempPanelTop;
+
+    // 배경막(index 0)을 제외한 모든 콘텐츠 요소를 shiftY만큼 이동
+    for (let i = 1; i < this._container.list.length; i++) {
+      this._container.list[i].y += shiftY;
+    }
+
+    // ── 패널 배경 생성 (실측 크기로) ──
+    const panelCenterY = desiredPanelTop + actualPanelH / 2;
     let panelBg;
     if (this.scene.textures.exists('panel_info_overlay')) {
-      // NineSlice: 모서리/테두리 장식을 유지하면서 중앙 영역만 동적으로 늘림
       panelBg = this.scene.add.nineslice(
-        panelX, panelY,
+        panelX, panelCenterY,
         'panel_info_overlay',
-        null,              // frame (null = 전체 이미지)
-        PANEL_W, panelH,   // 표시 너비/높이 (panelH는 동적 계산값)
+        null,
+        PANEL_W, actualPanelH,
         NS_LEFT, NS_RIGHT, NS_TOP, NS_BOTTOM
       ).setInteractive();
     } else {
-      panelBg = this.scene.add.rectangle(panelX, panelY, PANEL_W, panelH, COLORS.UI_PANEL)
+      panelBg = this.scene.add.rectangle(panelX, panelCenterY, PANEL_W, actualPanelH, COLORS.UI_PANEL)
         .setStrokeStyle(2, BTN_PRIMARY)
         .setInteractive();
     }
-    this._container.add(panelBg);
-
-    // ── 헤더 영역 (뒤로 버튼 + 닫기 버튼) ──
-    this._renderHeader(panelX, panelTop);
-
-    // ── 콘텐츠 영역 (티어에 따라 분기) ──
-    let contentBottomY;
-    if (entry.tier === 1) {
-      contentBottomY = this._renderT1Panel(entry, panelX, panelTop, usedInList);
-    } else {
-      contentBottomY = this._renderTreePanel(entry, panelX, panelTop, usedInList);
-    }
-
-    // ── game 모드 액션 버튼 (원래 타워 보기 중에만 표시) ──
-    if (isSourceView && this._sourceTower) {
-      this._renderActionButtons(panelX, panelTop + baseH + usedInViewH);
-    }
+    // 배경막(0) 바로 뒤에 삽입하여 콘텐츠 아래 깔리게 한다
+    this._container.addAt(panelBg, 1);
   }
 
   /**
@@ -382,12 +385,12 @@ export class TowerInfoOverlay {
     }
 
     // 상위 조합 섹션 — curY 누산 기반으로 enhanceOffset 분기 불필요
-    const t1UsedInY = curY;
     if (usedInList.length > 0) {
-      this._renderUsedInSection(entry, usedInList, panelX, t1UsedInY);
+      this._renderUsedInSection(entry, usedInList, panelX, curY);
+      return curY + 100; // usedIn viewH = 100
     }
 
-    return panelTop + 240;
+    return curY;
   }
 
   // ── T2+ 합성 트리 패널 ──────────────────────────────────────
@@ -517,9 +520,10 @@ export class TowerInfoOverlay {
     // ── 상위 조합 섹션 ──
     if (usedInList.length > 0) {
       this._renderUsedInSection(entry, usedInList, panelX, nextY);
+      return nextY + 100; // usedIn viewH = 100
     }
 
-    return panelTop + 316;
+    return nextY;
   }
 
   /**
