@@ -1621,12 +1621,20 @@ export class GameScene extends Phaser.Scene {
       .setDepth(31)
       .setAlpha(0.01);
 
-    this.pauseBtnText = this.add.text(310, 20, '||', {
-      fontSize: '12px',
-      fontFamily: 'Galmuri11, Arial, sans-serif',
-      color: '#ffffff',
-      fontStyle: 'bold',
-    }).setOrigin(0.5).setDepth(32);
+    // 일시정지 아이콘 이미지 또는 텍스트 폴백
+    if (this.textures.exists('icon_pause')) {
+      this.pauseBtnIcon = this.add.image(310, 20, 'icon_pause')
+        .setDisplaySize(18, 18).setDepth(32);
+      this.pauseBtnText = null;
+    } else {
+      this.pauseBtnIcon = null;
+      this.pauseBtnText = this.add.text(310, 20, '||', {
+        fontSize: '12px',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
+        color: '#ffffff',
+        fontStyle: 'bold',
+      }).setOrigin(0.5).setDepth(32);
+    }
 
     this.pauseBtn.on('pointerdown', () => {
       if (!this.isPaused && !this.isGameOver) {
@@ -1643,12 +1651,21 @@ export class GameScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true })
       .setDepth(31);
 
-    this.muteBtnText = this.add.text(278, 20, isMuted ? 'M' : '\u266A', {
-      fontSize: '13px',
-      fontFamily: 'Galmuri11, Arial, sans-serif',
-      color: isMuted ? '#b2bec3' : '#55efc4',
-      fontStyle: 'bold',
-    }).setOrigin(0.5).setDepth(32);
+    // 음소거 아이콘 이미지 또는 텍스트 폴백
+    if (this.textures.exists('icon_sound_on')) {
+      this.muteBtnIcon = this.add.image(278, 20,
+        isMuted ? 'icon_sound_off' : 'icon_sound_on'
+      ).setDisplaySize(16, 16).setDepth(32);
+      this.muteBtnText = null;
+    } else {
+      this.muteBtnIcon = null;
+      this.muteBtnText = this.add.text(278, 20, isMuted ? 'M' : '\u266A', {
+        fontSize: '13px',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
+        color: isMuted ? '#b2bec3' : '#55efc4',
+        fontStyle: 'bold',
+      }).setOrigin(0.5).setDepth(32);
+    }
 
     this.muteBtn.on('pointerdown', () => {
       if (!sm) return;
@@ -1666,6 +1683,11 @@ export class GameScene extends Phaser.Scene {
     if (!sm || !this.muteBtn) return;
     const isMuted = sm.muted;
     this.muteBtn.setStrokeStyle(2, isMuted ? 0xb2bec3 : 0x55efc4);
+    // 아이콘 이미지 모드: 텍스처 전환
+    if (this.muteBtnIcon) {
+      this.muteBtnIcon.setTexture(isMuted ? 'icon_sound_off' : 'icon_sound_on');
+    }
+    // 텍스트 폴백 모드
     if (this.muteBtnText) {
       this.muteBtnText.setText(isMuted ? 'M' : '\u266A');
       this.muteBtnText.setColor(isMuted ? '#b2bec3' : '#55efc4');
@@ -2536,6 +2558,10 @@ export class GameScene extends Phaser.Scene {
     this._splitSpawnQueue = [];
 
     this._hidePauseOverlay();
+
+    // 일시정지/음소거 아이콘 이미지 정리
+    if (this.pauseBtnIcon) { this.pauseBtnIcon.destroy(); this.pauseBtnIcon = null; }
+    if (this.muteBtnIcon) { this.muteBtnIcon.destroy(); this.muteBtnIcon = null; }
 
     if (this.rangePreviewGraphics) {
       this.rangePreviewGraphics.destroy();

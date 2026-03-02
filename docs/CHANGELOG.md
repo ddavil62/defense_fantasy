@@ -4,6 +4,38 @@
 
 ---
 
+## 2026-03-02 -- UI 아이콘 일괄 개선 (판매/배속/일시정지/음소거)
+
+### 추가
+
+- **`tools/generate-ui-icons.mjs`** -- GPT Image API(gpt-image-1) 호출 + sharp 리사이즈 스크립트 (7종 순차 생성)
+- **`public/assets/ui/icons/icon_sell.png`** -- 판매 버튼 아이콘 (빨간 휴지통, 64x64px 투명 배경 픽셀아트)
+- **`public/assets/ui/icons/icon_speed_x1.png`** -- 1배속 아이콘 (단일 화살표, 흰색, 64x64px)
+- **`public/assets/ui/icons/icon_speed_x2.png`** -- 2배속 아이콘 (이중 화살표, 노란색, 64x64px)
+- **`public/assets/ui/icons/icon_speed_x3.png`** -- 3배속 아이콘 (이중 화살표, 빨간색, 64x64px)
+- **`public/assets/ui/icons/icon_pause.png`** -- 일시정지 아이콘 (이중 세로 막대, 흰색, 64x64px)
+- **`public/assets/ui/icons/icon_sound_on.png`** -- 사운드 켜짐 아이콘 (스피커+음파, 민트/초록, 64x64px)
+- **`public/assets/ui/icons/icon_sound_off.png`** -- 음소거 아이콘 (스피커+X, 회색, 64x64px)
+
+### 변경
+
+- **`js/scenes/BootScene.js`** -- preload()에 게임 플레이 UI 버튼 아이콘 7종 로드 추가 (icon_sell, icon_speed_x1/x2/x3, icon_pause, icon_sound_on/off)
+- **`js/ui/TowerPanel.js`** -- _createSellButton(): 텍스트 'S' 대신 icon_sell 이미지(20x20) 사용, textures.exists() 폴백 유지. destroy()에 sellIcon 정리 추가
+- **`js/ui/TowerPanel.js`** -- _createSpeedButton(): 텍스트 'x1' 대신 icon_speed_x1 이미지(20x20) 사용, 배속 전환 시 setTexture()로 x1/x2/x3 순환. destroy()에 speedIcon 정리 추가
+- **`js/scenes/GameScene.js`** -- _createPauseButton(): 텍스트 '||' 대신 icon_pause 이미지(18x18, depth=32) 사용, textures.exists() 폴백 유지
+- **`js/scenes/GameScene.js`** -- _createPauseButton(): 텍스트 'M'/'♪' 대신 icon_sound_on/off 이미지(16x16, depth=32) 사용, _updateMuteButton()에서 setTexture() 전환
+- **`js/scenes/GameScene.js`** -- _cleanup()에 pauseBtnIcon/muteBtnIcon destroy 추가
+
+### 참고
+
+- 스펙: `.claude/specs/2026-03-02-ui-icon-batch.md`
+- QA: `.claude/specs/2026-03-02-ui-icon-batch-qa.md`
+- icon_speed_x3.png의 화살표가 스펙의 "삼중"이 아닌 이중이나, 색상(빨간색)으로 x2(노란색)와 명확히 구분 가능 (QA LOW 관찰 사항)
+- HUD.js의 기존 아이콘(icon_sword/diamond/heart)은 변경 없이 정상 동작 확인됨
+- UI 이미지 에셋 총계: 49장 -> 56장 (아이콘 7장 추가)
+
+---
+
 ## 2026-03-02 -- 소모품 버튼 UX 개선 (아이콘 + 툴팁)
 
 ### 추가

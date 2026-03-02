@@ -398,13 +398,22 @@ export class TowerPanel {
     }
     this.container.add(this.sellBg);
 
-    this.sellText = this.scene.add.text(x, y, 'S', {
-      fontSize: '14px',
-      fontFamily: 'Galmuri11, Arial, sans-serif',
-      color: '#ffffff',
-      fontStyle: 'bold',
-    }).setOrigin(0.5);
-    this.container.add(this.sellText);
+    // 판매 아이콘 이미지 또는 텍스트 폴백
+    if (this.scene.textures.exists('icon_sell')) {
+      this.sellIcon = this.scene.add.image(x, y, 'icon_sell')
+        .setDisplaySize(20, 20);
+      this.container.add(this.sellIcon);
+      this.sellText = null;
+    } else {
+      this.sellIcon = null;
+      this.sellText = this.scene.add.text(x, y, 'S', {
+        fontSize: '14px',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
+        color: '#ffffff',
+        fontStyle: 'bold',
+      }).setOrigin(0.5);
+      this.container.add(this.sellText);
+    }
 
     this.sellBg.on('pointerdown', () => {
       if (this.selectedTower && this.callbacks.onSell) {
@@ -444,13 +453,22 @@ export class TowerPanel {
     /** @type {number} 배속 버튼 중심 Y */
     this._speedY = y;
 
-    this.speedText = this.scene.add.text(x, y, 'x1', {
-      fontSize: '12px',
-      fontFamily: 'Galmuri11, Arial, sans-serif',
-      color: '#ffffff',
-      fontStyle: 'bold',
-    }).setOrigin(0.5);
-    this.container.add(this.speedText);
+    // 배속 아이콘 이미지 또는 텍스트 폴백
+    if (this.scene.textures.exists('icon_speed_x1')) {
+      this.speedIcon = this.scene.add.image(x, y, 'icon_speed_x1')
+        .setDisplaySize(20, 20);
+      this.container.add(this.speedIcon);
+      this.speedText = null;
+    } else {
+      this.speedIcon = null;
+      this.speedText = this.scene.add.text(x, y, 'x1', {
+        fontSize: '12px',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
+        color: '#ffffff',
+        fontStyle: 'bold',
+      }).setOrigin(0.5);
+      this.container.add(this.speedText);
+    }
 
     this.speedBg.on('pointerdown', () => {
       // 3단계 배속 순환: 1x -> 2x -> 3x -> 1x
@@ -461,13 +479,23 @@ export class TowerPanel {
       } else {
         this.gameSpeed = SPEED_NORMAL;
       }
-      const label = this.gameSpeed === SPEED_NORMAL ? 'x1'
-        : this.gameSpeed === SPEED_FAST ? 'x2' : 'x3';
-      // 배속별 텍스트 색상: 1x=흰색, 2x=노란색, 3x=빨간색
-      const color = this.gameSpeed === SPEED_NORMAL ? '#ffffff'
-        : this.gameSpeed === SPEED_FAST ? '#fdcb6e' : '#e94560';
-      this.speedText.setText(label);
-      this.speedText.setColor(color);
+
+      // 배속 아이콘 또는 텍스트 갱신
+      if (this.speedIcon) {
+        // 이미지 모드: 배속에 맞는 텍스처로 교체
+        const texKey = this.gameSpeed === SPEED_NORMAL ? 'icon_speed_x1'
+          : this.gameSpeed === SPEED_FAST ? 'icon_speed_x2' : 'icon_speed_x3';
+        this.speedIcon.setTexture(texKey);
+      } else {
+        // 텍스트 폴백 모드
+        const label = this.gameSpeed === SPEED_NORMAL ? 'x1'
+          : this.gameSpeed === SPEED_FAST ? 'x2' : 'x3';
+        // 배속별 텍스트 색상: 1x=흰색, 2x=노란색, 3x=빨간색
+        const color = this.gameSpeed === SPEED_NORMAL ? '#ffffff'
+          : this.gameSpeed === SPEED_FAST ? '#fdcb6e' : '#e94560';
+        this.speedText.setText(label);
+        this.speedText.setColor(color);
+      }
       this._updateSpeedHighlight();
       if (this.callbacks.onSpeedToggle) {
         this.callbacks.onSpeedToggle(this.gameSpeed);
@@ -1103,6 +1131,9 @@ export class TowerPanel {
     this._dragTower = null;
     this._clearMergeHighlights();
     this._hideMergePreviewBubble();
+    // 아이콘 이미지 오브젝트 정리
+    if (this.sellIcon) { this.sellIcon.destroy(); this.sellIcon = null; }
+    if (this.speedIcon) { this.speedIcon.destroy(); this.speedIcon = null; }
     if (this.container) {
       this.container.destroy();
     }

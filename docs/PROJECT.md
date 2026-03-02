@@ -30,9 +30,9 @@ Phaser.js 3 기반 판타지 타워 디펜스 게임. 도형 기반 프로토타
 | `style.css` | 바디 배경, 터치 방지(`touch-action: none`), safe-area 패딩, Galmuri @font-face 선언 |
 | `js/main.js` | Phaser.Game 인스턴스 생성 (npm import, 360x640, FIT + CENTER_BOTH, pixelArt: true), Android 뒤로가기 키(ESC) 내비게이션 핸들러 (오버레이 우선 처리: TowerInfoOverlay/pauseOverlay 열림 시 씬 전환 대신 오버레이 닫기) |
 | `js/config.js` | 모든 게임 상수/밸런스 수치 집중 관리 (타워 10종, 적 8종, 웨이브 R1~R20, 메타 업그레이드 트리, 유틸리티 업그레이드, 저항 캡 0.55, 골드 싱크 상수, 머지 레시피 102종/스탯 102종 (T2 55종 + T3 30종 + T4 12종 + T5 5종), 별점 계산(calcStarRating), 캠페인 다이아몬드 보상(CAMPAIGN_DIAMOND_REWARDS), TOWER_UNLOCK_MAP(월드→타워 해금 매핑), 세이브 마이그레이션 v4) |
-| `js/scenes/BootScene.js` | 초기 설정, localStorage 로드, 세이브 마이그레이션 (stats 필드 포함), UI 에셋 49장 preload (아이콘 9장 포함), `async create()` + `await document.fonts.ready`로 Galmuri 폰트 로딩 대기 후 메뉴 전환 |
+| `js/scenes/BootScene.js` | 초기 설정, localStorage 로드, 세이브 마이그레이션 (stats 필드 포함), UI 에셋 56장 preload (아이콘 16장 포함), `async create()` + `await document.fonts.ready`로 Galmuri 폰트 로딩 대기 후 메뉴 전환 |
 | `js/scenes/MenuScene.js` | 메뉴 화면, Diamond 표시, CAMPAIGN/ENDLESS(endlessUnlocked 조건부 활성)/COLLECTION/STATISTICS 버튼, 종료 확인 다이얼로그(_openExitDialog) |
-| `js/scenes/GameScene.js` | 핵심 게임플레이 (맵/타워/적/투사체/웨이브/AoE/체인/빔/메타 업그레이드/ProjectilePool/delta 캡/통계 추적/사거리 프리뷰/골드 싱크/머지 드래그 핸들링/Pause 오버레이 합성도감 버튼/wake 이벤트 처리/mapClear 이벤트→MapClearScene 전환/일시정지 시 BGM 정지·복원/소모품 아이콘+툴팁) |
+| `js/scenes/GameScene.js` | 핵심 게임플레이 (맵/타워/적/투사체/웨이브/AoE/체인/빔/메타 업그레이드/ProjectilePool/delta 캡/통계 추적/사거리 프리뷰/골드 싱크/머지 드래그 핸들링/Pause 오버레이 합성도감 버튼/wake 이벤트 처리/mapClear 이벤트→MapClearScene 전환/일시정지 시 BGM 정지·복원/소모품 아이콘+툴팁/일시정지·음소거 버튼 아이콘) |
 | `js/scenes/GameOverScene.js` | 결과 표시, Diamond 획득, 통계 저장, 게임 히스토리 관리, RETRY/WORLD MAP(캠페인)/MENU 버튼 (RETRY 시 mapData/gameMode 전달) |
 | `js/scenes/MapClearScene.js` | 캠페인 맵 클리어 결과 씬 (별점 1~3성 애니메이션, 다이아몬드 차액 보상 실제 지급, worldProgress/campaignStats/endlessUnlocked 세이브 갱신, 월드 클리어 시 타워 자동 해금+알림 UI, NEXT MAP(다음 맵 또는 월드 클리어)/RETRY/WORLD MAP 버튼) |
 | `js/scenes/WorldSelectScene.js` | 월드 선택 씬 (5개 월드 패널, 세이브 데이터 기반 해금/잠금, 별점 진행도, LevelSelectScene 이동) |
@@ -58,7 +58,7 @@ Phaser.js 3 기반 판타지 타워 디펜스 게임. 도형 기반 프로토타
 | `js/managers/SoundManager.js` | Web Audio API 프로시저럴 SFX/BGM, 백그라운드 전환 시 BGM 자동 일시정지/재개 |
 | `js/i18n.js` | 다국어 지원 (한국어/영어), 모든 UI 텍스트 번역 키 관리 |
 | `js/ui/HUD.js` | 상단 HUD (Wave/Gold/HP, HP 위험 깜빡임, 웨이브 카운트다운, 적 프리뷰, 캠페인 Wave X/Y 표시) |
-| `js/ui/TowerPanel.js` | 하단 타워 선택(2줄 5열)/판매/강화/드래그&드롭 머지 UI/머지 프리뷰(드래그 하이라이트+호버 말풍선)/3단 속도(1x/2x/3x) 패널. 타워 상세 모달은 TowerInfoOverlay로 위임 |
+| `js/ui/TowerPanel.js` | 하단 타워 선택(2줄 5열)/판매(아이콘)/강화/드래그&드롭 머지 UI/머지 프리뷰(드래그 하이라이트+호버 말풍선)/3단 속도(아이콘, 1x/2x/3x) 패널. 타워 상세 모달은 TowerInfoOverlay로 위임 |
 | `js/ui/TowerInfoOverlay.js` | 공용 타워 정보 오버레이 (game/codex 모드). NineSlice 동적 패널, T1 스탯 패널, T2+ Y자 합성 트리, 상위 조합 드래그 스크롤, 드릴다운, game 모드 강화/판매 버튼, enhanceLevel 기반 baseH 동적 계산, handleBack() 공개 래퍼(ESC 키 외부 호출용) |
 
 **총 32개 JS 파일** (+ 맵 데이터 5개 파일)
@@ -322,6 +322,7 @@ npx cap open android  # 또는 npx cap open ios
 - Android 뒤로가기 키 내비게이션: Playwright 테스트 20개 (정상 15 + 예외 5) + 시각적 검증 7건, QA PASS
 - 유틸리티 카드 레이아웃 수직 재배치: Playwright 테스트 18개 (정상 7 + 시각 3 + 예외 5 + 안정성 3) + 시각적 검증 7건, QA PASS
 - 소모품 버튼 UX 개선 (아이콘+툴팁): Playwright 테스트 39개 (정상 26 + 예외 13) + 시각적 검증 13건, QA PASS
+- UI 아이콘 일괄 개선 (판매/배속/일시정지/음소거): Playwright 테스트 19개 (정상 10 + 예외 4 + 시각적 5) + 시각적 검증 8건, QA PASS
 
 ## 시스템별 상세 문서
 
@@ -332,7 +333,7 @@ npx cap open android  # 또는 npx cap open ios
 | [systems/wave.md](systems/wave.md) | R1~R20 정의, R21+ 스케일링, 보스 라운드 |
 | [systems/economy.md](systems/economy.md) | Gold, Diamond, 메타 업그레이드, 컬렉션, 골드 싱크 |
 | [systems/sound.md](systems/sound.md) | SFX 8종, BGM 3종, Web Audio API, 백그라운드 전환 BGM 자동 일시정지/재개 |
-| [systems/ui.md](systems/ui.md) | HUD(캠페인 Wave X/Y), TowerPanel, TowerInfoOverlay(타워 정보 오버레이, game/codex 모드), 머지 프리뷰, 일시정지(합성도감 버튼 포함), 게임속도, 골드 싱크 UI(소모품 아이콘+툴팁), 컬렉션(이중 탭), MergeCodexScene(TowerInfoOverlay 연동), MapClearScene(차액 보상/세이브 갱신), WorldSelectScene(세이브 기반 해금), LevelSelectScene(세이브 기반 해금), MenuScene(CAMPAIGN/ENDLESS 조건부 활성, 종료 확인 다이얼로그), EndlessMapSelectScene(6탭 맵 선택), GameOverScene(캠페인 3버튼), 씬 전환 페이드(fadeIn/fadeOut), Android 뒤로가기 키(ESC) 내비게이션, UI 이미지 에셋(버튼 23장/패널 5장/HUD 9장/장식 3장/아이콘 9장), Galmuri 픽셀 폰트, 모바일 |
+| [systems/ui.md](systems/ui.md) | HUD(캠페인 Wave X/Y), TowerPanel, TowerInfoOverlay(타워 정보 오버레이, game/codex 모드), 머지 프리뷰, 일시정지(합성도감 버튼 포함), 게임속도, 골드 싱크 UI(소모품 아이콘+툴팁), 컬렉션(이중 탭), MergeCodexScene(TowerInfoOverlay 연동), MapClearScene(차액 보상/세이브 갱신), WorldSelectScene(세이브 기반 해금), LevelSelectScene(세이브 기반 해금), MenuScene(CAMPAIGN/ENDLESS 조건부 활성, 종료 확인 다이얼로그), EndlessMapSelectScene(6탭 맵 선택), GameOverScene(캠페인 3버튼), 씬 전환 페이드(fadeIn/fadeOut), Android 뒤로가기 키(ESC) 내비게이션, UI 이미지 에셋(버튼 23장/패널 5장/HUD 9장/장식 3장/아이콘 16장), Galmuri 픽셀 폰트, 모바일 |
 
 ## 향후 계획
 

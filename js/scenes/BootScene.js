@@ -85,6 +85,16 @@ export class BootScene extends Phaser.Scene {
     for (const name of ['icon_consumable_slow', 'icon_consumable_gold', 'icon_consumable_lightning']) {
       this.load.image(name, `assets/ui/icons/${name}.png`);
     }
+
+    // 게임 플레이 UI 버튼 아이콘 (판매/배속/일시정지/음소거)
+    for (const name of [
+      'icon_sell',
+      'icon_speed_x1', 'icon_speed_x2', 'icon_speed_x3',
+      'icon_pause',
+      'icon_sound_on', 'icon_sound_off',
+    ]) {
+      this.load.image(name, `assets/ui/icons/${name}.png`);
+    }
   }
 
   /**
