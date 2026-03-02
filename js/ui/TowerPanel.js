@@ -11,6 +11,7 @@ import {
   SPEED_NORMAL, SPEED_FAST, SPEED_TURBO, LONG_PRESS_MS,
   BTN_PRIMARY, BTN_DANGER, BTN_SELL,
   isMergeable, getMergeResult, MERGE_RECIPES, pixelToGrid, GRID_COLS, GRID_ROWS, HUD_HEIGHT,
+  MERGE_COST,
 } from '../config.js';
 import { t } from '../i18n.js';
 import { TowerInfoOverlay } from './TowerInfoOverlay.js';
@@ -43,6 +44,9 @@ export class TowerPanel {
 
     /** @type {string[]} 잠금 해제된 타워 타입 목록 */
     this.unlockedTowers = callbacks.unlockedTowers || [];
+
+    /** @type {number} 현재 보유 골드 (합성 미리보기 비용 표시용) */
+    this._currentGold = 0;
 
     /** @type {string|null} 현재 배치 모드로 선택된 타워 타입 */
     this.selectedTowerType = null;
@@ -725,6 +729,7 @@ export class TowerPanel {
    * @param {number} gold - 현재 보유 골드
    */
   updateAffordability(gold) {
+    this._currentGold = gold;
     for (const btn of this.towerButtons) {
       if (btn.isLocked) continue;
       if (gold >= btn.cost) {
@@ -862,17 +867,24 @@ export class TowerPanel {
     const resultName = t(`tower.${result.id}.name`) || result.displayName;
     const colorCSS = '#' + result.color.toString(16).padStart(6, '0');
     // HUD 영역과 겹치지 않도록 Y 좌표 하한 제한
-    const by = Math.max(HUD_HEIGHT + 20, tower.y - 34);
+    const by = Math.max(HUD_HEIGHT + 20, tower.y - 44);
 
     const container = this.scene.add.container(tower.x, by).setDepth(41);
 
+    // 합성 비용 산출 (밸런스 오버홀)
+    const mergeCost = MERGE_COST[result.tier] || 0;
+    const canAfford = this._currentGold >= mergeCost;
+    // 비용 포함 시 버블 높이를 늘림
+    const bubbleH = mergeCost > 0 ? 44 : 32;
+
     // 버블 배경
-    const bg = this.scene.add.rectangle(0, 0, 90, 32, 0x0a0e1a, 0.9)
+    const bg = this.scene.add.rectangle(0, 0, 100, bubbleH, 0x0a0e1a, 0.9)
       .setStrokeStyle(2, result.color);
     container.add(bg);
 
     // 결과 타워 이름
-    const nameText = this.scene.add.text(0, -5, `\u2192 ${resultName}`, {
+    const nameY = mergeCost > 0 ? -11 : -5;
+    const nameText = this.scene.add.text(0, nameY, `\u2192 ${resultName}`, {
       fontSize: '10px',
       fontFamily: 'Galmuri11, Arial, sans-serif',
       color: colorCSS,
@@ -881,12 +893,25 @@ export class TowerPanel {
     container.add(nameText);
 
     // 결과 타워 티어
-    const tierText = this.scene.add.text(0, 8, `(T${result.tier})`, {
+    const tierText = this.scene.add.text(0, nameY + 13, `(T${result.tier})`, {
       fontSize: '9px',
       fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#aaaaaa',
     }).setOrigin(0.5);
     container.add(tierText);
+
+    // 합성 비용 표시 (밸런스 오버홀)
+    if (mergeCost > 0) {
+      const costLabel = t('merge.cost').replace('{cost}', mergeCost);
+      const costColor = canAfford ? GOLD_TEXT_CSS : '#ff4757'; // 부족 시 빨간색
+      const costText = this.scene.add.text(0, nameY + 26, costLabel, {
+        fontSize: '9px',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
+        color: costColor,
+        fontStyle: 'bold',
+      }).setOrigin(0.5);
+      container.add(costText);
+    }
 
     this._mergePreviewBubble = container;
   }

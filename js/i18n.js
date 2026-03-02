@@ -478,6 +478,11 @@ const STRINGS = {
     'ui.ad.clearBoost': '보상 2배',
     'ui.ad.goldBoostActive': '2배 골드 ON',
     'ui.ad.clearBoostActive': '보상 2배 ON',
+    // ── 밸런스 오버홀: 합성 비용 / 타워 한도 ──
+    'merge.cost': '합성 비용: {cost}G',
+    'merge.noGold': '골드 부족!',
+    'tower.limit': '타워 한도 도달! ({count}/{max})',
+    'hud.towers': '타워',
   },
   en: {
     'tower.archer.name': 'Archer',
@@ -926,5 +931,10 @@ const STRINGS = {
     'ui.ad.clearBoost': '2x Reward',
     'ui.ad.goldBoostActive': '2x Gold ON',
     'ui.ad.clearBoostActive': '2x Reward ON',
+    // ── Balance Overhaul: merge cost / tower limit ──
+    'merge.cost': 'Merge cost: {cost}G',
+    'merge.noGold': 'Not enough gold!',
+    'tower.limit': 'Tower limit reached! ({count}/{max})',
+    'hud.towers': 'Towers',
   },
 };

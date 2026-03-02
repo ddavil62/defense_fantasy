@@ -23,6 +23,8 @@ import {
   getEnemySpriteKey,
   AD_REVIVE_HP_RATIO,
   AD_GOLD_BOOST_MULTIPLIER,
+  MAX_TOWER_COUNT,
+  MERGE_COST,
 } from '../config.js';
 
 // ── 매니저 ──
@@ -345,6 +347,7 @@ export class GameScene extends Phaser.Scene {
     this.hud.updateGold(this.goldManager.getGold());
     this.hud.updateHP(this.baseHP, this.maxBaseHP);
     this.hud.updateWave(this.waveManager.currentWave, this.totalWaves);
+    this.hud.updateTowerCount(this.towers.length, MAX_TOWER_COUNT);
     this.hud.updateBlink(delta);
 
     // 웨이브 간 휴식 시간 카운트다운 및 다음 웨이브 미리보기 표시
@@ -480,6 +483,15 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
+    // 타워 배치 슬롯 제한 체크 (밸런스 오버홀)
+    if (this.towers.length >= MAX_TOWER_COUNT) {
+      this.mapManager.showInvalidPlacement(col, row);
+      this._showFloatingWarning(
+        t('tower.limit').replace('{count}', this.towers.length).replace('{max}', MAX_TOWER_COUNT)
+      );
+      return;
+    }
+
     // Lv.1 배치 비용 확인
     const cost = TOWER_STATS[type].levels[1].cost;
     if (!this.goldManager.canAfford(cost)) {
@@ -515,8 +527,21 @@ export class GameScene extends Phaser.Scene {
     const mergeResult = getMergeResult(idA, idB);
     if (!mergeResult) return;
 
-    // 두 타워의 누적 투자 골드를 합산 (판매가 산정에 사용)
-    const combinedInvested = towerA.totalInvested + towerB.totalInvested;
+    // 합성 비용 체크 (밸런스 오버홀: 티어별 골드 비용 부과)
+    const mergeCost = MERGE_COST[mergeResult.tier] || 0;
+    if (mergeCost > 0 && !this.goldManager.canAfford(mergeCost)) {
+      // 드래그로 숨겨진 타워를 복원 (alpha=0 상태 방지)
+      if (towerA.graphics) towerA.graphics.setAlpha(1);
+      this._showFloatingWarning(t('merge.noGold'));
+      return;
+    }
+    if (mergeCost > 0) {
+      this.goldManager.spend(mergeCost);
+      this.gameStats.goldSpent += mergeCost;
+    }
+
+    // 두 타워의 누적 투자 골드를 합산 (판매가 산정에 사용, 합성 비용 포함)
+    const combinedInvested = towerA.totalInvested + towerB.totalInvested + mergeCost;
 
     // towerB를 머지 결과 타워로 변환
     towerB.totalInvested = combinedInvested;
@@ -556,6 +581,37 @@ export class GameScene extends Phaser.Scene {
         // localStorage 쓰기 실패 무시 (용량 초과 등)
       }
     }
+  }
+
+  /**
+   * 화면 중앙 상단에 경고 메시지를 떠오르며 표시한다.
+   * 1.5초간 위로 떠오르며 페이드아웃된 후 자동 제거된다.
+   * @param {string} message - 표시할 경고 메시지
+   * @private
+   */
+  _showFloatingWarning(message) {
+    const warnText = this.add.text(
+      GAME_WIDTH / 2, HUD_HEIGHT + 40,
+      message,
+      {
+        fontSize: '14px',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
+        fontStyle: 'bold',
+        color: '#ff4757',
+        stroke: '#000000',
+        strokeThickness: 3,
+      }
+    ).setOrigin(0.5).setDepth(55);
+
+    // 위로 떠오르며 페이드아웃
+    this.tweens.add({
+      targets: warnText,
+      y: warnText.y - 30,
+      alpha: 0,
+      duration: 1500,
+      ease: 'Cubic.Out',
+      onComplete: () => warnText.destroy(),
+    });
   }
 
   /**

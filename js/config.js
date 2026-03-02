@@ -223,8 +223,8 @@ export const PATH_WAYPOINTS = [
 ];
 
 // ── 경제 ────────────────────────────────────────────────────────
-/** @const {number} 시작 골드량 */
-export const INITIAL_GOLD = 250;
+/** @const {number} 시작 골드량 (밸런스 오버홀: 250→200) */
+export const INITIAL_GOLD = 200;
 
 /** @const {number} 시작 기지 체력 */
 export const BASE_HP = 20;
@@ -232,14 +232,29 @@ export const BASE_HP = 20;
 /** @const {number} 최대 기지 체력 */
 export const MAX_BASE_HP = 20;
 
-/** @const {number} 판매 환급 비율 (60%) */
-export const SELL_RATIO = 0.6;
+/** @const {number} 판매 환급 비율 (50%) — 밸런스 오버홀: 0.6→0.5 */
+export const SELL_RATIO = 0.5;
 
 /** @const {number} HP 위험 경고 임계값 */
 export const HP_DANGER_THRESHOLD = 5;
 
 /** @const {number} HP 깜빡임 간격 (ms) */
 export const HP_BLINK_INTERVAL = 500;
+
+/** @const {number} 동시 배치 가능한 최대 타워 수 (밸런스 오버홀) */
+export const MAX_TOWER_COUNT = 30;
+
+/**
+ * 합성 결과 티어별 골드 비용 (밸런스 오버홀).
+ * T1+T1→T2: 30G, T2+X→T3: 80G, T3+X→T4: 150G, T4+T4→T5: 250G
+ * @const {Object<number, number>}
+ */
+export const MERGE_COST = {
+  2: 30,    // T1+T1→T2
+  3: 80,    // T2+X→T3
+  4: 150,   // T3+X→T4
+  5: 250,   // T4+T4→T5
+};
 
 // (드래곤 타워 잠금은 TOWER_STATS[type].locked 필드로 관리)
 
@@ -1284,27 +1299,28 @@ export const MERGED_TOWER_STATS = {
   // ══════════════════════════════════════════════════════════════════
   // T5 merges (5)
   // ══════════════════════════════════════════════════════════════════
+  // ── T5 스탯 (밸런스 오버홀: DoT 대폭 너프, 체인/AoE 소폭 조정) ──
   omega_herald: {
     damage: 350, fireRate: 0.8, range: 600,
     attackType: 'chain',
-    chainCount: 20, chainDecay: 0.92, chainRadius: 200,
-    burnDamage: 40, burnDuration: 10,
-    poisonDamage: 30, poisonDuration: 12,
+    chainCount: 16, chainDecay: 0.92, chainRadius: 200,   // chainCount 20→16
+    burnDamage: 25, burnDuration: 7,                       // 40→25, 10→7
+    poisonDamage: 18, poisonDuration: 8,                   // 30→18, 12→8
     armorPiercing: true,
   },
   extinction_engine: {
     damage: 120, fireRate: 1.5, range: 280,
     attackType: 'aoe_instant',
     splashRadius: 220,
-    poisonDamage: 30, poisonDuration: 12,
+    poisonDamage: 18, poisonDuration: 8,                   // 30→18, 12→8
     maxPoisonStacks: 8,
     armorReduction: 0.4, armorReductionDuration: 12,
-    burnDamage: 35, burnDuration: 9,
+    burnDamage: 20, burnDuration: 6,                       // 35→20, 9→6
   },
   absolute_dominion: {
     damage: 250, fireRate: 0.8, range: 260,
     attackType: 'chain',
-    chainCount: 18, chainDecay: 0.92, chainRadius: 180,
+    chainCount: 14, chainDecay: 0.88, chainRadius: 180,   // chainCount 18→14, decay 0.92→0.88
     slowAmount: 0.9, slowDuration: 5.0,
     pushbackDistance: 180, pushbackTargets: 15,
   },
@@ -1312,14 +1328,14 @@ export const MERGED_TOWER_STATS = {
     damage: 120, fireRate: 0.8, range: 260,
     attackType: 'aoe_instant',
     splashRadius: 220,
-    burnDamage: 120, burnDuration: 12,
+    burnDamage: 50, burnDuration: 8,                       // 120→50, 12→8 (총 화상피해 1440→400)
     armorReduction: 0.3, armorReductionDuration: 12,
   },
   void_maelstrom: {
     damage: 150, fireRate: 1.2, range: 600,
     attackType: 'piercing_beam',
-    burnDamage: 50, burnDuration: 10,
-    poisonDamage: 40, poisonDuration: 12,
+    burnDamage: 30, burnDuration: 7,                       // 50→30, 10→7
+    poisonDamage: 25, poisonDuration: 8,                   // 40→25, 12→8
     pushbackDistance: 300,
     armorPiercing: true,
   },
@@ -1554,30 +1570,31 @@ export const SCALING = {
 // ── 구간별 HP 스케일링 ──────────────────────────────────────────
 /**
  * 라운드별 HP 스케일 값을 구간별 차등으로 계산한다.
- * R1~R20: 기존 선형(0.15/라운드), R21~R35: 완화(0.10), R36~R50: 점진(0.13), R51+: 원래(0.15)
+ * 밸런스 오버홀: 후반 구간 증가율 대폭 강화 (T5 도배 방지)
+ * R1~R20: 0.15/R (유지), R21~R35: 0.20/R, R36~R50: 0.30/R, R51+: 0.45/R
  * @param {number} round - 라운드 번호
  * @returns {number} HP 스케일 배율
  */
 export function calcHpScale(round) {
-  if (round <= 20) return 1 + (round - 1) * 0.15;         // R1~R20: 기존 유지
+  if (round <= 20) return 1 + (round - 1) * 0.15;         // R1~R20: 유지
   const baseR20 = 1 + 19 * 0.15;                          // = 3.85
-  if (round <= 35) return baseR20 + (round - 20) * 0.10;  // R21~R35: 완화 (T2~T3 활약)
-  const baseR35 = baseR20 + 15 * 0.10;                    // = 5.35
-  if (round <= 50) return baseR35 + (round - 35) * 0.13;  // R36~R50: 점진 상승 (T4 필요)
-  const baseR50 = baseR35 + 15 * 0.13;                    // = 7.30
-  return baseR50 + (round - 50) * 0.15;                   // R51+: 원래 비율 (T5 필요)
+  if (round <= 35) return baseR20 + (round - 20) * 0.20;  // R21~R35: 0.10→0.20
+  const baseR35 = baseR20 + 15 * 0.20;                    // = 6.85
+  if (round <= 50) return baseR35 + (round - 35) * 0.30;  // R36~R50: 0.13→0.30
+  const baseR50 = baseR35 + 15 * 0.30;                    // = 11.35
+  return baseR50 + (round - 50) * 0.45;                   // R51+: 0.15→0.45
 }
 
 /**
  * 라운드별 보스 HP 배율을 반환한다.
- * 후반 라운드일수록 보스가 강해진다.
+ * 밸런스 오버홀: 전 구간 대폭 상향 (보스가 단순 DPS 체크 역할 강화)
  * @param {number} round - 라운드 번호
  * @returns {number} 보스 HP 배율
  */
 export function getBossHpMultiplier(round) {
-  if (round <= 30) return 2.0;
-  if (round <= 40) return 2.2;
-  return 2.5;
+  if (round <= 30) return 3.0;   // 2.0→3.0
+  if (round <= 40) return 4.0;   // 2.2→4.0
+  return 5.0;                     // 2.5→5.0
 }
 
 // ── 웨이브 흐름 ─────────────────────────────────────────────────
@@ -1593,14 +1610,15 @@ export const WAVE_BREAK_DURATION = 3.0;
 // ── 보너스 골드 공식 ────────────────────────────────────────────
 /**
  * 웨이브 클리어 보너스 골드를 계산한다.
- * 공식: round * 5 + floor(currentHP / maxHP * 15)
+ * 밸런스 오버홀: 라운드 계수 5→3, HP 보너스 최대 15→8 (경제 너프)
+ * 공식: round * 3 + floor(currentHP / maxHP * 8)
  * @param {number} round - 현재 라운드 번호
  * @param {number} currentHP - 현재 기지 체력
  * @param {number} maxHP - 최대 기지 체력
  * @returns {number} 보너스 골드량
  */
 export function calcWaveClearBonus(round, currentHP, maxHP) {
-  return round * 5 + Math.floor(currentHP / maxHP * 15);
+  return round * 3 + Math.floor(currentHP / maxHP * 8);
 }
 
 // ── 시각 효과 상수 ──────────────────────────────────────────────
