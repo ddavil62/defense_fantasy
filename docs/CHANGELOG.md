@@ -4,6 +4,39 @@
 
 ---
 
+## 2026-03-02 -- 타워 정보 패널 텍스트 겹침 수정
+
+### 배경
+
+TowerInfoOverlay의 T1/T2+ 패널에서 설명 텍스트(flavor/desc)가 길어져 2줄 이상 렌더링될 때 하단 요소(공격 유형 배지, 스탯, 티어 배지)와 겹치는 문제가 있었다. 각 UI 요소의 Y좌표가 `panelTop + 고정값`으로 하드코딩되어 있어, wordWrap으로 줄바꿈이 발생해도 다음 요소의 위치가 1줄 기준으로 고정되어 있었다.
+
+### 변경
+
+- **`js/ui/TowerInfoOverlay.js`** -- 레이아웃 상수 추가 (30~33행)
+  - `T1_CONTENT_GAP = 8`: 텍스트 요소 간 최소 여백 (px)
+  - `T1_SECTION_GAP = 16`: 섹션 간 여백 (공격 배지 위 등) (px)
+- **`js/ui/TowerInfoOverlay.js`** -- `_renderT1Panel` 동적 Y 누산 방식 적용 (307~383행)
+  - `curY = panelTop + 84`에서 시작, 각 요소의 `.height`를 읽어 gap을 더해 다음 Y를 결정
+  - flavorText, descText, atkText, statsText, enhText 모두 `setOrigin(0.5, 0)` (수평 중앙, 수직 상단 기준)으로 변경
+  - `t1UsedInY = curY`로 기존 `_isSourceWithEnhance` 기반 조건 분기 제거
+- **`js/ui/TowerInfoOverlay.js`** -- `_renderTreePanel` 동적 Y 누산 방식 적용 (415~462행)
+  - `treeNextY = panelTop + 128 + resultName.height + 4`에서 시작
+  - treeDescText, resultTier 높이를 읽어 누산 후 Y자 연결선/재료 노드 좌표를 상대 오프셋으로 계산
+  - `nextY = matY + matR + 40`으로 스탯 시작점 결정 (기존 `panelTop + 286` 하드코딩에서 변경)
+- **`js/ui/TowerInfoOverlay.js`** -- `_renderMaterialNode` 시그니처 변경 (521행)
+  - 4번째 파라미터 `panelTop` -> `matBaseY`로 변경, 호출부에서 `matY`를 전달
+  - 재료 이름/배지 Y좌표를 `matBaseY + r + 8`, `matBaseY + r + 22`로 상대 오프셋 계산
+
+### 참고
+
+- 스펙: `.claude/specs/2026-03-02-tower-info-overlap.md`
+- QA: `.claude/specs/2026-03-02-tower-info-overlap-qa.md`
+- 패널 높이(baseH), PANEL_W(300), _renderActionButtons, 상위 조합 섹션(_renderUsedInSection) 변경 없음
+- 1줄 desc 타워(궁수 등)의 레이아웃은 setOrigin 변경(0.5 -> 0.5,0)에 의한 height/2 상쇄로 시각적으로 기존과 동등
+- QA INFO 소견: T2+ 패널에서 desc가 2줄일 때 nextY가 baseH를 미세하게 초과할 가능성이 있으나, 현재 i18n 텍스트 범위에서는 발생하지 않으며 스펙에서 "극단적으로 긴 경우는 스코프 제외"로 명시
+
+---
+
 ## 2026-03-02 -- HUD 상단 정보 패널 레이아웃 수정
 
 ### 배경
@@ -79,7 +112,7 @@ Android 뒤로가기(ESC) 키를 누를 때 TowerInfoOverlay나 일시정지 오
 - QA: `.claude/specs/2026-03-01-tower-overlay-overflow-qa.md`
 - Phaser 3.87.0 NineSlice API 사용 (추가 패키지 없음)
 - 기존 드릴다운, 스크롤, 버튼 동작 변경 없음 (회귀 테스트 65건 PASS)
-- QA LOW 소견: `_renderTreePanel`의 treeDescText가 2줄 이상 wrap될 경우 resultTier(panelTop+160)와 겹칠 수 있으나, 현재 게임 내 모든 desc 텍스트가 1줄이므로 실제 발생하지 않음
+- QA LOW 소견: `_renderTreePanel`의 treeDescText가 2줄 이상 wrap될 경우 resultTier(panelTop+160)와 겹칠 수 있으나, 현재 게임 내 모든 desc 텍스트가 1줄이므로 실제 발생하지 않음 -> **2026-03-02 "타워 정보 패널 텍스트 겹침 수정"에서 동적 Y 누산 방식으로 해결됨**
 
 ---
 

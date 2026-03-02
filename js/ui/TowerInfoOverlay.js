@@ -27,6 +27,11 @@ const NS_LEFT = 24;
 /** @const {number} NineSlice 우측 슬라이스 (골드 기둥) */
 const NS_RIGHT = 24;
 
+/** @const {number} T1 패널 텍스트 요소 간 최소 여백 (px) */
+const T1_CONTENT_GAP = 8;
+/** @const {number} T1 패널 섹션 간 여백 (공격 배지 위 등) (px) */
+const T1_SECTION_GAP = 16;
+
 /**
  * 타워 상세 정보 오버레이 클래스.
  * 'game' 모드와 'codex' 모드를 지원하며,
@@ -176,12 +181,14 @@ export class TowerInfoOverlay {
     // 패널 높이 계산
     const hasUsedIn = usedInList.length > 0;
     const usedInViewH = hasUsedIn ? 100 : 0;
-    // enhanceLevel > 0이면 T2 패널 nextY가 +16px 밀리므로 baseH도 +16 적용
+    // 강화 레벨 여부 플래그 (하위 렌더링에서 참조)
     this._isSourceWithEnhance = this.mode === 'game'
       && this._history.length === 0
       && this._sourceTower
       && (this._sourceTower.getInfo().enhanceLevel > 0);
 
+    // enhanceOffset은 curY 누산 방식으로 자동 처리되므로 고정 baseH를 사용
+    // 강화 레벨이 있으면 +16px 여유를 확보
     const enhanceOffset = this._isSourceWithEnhance ? 16 : 0;
     const baseH = entry.tier >= 2 ? (316 + enhanceOffset) : (240 + enhanceOffset);
     // game 모드에서 원래 타워(depth 0)를 보고 있을 때 버튼 영역 추가
@@ -297,35 +304,41 @@ export class TowerInfoOverlay {
     }).setOrigin(0, 0.5);
     this._container.add(tierBadge);
 
-    // 플레이버 텍스트 (분위기)
+    // ── 동적 Y 누산 시작 (이름+원 아래) ──
+    let curY = panelTop + 84;
+
+    // 플레이버 텍스트 (분위기) — setOrigin(0.5, 0)으로 상단 기준 배치
     const flavorKey = `tower.${entry.id}.flavor`;
     const flavorStr = t(flavorKey);
     if (flavorStr !== flavorKey) {
-      const flavorText = this.scene.add.text(panelX, panelTop + 84, flavorStr, {
+      const flavorText = this.scene.add.text(panelX, curY, flavorStr, {
         fontSize: '11px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#a0a0a0', fontStyle: 'italic',
         wordWrap: { width: 260 }, align: 'center',
-      }).setOrigin(0.5);
+      }).setOrigin(0.5, 0);
       this._container.add(flavorText);
+      curY += flavorText.height + T1_CONTENT_GAP;
     }
 
-    // 특징 설명 텍스트
+    // 특징 설명 텍스트 — setOrigin(0.5, 0)으로 상단 기준 배치
     const descKey = `tower.${entry.id}.desc`;
     const descStr = t(descKey);
     if (descStr !== descKey) {
-      const descText = this.scene.add.text(panelX, panelTop + 100, descStr, {
+      const descText = this.scene.add.text(panelX, curY, descStr, {
         fontSize: '11px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#d0d0d0',
         wordWrap: { width: 260 }, align: 'center',
-      }).setOrigin(0.5);
+      }).setOrigin(0.5, 0);
       this._container.add(descText);
+      curY += descText.height + T1_SECTION_GAP;
     }
 
     // 공격 유형 배지
     const atkColor = ATTACK_TYPE_COLORS_CSS[entry.attackType] || '#b2bec3';
-    const atkText = this.scene.add.text(panelX, panelTop + 130,
+    const atkText = this.scene.add.text(panelX, curY,
       this._getAttackTypeBadge(entry.attackType), {
         fontSize: '11px', fontFamily: 'Galmuri11, Arial, sans-serif', color: atkColor,
-      }).setOrigin(0.5);
+      }).setOrigin(0.5, 0);
     this._container.add(atkText);
+    curY += atkText.height + T1_CONTENT_GAP;
 
     // 기본 스탯 (메타 업그레이드 보너스 반영)
     const lv1 = TOWER_STATS[entry.id]?.levels?.[1];
@@ -341,27 +354,28 @@ export class TowerInfoOverlay {
       }
       const rangeInTiles = (stats.range / CELL_SIZE).toFixed(1);
       const statsStr = `DMG: ${stats.damage}  |  SPD: ${stats.fireRate}s  |  RNG: ${rangeInTiles}`;
-      const statsText = this.scene.add.text(panelX, panelTop + 150, statsStr, {
+      const statsText = this.scene.add.text(panelX, curY, statsStr, {
         fontSize: '11px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#b2bec3',
-      }).setOrigin(0.5);
+      }).setOrigin(0.5, 0);
       this._container.add(statsText);
+      curY += statsText.height + T1_CONTENT_GAP;
     }
 
     // game 모드 원래 타워에서 강화 레벨 표시
     if (this.mode === 'game' && this._history.length === 0 && this._sourceTower) {
       const info = this._sourceTower.getInfo();
       if (info.enhanceLevel > 0) {
-        const enhText = this.scene.add.text(panelX, panelTop + 166,
+        const enhText = this.scene.add.text(panelX, curY,
           `+${info.enhanceLevel}`, {
             fontSize: '10px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#ffd700',
-          }).setOrigin(0.5);
+          }).setOrigin(0.5, 0);
         this._container.add(enhText);
+        curY += enhText.height + T1_CONTENT_GAP;
       }
     }
 
-    // 상위 조합 섹션
-    // enhanceLevel > 0이면 panelTop+166에 enhText(10px)가 표시되므로 시작 Y를 뒤로 민다
-    const t1UsedInY = this._isSourceWithEnhance ? panelTop + 186 : panelTop + 170;
+    // 상위 조합 섹션 — curY 누산 기반으로 enhanceOffset 분기 불필요
+    const t1UsedInY = curY;
     if (usedInList.length > 0) {
       this._renderUsedInSection(entry, usedInList, panelX, t1UsedInY);
     }
@@ -398,30 +412,36 @@ export class TowerInfoOverlay {
     resultCircle.strokeCircle(panelX, resultY, resultR);
     this._container.add(resultCircle);
 
+    // ── 동적 Y 누산 시작 (결과 원 아래) ──
     const resultName = this.scene.add.text(panelX, panelTop + 128, entry.displayName, {
       fontSize: '12px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#ffffff', fontStyle: 'bold',
-    }).setOrigin(0.5);
+    }).setOrigin(0.5, 0);
     this._container.add(resultName);
 
-    // 결과 타워 특징 설명
+    let treeNextY = panelTop + 128 + resultName.height + 4;
+
+    // 결과 타워 특징 설명 — setOrigin(0.5, 0)으로 상단 기준 배치
     const treeDescKey = `tower.${entry.id}.desc`;
     const treeDescStr = t(treeDescKey);
     if (treeDescStr !== treeDescKey) {
-      const treeDescText = this.scene.add.text(panelX, panelTop + 144, treeDescStr, {
+      const treeDescText = this.scene.add.text(panelX, treeNextY, treeDescStr, {
         fontSize: '11px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#a0a0a0',
         wordWrap: { width: 260 }, align: 'center',
-      }).setOrigin(0.5);
+      }).setOrigin(0.5, 0);
       this._container.add(treeDescText);
+      treeNextY += treeDescText.height + 4;
     }
 
-    const resultTier = this.scene.add.text(panelX, panelTop + 160, `T${entry.tier}`, {
+    const resultTier = this.scene.add.text(panelX, treeNextY, `T${entry.tier}`, {
       fontSize: '10px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#ffd700',
-    }).setOrigin(0.5);
+    }).setOrigin(0.5, 0);
     this._container.add(resultTier);
+    treeNextY += resultTier.height + 8;
 
-    // ── Y자 연결선 ──
-    const forkY = panelTop + 191;
-    const matY = panelTop + 226;
+    // ── Y자 연결선 (treeNextY 기준 상대 오프셋) ──
+    const connectorStartY = treeNextY;
+    const forkY = treeNextY + 20;
+    const matY = forkY + 35;
     const matR = 20;
     const matOffsetX = 55;
     const matAX = panelX - matOffsetX;
@@ -429,17 +449,17 @@ export class TowerInfoOverlay {
 
     const lines = this.scene.add.graphics();
     this._renderConnectorLines(lines,
-      { x: panelX, y: panelTop + 171 }, forkY,
+      { x: panelX, y: connectorStartY }, forkY,
       { x: matAX, y: matY }, { x: matBX, y: matY }
     );
     this._container.add(lines);
 
     // ── 재료 노드 (좌/우) ──
-    if (matAEntry) this._renderMaterialNode(matAEntry, matAX, matY, matR, panelTop, entry);
-    if (matBEntry) this._renderMaterialNode(matBEntry, matBX, matY, matR, panelTop, entry);
+    if (matAEntry) this._renderMaterialNode(matAEntry, matAX, matY, matR, matY, entry);
+    if (matBEntry) this._renderMaterialNode(matBEntry, matBX, matY, matR, matY, entry);
 
-    // ── 트리 아래 스탯 표시 ──
-    let nextY = panelTop + 286;
+    // ── 트리 아래 스탯 표시 (matY + matR 기준 상대 오프셋) ──
+    let nextY = matY + matR + 40;
     const mergedStats = MERGED_TOWER_STATS[entry.id];
     if (mergedStats) {
       const divider = this.scene.add.graphics();
@@ -494,11 +514,11 @@ export class TowerInfoOverlay {
    * @param {number} cx - 노드 중심 X 좌표
    * @param {number} cy - 노드 중심 Y 좌표
    * @param {number} r - 원 반지름
-   * @param {number} panelTop - 패널 상단 Y 좌표
+   * @param {number} matBaseY - 재료 노드 중심 Y (이름/배지 상대 오프셋 기준)
    * @param {object} currentEntry - 현재 결과 항목 (히스토리 push용)
    * @private
    */
-  _renderMaterialNode(matEntry, cx, cy, r, panelTop, currentEntry) {
+  _renderMaterialNode(matEntry, cx, cy, r, matBaseY, currentEntry) {
     const circle = this.scene.add.graphics();
     circle.fillStyle(matEntry.color, 1);
     circle.fillCircle(cx, cy, r);
@@ -508,16 +528,16 @@ export class TowerInfoOverlay {
     circle.strokeCircle(cx, cy, r);
     this._container.add(circle);
 
-    // 재료 이름 (6자 초과 시 말줄임)
+    // 재료 이름 (6자 초과 시 말줄임) — 원 하단 기준 상대 오프셋
     const displayName = matEntry.displayName.length > 6
       ? matEntry.displayName.substring(0, 5) + '..'
       : matEntry.displayName;
-    const nameText = this.scene.add.text(cx, panelTop + 254, displayName, {
+    const nameText = this.scene.add.text(cx, matBaseY + r + 8, displayName, {
       fontSize: '10px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#ffffff',
     }).setOrigin(0.5);
     this._container.add(nameText);
 
-    const tierBadge = this.scene.add.text(cx, panelTop + 268, `T${matEntry.tier}`, {
+    const tierBadge = this.scene.add.text(cx, matBaseY + r + 22, `T${matEntry.tier}`, {
       fontSize: '9px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#ffd700',
     }).setOrigin(0.5);
     this._container.add(tierBadge);

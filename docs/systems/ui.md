@@ -68,7 +68,10 @@ HUD, TowerPanel, TowerInfoOverlay(타워 정보 오버레이), 머지 프리뷰,
 - game 모드 원래 타워: Tower 인스턴스의 실시간 스탯 (강화/메타 반영)
 - codex 모드: `_applyMetaUpgrades` 옵션 함수로 메타 업그레이드 반영
 - 강화 레벨 `+N` 금색 텍스트 (enhanceLevel > 0, game 모드 원래 타워만)
-- 상위 조합 시작 Y: enhanceLevel > 0이면 panelTop+186, 아니면 panelTop+170
+- 동적 Y 누산 레이아웃: `curY = panelTop + 84`에서 시작, 각 요소의 `.height`를 읽어 gap을 더해 다음 Y를 결정
+  - 요소 간 여백: `T1_CONTENT_GAP = 8px`, 섹션 간 여백: `T1_SECTION_GAP = 16px`
+  - 모든 텍스트 origin: `setOrigin(0.5, 0)` (수평 중앙, 수직 상단 기준)
+  - 상위 조합 시작 Y: `t1UsedInY = curY` (enhanceOffset 조건 분기 불필요)
 
 ### T2+ 합성 트리 패널
 
@@ -79,6 +82,11 @@ HUD, TowerPanel, TowerInfoOverlay(타워 정보 오버레이), 머지 프리뷰,
 - Y자 연결선: 수직선 + 수평 분기선
 - 설명 텍스트: `wordWrap: { width: 260 }`, `align: 'center'` 적용
 - 스탯: 구분선 아래 DMG/SPD/RNG (MERGED_TOWER_STATS 참조)
+- 동적 Y 누산 레이아웃: `treeNextY = panelTop + 128 + resultName.height + 4`에서 시작
+  - `treeDescText.height + 4` -> `resultTier.height + 8` 순으로 누산
+  - Y자 연결선/재료 노드 좌표: `connectorStartY = treeNextY`, `forkY = treeNextY + 20`, `matY = forkY + 35`
+  - 스탯 시작: `nextY = matY + matR + 40` (이전 하드코딩 `panelTop + 286`에서 변경)
+  - `_renderMaterialNode` 4번째 파라미터: `panelTop` -> `matBaseY`로 변경, 호출 시 `matY` 전달
 
 ### 상위 조합 섹션
 
