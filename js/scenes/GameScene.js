@@ -13,7 +13,7 @@ import {
   VISUALS, COLORS,
   pixelToGrid,
   SPEED_NORMAL,
-  META_UPGRADE_TREE,
+  META_UPGRADE_CONFIG,
   getMetaBaseHP, getMetaMaxBaseHP,
   getMetaInitialGold, getMetaWaveBonusMultiplier,
   calcHpRecoverCost, HP_RECOVER_AMOUNT,
@@ -1609,8 +1609,8 @@ export class GameScene extends Phaser.Scene {
 
   /**
    * 세이브 데이터의 영구 메타 업그레이드를 타워 스탯에 적용한다.
-   * 타워 배치 시와 머지 후에 호출된다. tier1~3의 선택된 업그레이드 효과를
-   * 순서대로 적용하며, multiply/add 두 가지 효과 타입을 지원한다.
+   * 타워 배치 시와 머지 후에 호출된다. damage/fireRate/range 3개 슬롯의
+   * 레벨에 따라 누적 곱연산(1.1^n 또는 0.9^n)으로 보너스를 적용한다.
    * @param {Tower} tower - 보너스를 적용할 타워 인스턴스
    * @private
    */
@@ -1618,30 +1618,26 @@ export class GameScene extends Phaser.Scene {
     const upgrades = this.towerMetaUpgrades[tower.type];
     if (!upgrades) return;
 
-    for (let tier = 1; tier <= 3; tier++) {
-      const choice = upgrades[`tier${tier}`];
-      if (!choice) continue;
+    const { BONUS_PER_LEVEL } = META_UPGRADE_CONFIG;
 
-      const treeData = META_UPGRADE_TREE[tower.type];
-      if (!treeData) continue;
+    // 공격력 보너스: 1.1^n (레벨당 +10%)
+    const damageLevel = upgrades.damage || 0;
+    if (damageLevel > 0) {
+      tower.stats.damage *= Math.pow(1 + BONUS_PER_LEVEL, damageLevel);
+      tower.stats.damage = Math.round(tower.stats.damage);
+    }
 
-      const bonus = treeData[`tier${tier}`][choice];
-      if (!bonus || !bonus.effects) continue;
+    // 공격속도 보너스: 0.9^n (fireRate 값이 작을수록 빠름)
+    const fireRateLevel = upgrades.fireRate || 0;
+    if (fireRateLevel > 0) {
+      tower.stats.fireRate *= Math.pow(1 - BONUS_PER_LEVEL, fireRateLevel);
+    }
 
-      for (const effect of bonus.effects) {
-        if (tower.stats[effect.stat] === undefined) continue;
-
-        if (effect.type === 'multiply') {
-          tower.stats[effect.stat] *= effect.value;
-          // 정수 스탯은 반올림하여 소수점 방지
-          if (['damage', 'range', 'splashRadius', 'chainRadius',
-               'pushbackDistance', 'chainCount'].includes(effect.stat)) {
-            tower.stats[effect.stat] = Math.round(tower.stats[effect.stat]);
-          }
-        } else if (effect.type === 'add') {
-          tower.stats[effect.stat] += effect.value;
-        }
-      }
+    // 사거리 보너스: 1.1^n (레벨당 +10%)
+    const rangeLevel = upgrades.range || 0;
+    if (rangeLevel > 0) {
+      tower.stats.range *= Math.pow(1 + BONUS_PER_LEVEL, rangeLevel);
+      tower.stats.range = Math.round(tower.stats.range);
     }
 
     // 메타 업그레이드 참조를 타워에 저장 (향후 확장용)

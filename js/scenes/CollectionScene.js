@@ -7,7 +7,8 @@
 
 import {
   GAME_WIDTH, GAME_HEIGHT, COLORS, SAVE_KEY,
-  TOWER_STATS, META_UPGRADE_TREE, UTILITY_UPGRADES,
+  TOWER_STATS, META_UPGRADE_CONFIG, calcMetaUpgradeCost,
+  UTILITY_UPGRADES,
   BTN_PRIMARY, BTN_META, TOWER_UNLOCK_MAP,
 } from '../config.js';
 import { t } from '../i18n.js';
@@ -368,9 +369,9 @@ export class CollectionScene extends Phaser.Scene {
       }).setOrigin(0.5);
       this.tabContent.add(nameText);
 
-      // 현재 메타 업그레이드 티어
-      const maxTier = this._getMaxMetaTier(type);
-      const tierStr = maxTier > 0 ? `Lv.${maxTier}` : 'Lv.0';
+      // 현재 메타 업그레이드 총 레벨
+      const totalLv = this._getTotalUpgradeLevels(type);
+      const tierStr = t('meta.total.level').replace('{total}', totalLv);
       const tierText = this.add.text(cx, y + 68, tierStr, {
         fontSize: '11px',
         fontFamily: 'Galmuri11, Arial, sans-serif',
@@ -385,18 +386,16 @@ export class CollectionScene extends Phaser.Scene {
   }
 
   /**
-   * 해당 타워의 최고 완료 메타 업그레이드 티어를 반환한다.
+   * 해당 타워의 메타 업그레이드 총 레벨 합계를 반환한다.
+   * damage + fireRate + range 레벨의 합산값.
    * @param {string} type - 타워 타입 키
-   * @returns {number} 최고 티어 (0~3)
+   * @returns {number} 총 강화 레벨 합계
    * @private
    */
-  _getMaxMetaTier(type) {
+  _getTotalUpgradeLevels(type) {
     const upgrades = this.saveData.towerUpgrades?.[type];
     if (!upgrades) return 0;
-    if (upgrades.tier3) return 3;
-    if (upgrades.tier2) return 2;
-    if (upgrades.tier1) return 1;
-    return 0;
+    return (upgrades.damage || 0) + (upgrades.fireRate || 0) + (upgrades.range || 0);
   }
 
   // ── 타워 아이콘 그리기 ──────────────────────────────────────
@@ -672,7 +671,7 @@ export class CollectionScene extends Phaser.Scene {
 
   /**
    * 타워 메타 업그레이드 상세 오버레이를 표시한다.
-   * 3개 티어 각각에 A/B 옵션 버튼, 현재 보너스 요약을 포함한다.
+   * 3개 슬롯(공격력/공격속도/사거리) 카드 레이아웃으로 구성된다.
    * @param {string} type - 타워 타입 키
    * @private
    */
@@ -680,7 +679,7 @@ export class CollectionScene extends Phaser.Scene {
     if (this.overlay) this.overlay.destroy();
 
     const stats = TOWER_STATS[type];
-    const treeData = META_UPGRADE_TREE[type];
+    const towerMaxLevels = META_UPGRADE_CONFIG.towers[type];
     const upgrades = this.saveData.towerUpgrades?.[type] || {};
 
     this.overlay = this.add.container(0, 0).setDepth(50);
@@ -693,7 +692,7 @@ export class CollectionScene extends Phaser.Scene {
 
     // 오버레이 패널
     const panelW = 320;
-    const panelH = 556;
+    const panelH = 500;
     const panelX = GAME_WIDTH / 2;
     const panelY = GAME_HEIGHT / 2;
     const panelTop = panelY - panelH / 2;
@@ -743,9 +742,9 @@ export class CollectionScene extends Phaser.Scene {
     }).setOrigin(0.5);
     this.overlay.add(nameText);
 
-    // 현재 메타 티어 정보
-    const maxTier = this._getMaxMetaTier(type);
-    const branchStr = maxTier > 0 ? `Meta Tier ${maxTier}` : 'No meta upgrades';
+    // 현재 메타 총 레벨 정보
+    const totalLv = this._getTotalUpgradeLevels(type);
+    const branchStr = t('meta.total.level').replace('{total}', totalLv);
     const branchText = this.add.text(panelX, panelTop + 60, branchStr, {
       fontSize: '13px',
       fontFamily: 'Galmuri11, Arial, sans-serif',
@@ -770,12 +769,12 @@ export class CollectionScene extends Phaser.Scene {
     const descKey = `tower.${type}.desc`;
     const descStr = t(descKey);
     if (descStr !== descKey) {
-      const descText = this.add.text(panelX, panelTop + 96, descStr, {
+      const descTxt = this.add.text(panelX, panelTop + 96, descStr, {
         fontSize: '11px',
         fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#d0d0d0',
       }).setOrigin(0.5);
-      this.overlay.add(descText);
+      this.overlay.add(descTxt);
     }
 
     // 구분선
@@ -783,51 +782,134 @@ export class CollectionScene extends Phaser.Scene {
       .setAlpha(0.3);
     this.overlay.add(divider);
 
-    // ── 티어별 A/B 옵션 섹션 (Tier 1~3) ──
-    const tierStartY = panelTop + 131;
-    const tierHeight = 85;
+    // ── 3개 슬롯 카드 (공격력 / 공격속도 / 사거리) ──
+    const slotStartY = panelTop + 135;
+    const slotHeight = 95;
+    const slotKeys = ['damage', 'fireRate', 'range'];
+    const { BONUS_PER_LEVEL } = META_UPGRADE_CONFIG;
 
-    for (let tier = 1; tier <= 3; tier++) {
-      const tierY = tierStartY + (tier - 1) * tierHeight;
-      const tierKey = `tier${tier}`;
-      const tierData = treeData[tierKey];
-      const choice = upgrades[tierKey] || null;
-      // 이전 티어가 완료되어야 현재 티어 구매 가능
-      const prevTierDone = tier === 1 || (upgrades[`tier${tier - 1}`] !== undefined && upgrades[`tier${tier - 1}`] !== null);
+    for (let i = 0; i < slotKeys.length; i++) {
+      const slot = slotKeys[i];
+      const slotY = slotStartY + i * slotHeight;
+      const currentLevel = upgrades[slot] || 0;
+      const maxLevel = towerMaxLevels[slot];
+      const isMaxed = currentLevel >= maxLevel;
 
-      // 티어 라벨
-      const tierLabel = this.add.text(panelX - panelW / 2 + 25, tierY, `Tier ${tier}`, {
+      // 슬롯 카드 배경
+      const cardW = panelW - 40;
+      const cardH = 80;
+      const cardBg = this.add.rectangle(panelX, slotY + cardH / 2, cardW, cardH, COLORS.BACKGROUND)
+        .setStrokeStyle(1, 0x636e72);
+      this.overlay.add(cardBg);
+
+      // 슬롯 이름 (공격력 / 공격속도 / 사거리)
+      const slotName = t(`meta.slot.${slot}`);
+      const slotNameText = this.add.text(panelX - cardW / 2 + 12, slotY + 12, slotName, {
         fontSize: '14px',
         fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#ffd700',
         fontStyle: 'bold',
       });
-      this.overlay.add(tierLabel);
+      this.overlay.add(slotNameText);
 
-      // 옵션 A 버튼
-      this._createUpgradeOptionBtn(
-        panelX, tierY + 25, panelW - 40, 25,
-        'A', tierData.a, choice, 'a', prevTierDone, type, tierKey
-      );
+      // 레벨 표시: Lv.{cur} / {max}
+      const levelStr = t('meta.level').replace('{cur}', currentLevel).replace('{max}', maxLevel);
+      const levelText = this.add.text(panelX + cardW / 2 - 12, slotY + 12, levelStr, {
+        fontSize: '12px',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
+        color: '#ffffff',
+      }).setOrigin(1, 0);
+      this.overlay.add(levelText);
 
-      // 옵션 B 버튼
-      this._createUpgradeOptionBtn(
-        panelX, tierY + 54, panelW - 40, 25,
-        'B', tierData.b, choice, 'b', prevTierDone, type, tierKey
-      );
+      // 현재 보너스 % 표시
+      let bonusPct;
+      if (slot === 'fireRate') {
+        // fireRate는 0.9^n → DPS 증가율 = (1 - 0.9^n) * 100
+        bonusPct = Math.round((1 - Math.pow(1 - BONUS_PER_LEVEL, currentLevel)) * 100);
+      } else {
+        // damage, range는 1.1^n → 증가율 = (1.1^n - 1) * 100
+        bonusPct = Math.round((Math.pow(1 + BONUS_PER_LEVEL, currentLevel) - 1) * 100);
+      }
+      const bonusStr = currentLevel > 0 ? t('meta.bonus').replace('{pct}', bonusPct) : '+0%';
+      const bonusText = this.add.text(panelX - cardW / 2 + 12, slotY + 34, bonusStr, {
+        fontSize: '12px',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
+        color: currentLevel > 0 ? '#00b894' : '#636e72',
+      });
+      this.overlay.add(bonusText);
+
+      // 레벨 진행 바 (간단한 직사각형 게이지)
+      const barX = panelX - cardW / 2 + 12;
+      const barY = slotY + 52;
+      const barW = cardW - 24;
+      const barH = 6;
+      const barBg = this.add.rectangle(barX + barW / 2, barY + barH / 2, barW, barH, 0x2d2d44);
+      this.overlay.add(barBg);
+
+      if (maxLevel > 0) {
+        const fillW = Math.max(1, (currentLevel / maxLevel) * barW);
+        const barFill = this.add.rectangle(barX + fillW / 2, barY + barH / 2, fillW, barH, stats.color);
+        this.overlay.add(barFill);
+      }
+
+      // 강화 버튼 또는 MAX 표시
+      if (isMaxed) {
+        // MAX 상태
+        const maxStr = t('meta.max');
+        const maxText = this.add.text(panelX + cardW / 2 - 12, slotY + 66, maxStr, {
+          fontSize: '13px',
+          fontFamily: 'Galmuri11, Arial, sans-serif',
+          color: '#ffd700',
+          fontStyle: 'bold',
+        }).setOrigin(1, 0.5);
+        this.overlay.add(maxText);
+      } else {
+        // 다음 레벨 비용 계산
+        const cost = calcMetaUpgradeCost(currentLevel);
+        const diamond = this.saveData.diamond || 0;
+        const canAfford = diamond >= cost;
+
+        // 비용 텍스트
+        const costStr = `\u25C6 ${cost}`;
+        const costColor = canAfford ? COLORS.DIAMOND_CSS : '#ff4757';
+        const costText = this.add.text(panelX + 20, slotY + 66, costStr, {
+          fontSize: '12px',
+          fontFamily: 'Galmuri11, Arial, sans-serif',
+          color: costColor,
+        }).setOrigin(0, 0.5);
+        this.overlay.add(costText);
+
+        // 강화 버튼
+        const btnW = 60;
+        const btnH = 22;
+        const btnX = panelX + cardW / 2 - 12 - btnW / 2;
+        const btnY = slotY + 66;
+        const btnColor = canAfford ? COLORS.DIAMOND : 0x636e72;
+        const btnBg = this.add.rectangle(btnX, btnY, btnW, btnH, btnColor, canAfford ? 1 : 0.5)
+          .setStrokeStyle(1, canAfford ? 0xffffff : 0x636e72);
+        this.overlay.add(btnBg);
+
+        const btnLabel = this.add.text(btnX, btnY, 'UP', {
+          fontSize: '12px',
+          fontFamily: 'Galmuri11, Arial, sans-serif',
+          color: canAfford ? '#ffffff' : '#636e72',
+          fontStyle: 'bold',
+        }).setOrigin(0.5);
+        this.overlay.add(btnLabel);
+
+        if (canAfford) {
+          btnBg.setInteractive({ useHandCursor: true });
+          btnBg.on('pointerdown', () => {
+            this._purchaseTowerUpgrade(type, slot, cost);
+          });
+        }
+      }
     }
 
     // ── 현재 보너스 요약 ──
-    const summaryY = tierStartY + 3 * tierHeight + 10;
-    const summaryHeader = this.add.text(panelX, summaryY, '── Current Bonuses ──', {
-      fontSize: '12px',
-      fontFamily: 'Galmuri11, Arial, sans-serif',
-      color: '#b2bec3',
-    }).setOrigin(0.5);
-    this.overlay.add(summaryHeader);
-
+    const summaryY = slotStartY + 3 * slotHeight + 5;
     const bonusSummary = this._calcBonusSummary(type, upgrades);
-    const summaryText = this.add.text(panelX, summaryY + 20, bonusSummary, {
+    const summaryText = this.add.text(panelX, summaryY, bonusSummary, {
       fontSize: '11px',
       fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#b2bec3',
@@ -837,133 +919,23 @@ export class CollectionScene extends Phaser.Scene {
   }
 
   /**
-   * 티어 업그레이드 옵션(A 또는 B) 버튼을 생성한다.
-   * 구매 가능 여부, 선택 상태, 잠금 상태에 따라 시각적 스타일이 달라진다.
-   * @param {number} x - 중심 X 좌표
-   * @param {number} y - 중심 Y 좌표
-   * @param {number} w - 버튼 너비
-   * @param {number} h - 버튼 높이
-   * @param {string} label - 표시 라벨 ('A' 또는 'B')
-   * @param {object} optionData - 옵션 데이터 { name, desc, cost, effects }
-   * @param {string|null} currentChoice - 현재 티어에서 선택된 옵션 ('a'|'b'|null)
-   * @param {string} optionKey - 옵션 식별자 ('a' 또는 'b')
-   * @param {boolean} prevTierDone - 이전 티어 완료 여부
-   * @param {string} towerType - 타워 타입 키
-   * @param {string} tierKey - 티어 키 ('tier1', 'tier2', 'tier3')
-   * @private
-   */
-  _createUpgradeOptionBtn(x, y, w, h, label, optionData, currentChoice, optionKey, prevTierDone, towerType, tierKey) {
-    const diamond = this.saveData.diamond || 0;
-    const isSelected = currentChoice === optionKey;
-    const isOtherSelected = currentChoice !== null && currentChoice !== optionKey;
-    const isLocked = !prevTierDone;
-    const canAfford = diamond >= optionData.cost;
-    const canBuy = !isSelected && !isOtherSelected && !isLocked && canAfford;
-
-    // 상태별 버튼 스타일 결정
-    let bgColor = COLORS.BACKGROUND;
-    let borderColor = 0x636e72;
-    let borderWidth = 1;
-    let textColor = '#636e72';
-    let costColor = '#636e72';
-
-    if (isSelected) {
-      // 이미 선택된 옵션: 타워 색상 배경 + 금색 텍스트
-      bgColor = TOWER_STATS[towerType].color;
-      borderColor = TOWER_STATS[towerType].color;
-      borderWidth = 2;
-      textColor = '#ffd700';
-      costColor = '#ffd700';
-    } else if (isOtherSelected) {
-      // 다른 옵션이 선택됨: 비활성 회색
-      bgColor = COLORS.BACKGROUND;
-      borderColor = 0x636e72;
-      borderWidth = 1;
-      textColor = '#636e72';
-    } else if (isLocked) {
-      // 이전 티어 미완료: 잠금 상태
-      bgColor = COLORS.WALL;
-      borderColor = 0x636e72;
-      borderWidth = 1;
-      textColor = '#636e72';
-    } else if (canAfford) {
-      // 구매 가능: 다이아몬드 색 테두리 강조
-      borderColor = COLORS.DIAMOND;
-      borderWidth = 2;
-      textColor = '#ffffff';
-      costColor = COLORS.DIAMOND_CSS;
-    }
-
-    // 버튼 배경
-    const bg = this.add.rectangle(x, y, w, h, bgColor, isSelected ? 0.3 : 1)
-      .setStrokeStyle(borderWidth, borderColor);
-    this.overlay.add(bg);
-
-    if (canBuy) {
-      bg.setInteractive({ useHandCursor: true });
-    }
-
-    // A/B 배지 (파란색/보라색 원)
-    const badgeColor = optionKey === 'a' ? BTN_PRIMARY : BTN_META;
-    const badge = this.add.circle(x - w / 2 + 14, y, 9, badgeColor);
-    this.overlay.add(badge);
-
-    const badgeText = this.add.text(x - w / 2 + 14, y, label, {
-      fontSize: '10px',
-      fontFamily: 'Galmuri11, Arial, sans-serif',
-      color: '#ffffff',
-      fontStyle: 'bold',
-    }).setOrigin(0.5);
-    this.overlay.add(badgeText);
-
-    // 효과 설명 텍스트 (선택됨이면 체크 표시, 잠금이면 자물쇠)
-    let descStr = optionData.desc;
-    if (isSelected) descStr = '\u2713 ' + descStr;
-    if (isLocked) descStr = '\uD83D\uDD12 ' + descStr;
-
-    const descText = this.add.text(x - 10, y, descStr, {
-      fontSize: '11px',
-      fontFamily: 'Galmuri11, Arial, sans-serif',
-      color: textColor,
-    }).setOrigin(0.5);
-    this.overlay.add(descText);
-
-    // 비용 표시 (이미 구매한 경우 비용 숨김)
-    const costStr = isSelected ? '' : `\u25C6 ${optionData.cost}`;
-    const costText = this.add.text(x + w / 2 - 30, y, costStr, {
-      fontSize: '11px',
-      fontFamily: 'Galmuri11, Arial, sans-serif',
-      color: costColor,
-    }).setOrigin(0.5);
-    this.overlay.add(costText);
-
-    // 구매 클릭 핸들러
-    if (canBuy) {
-      bg.on('pointerdown', () => {
-        this._purchaseTowerUpgrade(towerType, tierKey, optionKey, optionData.cost);
-      });
-    }
-  }
-
-  /**
    * 타워 메타 업그레이드를 구매한다.
    * 다이아몬드를 차감하고 세이브 데이터를 갱신한 뒤 상세 뷰를 새로고침한다.
    * @param {string} towerType - 타워 타입 키
-   * @param {string} tierKey - 티어 키 ('tier1', 'tier2', 'tier3')
-   * @param {string} choice - 선택 옵션 ('a' 또는 'b')
+   * @param {string} slot - 슬롯 키 ('damage' | 'fireRate' | 'range')
    * @param {number} cost - 다이아몬드 비용
    * @private
    */
-  _purchaseTowerUpgrade(towerType, tierKey, choice, cost) {
+  _purchaseTowerUpgrade(towerType, slot, cost) {
     if ((this.saveData.diamond || 0) < cost) return;
 
     this.saveData.diamond -= cost;
 
     if (!this.saveData.towerUpgrades) this.saveData.towerUpgrades = {};
     if (!this.saveData.towerUpgrades[towerType]) {
-      this.saveData.towerUpgrades[towerType] = { tier1: null, tier2: null, tier3: null };
+      this.saveData.towerUpgrades[towerType] = { damage: 0, fireRate: 0, range: 0 };
     }
-    this.saveData.towerUpgrades[towerType][tierKey] = choice;
+    this.saveData.towerUpgrades[towerType][slot] += 1;
 
     this._saveToDB(this.saveData);
     this._refreshDiamondDisplay();
@@ -974,57 +946,38 @@ export class CollectionScene extends Phaser.Scene {
 
   /**
    * 타워의 모든 메타 업그레이드 보너스 효과를 텍스트로 요약한다.
-   * 곱연산과 덧셈을 각 스탯별로 누적하여 한 줄로 표시한다.
+   * 각 슬롯(damage/fireRate/range)의 레벨별 누적 보너스를 포맷팅한다.
    * @param {string} type - 타워 타입 키
-   * @param {object} upgrades - 업그레이드 상태 { tier1: 'a'|'b'|null, tier2: ..., tier3: ... }
+   * @param {object} upgrades - 업그레이드 상태 { damage: n, fireRate: n, range: n }
    * @returns {string} 포맷된 보너스 요약 문자열
    * @private
    */
   _calcBonusSummary(type, upgrades) {
-    const treeData = META_UPGRADE_TREE[type];
-    const bonuses = {};
+    const { BONUS_PER_LEVEL } = META_UPGRADE_CONFIG;
+    const damageLv = upgrades.damage || 0;
+    const fireRateLv = upgrades.fireRate || 0;
+    const rangeLv = upgrades.range || 0;
 
-    for (let tier = 1; tier <= 3; tier++) {
-      const choice = upgrades[`tier${tier}`];
-      if (!choice) continue;
-      const tierData = treeData[`tier${tier}`][choice];
-      if (!tierData || !tierData.effects) continue;
-
-      for (const effect of tierData.effects) {
-        if (!bonuses[effect.stat]) {
-          bonuses[effect.stat] = { multiply: 1, add: 0 };
-        }
-        if (effect.type === 'multiply') {
-          bonuses[effect.stat].multiply *= effect.value;
-        } else if (effect.type === 'add') {
-          bonuses[effect.stat].add += effect.value;
-        }
-      }
-    }
-
-    if (Object.keys(bonuses).length === 0) {
+    if (damageLv === 0 && fireRateLv === 0 && rangeLv === 0) {
       return 'No bonuses yet';
     }
 
-    const lines = [];
-    for (const [stat, val] of Object.entries(bonuses)) {
-      const parts = [];
-      if (val.multiply !== 1) {
-        const pct = Math.round((val.multiply - 1) * 100);
-        // fireRate의 곱연산이 1 미만이면 공격 속도 증가를 의미
-        if (stat === 'fireRate') {
-          const speedPct = Math.round((1 - val.multiply) * 100);
-          parts.push(`+${speedPct}% speed`);
-        } else {
-          parts.push(`${pct >= 0 ? '+' : ''}${pct}%`);
-        }
-      }
-      if (val.add !== 0) {
-        parts.push(`+${val.add}`);
-      }
-      lines.push(`${stat}: ${parts.join(', ')}`);
+    const parts = [];
+
+    if (damageLv > 0) {
+      const pct = Math.round((Math.pow(1 + BONUS_PER_LEVEL, damageLv) - 1) * 100);
+      parts.push(`${t('meta.slot.damage')}: +${pct}%`);
     }
-    return lines.join('  |  ');
+    if (fireRateLv > 0) {
+      const pct = Math.round((1 - Math.pow(1 - BONUS_PER_LEVEL, fireRateLv)) * 100);
+      parts.push(`${t('meta.slot.fireRate')}: +${pct}%`);
+    }
+    if (rangeLv > 0) {
+      const pct = Math.round((Math.pow(1 + BONUS_PER_LEVEL, rangeLv) - 1) * 100);
+      parts.push(`${t('meta.slot.range')}: +${pct}%`);
+    }
+
+    return parts.join('  |  ');
   }
 
   // ── 유틸리티 업그레이드 상세 뷰 ────────────────────────────

@@ -9,7 +9,7 @@ import {
   GAME_WIDTH, GAME_HEIGHT, COLORS,
   TOWER_STATS, MERGE_RECIPES, MERGED_TOWER_STATS,
   CODEX_TIER_BG, ATTACK_TYPE_COLORS_CSS,
-  META_UPGRADE_TREE,
+  META_UPGRADE_CONFIG,
 } from '../config.js';
 import { t } from '../i18n.js';
 import { TowerInfoOverlay } from '../ui/TowerInfoOverlay.js';
@@ -459,6 +459,7 @@ export class MergeCodexScene extends Phaser.Scene {
    * 메타 업그레이드 보너스를 일반 스탯 객체에 적용한다.
    * GameScene._applyMetaUpgradesToTower의 로직을 미러링하되,
    * 타워 인스턴스 대신 일반 객체에서 동작한다.
+   * damage/fireRate/range 3개 슬롯의 레벨에 따라 누적 곱연산으로 보너스를 적용한다.
    * @param {string} towerType - 타워 타입 id (예: 'archer')
    * @param {object} stats - { damage, fireRate, range, ... } - 직접 변경됨
    * @private
@@ -467,29 +468,26 @@ export class MergeCodexScene extends Phaser.Scene {
     const upgrades = this._towerMetaUpgrades[towerType];
     if (!upgrades) return;
 
-    const treeData = META_UPGRADE_TREE[towerType];
-    if (!treeData) return;
+    const { BONUS_PER_LEVEL } = META_UPGRADE_CONFIG;
 
-    for (let tier = 1; tier <= 3; tier++) {
-      const choice = upgrades[`tier${tier}`];
-      if (!choice) continue;
+    // 공격력 보너스: 1.1^n
+    const damageLevel = upgrades.damage || 0;
+    if (damageLevel > 0) {
+      stats.damage *= Math.pow(1 + BONUS_PER_LEVEL, damageLevel);
+      stats.damage = Math.round(stats.damage);
+    }
 
-      const bonus = treeData[`tier${tier}`]?.[choice];
-      if (!bonus?.effects) continue;
+    // 공격속도 보너스: 0.9^n
+    const fireRateLevel = upgrades.fireRate || 0;
+    if (fireRateLevel > 0) {
+      stats.fireRate *= Math.pow(1 - BONUS_PER_LEVEL, fireRateLevel);
+    }
 
-      for (const effect of bonus.effects) {
-        if (stats[effect.stat] === undefined) continue;
-        if (effect.type === 'multiply') {
-          stats[effect.stat] *= effect.value;
-          // 정수형 스탯은 반올림 처리
-          if (['damage', 'range', 'splashRadius', 'chainRadius',
-               'pushbackDistance', 'chainCount'].includes(effect.stat)) {
-            stats[effect.stat] = Math.round(stats[effect.stat]);
-          }
-        } else if (effect.type === 'add') {
-          stats[effect.stat] += effect.value;
-        }
-      }
+    // 사거리 보너스: 1.1^n
+    const rangeLevel = upgrades.range || 0;
+    if (rangeLevel > 0) {
+      stats.range *= Math.pow(1 + BONUS_PER_LEVEL, rangeLevel);
+      stats.range = Math.round(stats.range);
     }
   }
 

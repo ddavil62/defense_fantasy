@@ -339,6 +339,14 @@ const STRINGS = {
     'branch.tag.push': '밀치기형',
     'branch.tag.chain': '연쇄형',
     'branch.tag.single': '단일형',
+    // 메타 업그레이드 슬롯
+    'meta.slot.damage': '공격력',
+    'meta.slot.fireRate': '공격속도',
+    'meta.slot.range': '사거리',
+    'meta.level': 'Lv.{cur} / {max}',
+    'meta.bonus': '+{pct}%',
+    'meta.max': 'MAX',
+    'meta.total.level': '총 강화 {total}',
     // 컬렉션 UI
     'collection.tab.meta': '메타업그레이드',
     'collection.tab.codex': '합성도감',
@@ -778,6 +786,14 @@ const STRINGS = {
     'branch.tag.push': 'Push',
     'branch.tag.chain': 'Chain',
     'branch.tag.single': 'Single',
+    // Meta upgrade slots
+    'meta.slot.damage': 'Attack',
+    'meta.slot.fireRate': 'Attack Speed',
+    'meta.slot.range': 'Range',
+    'meta.level': 'Lv.{cur} / {max}',
+    'meta.bonus': '+{pct}%',
+    'meta.max': 'MAX',
+    'meta.total.level': 'Total Lv.{total}',
     // Collection UI
     'collection.tab.meta': 'Meta Upgrade',
     'collection.tab.codex': 'Merge Codex',

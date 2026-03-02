@@ -1834,282 +1834,45 @@ export const CAMPAIGN_DIAMOND_REWARDS = [0, 3, 5, 8];
 
 // (타워 해금은 월드 클리어 기반, TOWER_UNLOCK_MAP 참조)
 
-// ── Meta Upgrade Tree (10 towers × 3 tiers × A/B) ─────────────
+// ── 메타 업그레이드 설정 (타워별 능력치 선형 강화) ──────────────
 /**
- * Permanent meta-upgrade tree per tower type.
- * Each tier has 'a' and 'b' options with name, desc, cost, and effects.
- * @type {Object<string, object>}
+ * 타워별 메타 업그레이드 설정.
+ * 각 타워의 damage/fireRate/range 3개 슬롯을 독립적으로 레벨업하는 선형 스택 시스템.
+ * - BONUS_PER_LEVEL: 레벨당 보너스 비율 (+10%)
+ * - BASE_COST: 레벨 1 구매 비용 (다이아몬드)
+ * - COST_STEP: 레벨당 비용 증가분
+ * - towers: 타워별 각 슬롯의 최대 레벨 (maxLevel)
+ * @type {object}
  */
-export const META_UPGRADE_TREE = {
-  archer: {
-    tier1: {
-      a: { name: '예리한 화살촉', desc: '공격력 +10%', cost: 5,
-           effects: [{ type: 'multiply', stat: 'damage', value: 1.1 }] },
-      b: { name: '넓은 시야', desc: '사거리 +10%', cost: 5,
-           effects: [{ type: 'multiply', stat: 'range', value: 1.1 }] },
-    },
-    tier2: {
-      a: { name: '빠른 사격', desc: '공격속도 +15%', cost: 12,
-           effects: [{ type: 'multiply', stat: 'fireRate', value: 0.85 }] },
-      b: { name: '관통의 힘', desc: '공격력 +15%', cost: 15,
-           effects: [{ type: 'multiply', stat: 'damage', value: 1.15 }] },
-    },
-    tier3: {
-      a: { name: '명사수의 집중', desc: '공격력 +25%', cost: 25,
-           effects: [{ type: 'multiply', stat: 'damage', value: 1.25 }] },
-      b: { name: '초원의 감시자', desc: '사거리 +20%, 공격속도 +10%', cost: 30,
-           effects: [
-             { type: 'multiply', stat: 'range', value: 1.2 },
-             { type: 'multiply', stat: 'fireRate', value: 0.9 },
-           ] },
-    },
-  },
-  mage: {
-    tier1: {
-      a: { name: '마력 증폭', desc: '공격력 +10%', cost: 6,
-           effects: [{ type: 'multiply', stat: 'damage', value: 1.1 }] },
-      b: { name: '확장된 폭발', desc: '폭발 반경 +15%', cost: 6,
-           effects: [{ type: 'multiply', stat: 'splashRadius', value: 1.15 }] },
-    },
-    tier2: {
-      a: { name: '비전 폭풍', desc: '공격력 +15%', cost: 15,
-           effects: [{ type: 'multiply', stat: 'damage', value: 1.15 }] },
-      b: { name: '마나 효율', desc: '공격속도 +15%', cost: 14,
-           effects: [{ type: 'multiply', stat: 'fireRate', value: 0.85 }] },
-    },
-    tier3: {
-      a: { name: '파멸의 마법', desc: '공격력 +20%, 폭발 반경 +10%', cost: 30,
-           effects: [
-             { type: 'multiply', stat: 'damage', value: 1.2 },
-             { type: 'multiply', stat: 'splashRadius', value: 1.1 },
-           ] },
-      b: { name: '마법의 메아리', desc: '공격속도 +20%, 사거리 +15%', cost: 28,
-           effects: [
-             { type: 'multiply', stat: 'fireRate', value: 0.8 },
-             { type: 'multiply', stat: 'range', value: 1.15 },
-           ] },
-    },
-  },
-  ice: {
-    tier1: {
-      a: { name: '차가운 기운', desc: '슬로우 강도 +5%p', cost: 6,
-           effects: [{ type: 'add', stat: 'slowAmount', value: 0.05 }] },
-      b: { name: '서리의 사거리', desc: '사거리 +10%', cost: 5,
-           effects: [{ type: 'multiply', stat: 'range', value: 1.1 }] },
-    },
-    tier2: {
-      a: { name: '빙결 강화', desc: '슬로우 지속 +20%', cost: 14,
-           effects: [{ type: 'multiply', stat: 'slowDuration', value: 1.2 }] },
-      b: { name: '동토의 바람', desc: '공격속도 +15%', cost: 12,
-           effects: [{ type: 'multiply', stat: 'fireRate', value: 0.85 }] },
-    },
-    tier3: {
-      a: { name: '절대영도', desc: '슬로우 +10%p, 공격력 +20%', cost: 28,
-           effects: [
-             { type: 'add', stat: 'slowAmount', value: 0.1 },
-             { type: 'multiply', stat: 'damage', value: 1.2 },
-           ] },
-      b: { name: '만년빙의 영역', desc: '사거리 +20%, 폭발 반경 +20%', cost: 30,
-           effects: [
-             { type: 'multiply', stat: 'range', value: 1.2 },
-             { type: 'multiply', stat: 'splashRadius', value: 1.2 },
-           ] },
-    },
-  },
-  lightning: {
-    tier1: {
-      a: { name: '전압 강화', desc: '공격력 +10%', cost: 7,
-           effects: [{ type: 'multiply', stat: 'damage', value: 1.1 }] },
-      b: { name: '전도체 확장', desc: '체인 반경 +15%', cost: 6,
-           effects: [{ type: 'multiply', stat: 'chainRadius', value: 1.15 }] },
-    },
-    tier2: {
-      a: { name: '고압 전류', desc: '공격력 +15%, 공격속도 +10%', cost: 16,
-           effects: [
-             { type: 'multiply', stat: 'damage', value: 1.15 },
-             { type: 'multiply', stat: 'fireRate', value: 0.9 },
-           ] },
-      b: { name: '연쇄 반응', desc: '체인 감쇄 +5%p', cost: 14,
-           effects: [{ type: 'add', stat: 'chainDecay', value: 0.05 }] },
-    },
-    tier3: {
-      a: { name: '천둥의 심판', desc: '공격력 +25%', cost: 30,
-           effects: [{ type: 'multiply', stat: 'damage', value: 1.25 }] },
-      b: { name: '번개 그물', desc: '체인 수 +1, 체인 반경 +20%', cost: 35,
-           effects: [
-             { type: 'add', stat: 'chainCount', value: 1 },
-             { type: 'multiply', stat: 'chainRadius', value: 1.2 },
-           ] },
-    },
-  },
-  flame: {
-    tier1: {
-      a: { name: '고열 화염', desc: '화상 도트 +15%', cost: 6,
-           effects: [{ type: 'multiply', stat: 'burnDamage', value: 1.15 }] },
-      b: { name: '지속 연소', desc: '화상 지속 +20%', cost: 5,
-           effects: [{ type: 'multiply', stat: 'burnDuration', value: 1.2 }] },
-    },
-    tier2: {
-      a: { name: '업화', desc: '공격력 +15%, 화상 도트 +10%', cost: 15,
-           effects: [
-             { type: 'multiply', stat: 'damage', value: 1.15 },
-             { type: 'multiply', stat: 'burnDamage', value: 1.1 },
-           ] },
-      b: { name: '확산 화염', desc: '사거리 +15%', cost: 13,
-           effects: [{ type: 'multiply', stat: 'range', value: 1.15 }] },
-    },
-    tier3: {
-      a: { name: '지옥불', desc: '화상 도트 +30%, 공격력 +15%', cost: 28,
-           effects: [
-             { type: 'multiply', stat: 'burnDamage', value: 1.3 },
-             { type: 'multiply', stat: 'damage', value: 1.15 },
-           ] },
-      b: { name: '불의 장막', desc: '사거리 +20%, 공격속도 +15%', cost: 30,
-           effects: [
-             { type: 'multiply', stat: 'range', value: 1.2 },
-             { type: 'multiply', stat: 'fireRate', value: 0.85 },
-           ] },
-    },
-  },
-  rock: {
-    tier1: {
-      a: { name: '강화 투석', desc: '공격력 +10%', cost: 7,
-           effects: [{ type: 'multiply', stat: 'damage', value: 1.1 }] },
-      b: { name: '견고한 발사대', desc: '공격속도 +10%', cost: 6,
-           effects: [{ type: 'multiply', stat: 'fireRate', value: 0.9 }] },
-    },
-    tier2: {
-      a: { name: '거대 바위', desc: '공격력 +20%', cost: 16,
-           effects: [{ type: 'multiply', stat: 'damage', value: 1.2 }] },
-      b: { name: '넓은 충격파', desc: '사거리 +15%', cost: 14,
-           effects: [{ type: 'multiply', stat: 'range', value: 1.15 }] },
-    },
-    tier3: {
-      a: { name: '산사태', desc: '공격력 +30%', cost: 32,
-           effects: [{ type: 'multiply', stat: 'damage', value: 1.3 }] },
-      b: { name: '지진파', desc: '공격속도 +20%, 사거리 +15%', cost: 30,
-           effects: [
-             { type: 'multiply', stat: 'fireRate', value: 0.8 },
-             { type: 'multiply', stat: 'range', value: 1.15 },
-           ] },
-    },
-  },
-  poison: {
-    tier1: {
-      a: { name: '맹독 농축', desc: '독 도트 +15%', cost: 6,
-           effects: [{ type: 'multiply', stat: 'poisonDamage', value: 1.15 }] },
-      b: { name: '독무 확산', desc: '폭발 반경 +10%', cost: 6,
-           effects: [{ type: 'multiply', stat: 'splashRadius', value: 1.1 }] },
-    },
-    tier2: {
-      a: { name: '부식성 독', desc: '방어력 감소 +5%p', cost: 15,
-           effects: [{ type: 'add', stat: 'armorReduction', value: 0.05 }] },
-      b: { name: '장기 오염', desc: '독 지속 +25%', cost: 13,
-           effects: [{ type: 'multiply', stat: 'poisonDuration', value: 1.25 }] },
-    },
-    tier3: {
-      a: { name: '치명적 역병', desc: '독 도트 +25%, 방어력 감소 +10%p', cost: 30,
-           effects: [
-             { type: 'multiply', stat: 'poisonDamage', value: 1.25 },
-             { type: 'add', stat: 'armorReduction', value: 0.1 },
-           ] },
-      b: { name: '죽음의 안개', desc: '폭발 반경 +25%, 사거리 +15%', cost: 28,
-           effects: [
-             { type: 'multiply', stat: 'splashRadius', value: 1.25 },
-             { type: 'multiply', stat: 'range', value: 1.15 },
-           ] },
-    },
-  },
-  wind: {
-    tier1: {
-      a: { name: '강풍', desc: '밀치기 +15%', cost: 5,
-           effects: [{ type: 'multiply', stat: 'pushbackDistance', value: 1.15 }] },
-      b: { name: '빠른 돌풍', desc: '공격속도 +10%', cost: 6,
-           effects: [{ type: 'multiply', stat: 'fireRate', value: 0.9 }] },
-    },
-    tier2: {
-      a: { name: '회오리 강화', desc: '밀치기 +20%', cost: 14,
-           effects: [{ type: 'multiply', stat: 'pushbackDistance', value: 1.2 }] },
-      b: { name: '바람의 감시', desc: '사거리 +15%', cost: 12,
-           effects: [{ type: 'multiply', stat: 'range', value: 1.15 }] },
-    },
-    tier3: {
-      a: { name: '태풍의 눈', desc: '밀치기 +25%, 공격력 +20%', cost: 28,
-           effects: [
-             { type: 'multiply', stat: 'pushbackDistance', value: 1.25 },
-             { type: 'multiply', stat: 'damage', value: 1.2 },
-           ] },
-      b: { name: '광역 질풍', desc: '공격속도 +20%, 사거리 +15%', cost: 25,
-           effects: [
-             { type: 'multiply', stat: 'fireRate', value: 0.8 },
-             { type: 'multiply', stat: 'range', value: 1.15 },
-           ] },
-    },
-  },
-  light: {
-    tier1: {
-      a: { name: '집중 광선', desc: '공격력 +10%', cost: 8,
-           effects: [{ type: 'multiply', stat: 'damage', value: 1.1 }] },
-      b: { name: '광역 조명', desc: '폭발 반경/사거리 +10%', cost: 7,
-           effects: [
-             { type: 'multiply', stat: 'range', value: 1.1 },
-             { type: 'multiply', stat: 'splashRadius', value: 1.1 },
-           ] },
-    },
-    tier2: {
-      a: { name: '고출력 레이저', desc: '공격력 +15%, 공격속도 +10%', cost: 18,
-           effects: [
-             { type: 'multiply', stat: 'damage', value: 1.15 },
-             { type: 'multiply', stat: 'fireRate', value: 0.9 },
-           ] },
-      b: { name: '빛의 보호막', desc: '공격속도 +15%', cost: 15,
-           effects: [{ type: 'multiply', stat: 'fireRate', value: 0.85 }] },
-    },
-    tier3: {
-      a: { name: '태양의 분노', desc: '공격력 +30%', cost: 35,
-           effects: [{ type: 'multiply', stat: 'damage', value: 1.3 }] },
-      b: { name: '빛의 축복', desc: '공격속도 +25%, 사거리 +10%', cost: 32,
-           effects: [
-             { type: 'multiply', stat: 'fireRate', value: 0.75 },
-             { type: 'multiply', stat: 'range', value: 1.1 },
-           ] },
-    },
-  },
-  dragon: {
-    tier1: {
-      a: { name: '용의 화염', desc: '공격력 +10%', cost: 8,
-           effects: [{ type: 'multiply', stat: 'damage', value: 1.1 }] },
-      b: { name: '용의 날개', desc: '사거리 +10%', cost: 8,
-           effects: [{ type: 'multiply', stat: 'range', value: 1.1 }] },
-    },
-    tier2: {
-      a: { name: '고대의 불길', desc: '공격력 +15%, 화상 도트 +15%', cost: 18,
-           effects: [
-             { type: 'multiply', stat: 'damage', value: 1.15 },
-             { type: 'multiply', stat: 'burnDamage', value: 1.15 },
-           ] },
-      b: { name: '용의 위엄', desc: '폭발 반경 +15%, 공격속도 +10%', cost: 16,
-           effects: [
-             { type: 'multiply', stat: 'splashRadius', value: 1.15 },
-             { type: 'multiply', stat: 'fireRate', value: 0.9 },
-           ] },
-    },
-    tier3: {
-      a: { name: '용왕의 심판', desc: '공격력 +25%, 화상/독 도트 +20%', cost: 35,
-           effects: [
-             { type: 'multiply', stat: 'damage', value: 1.25 },
-             { type: 'multiply', stat: 'burnDamage', value: 1.2 },
-             { type: 'multiply', stat: 'poisonDamage', value: 1.2 },
-           ] },
-      b: { name: '드래곤 로드', desc: '사거리 +20%, 공격속도 +20%, 폭발 반경 +15%', cost: 35,
-           effects: [
-             { type: 'multiply', stat: 'range', value: 1.2 },
-             { type: 'multiply', stat: 'fireRate', value: 0.8 },
-             { type: 'multiply', stat: 'splashRadius', value: 1.15 },
-           ] },
-    },
+export const META_UPGRADE_CONFIG = {
+  BONUS_PER_LEVEL: 0.10,  // 레벨당 보너스 비율 (+10%)
+  BASE_COST: 5,            // 레벨 1 비용 (다이아몬드)
+  COST_STEP: 3,            // 레벨당 비용 증가분
+  towers: {
+    archer:    { damage: 3, fireRate: 5, range: 3 },
+    mage:      { damage: 5, fireRate: 3, range: 3 },
+    ice:       { damage: 2, fireRate: 3, range: 5 },
+    lightning: { damage: 5, fireRate: 3, range: 3 },
+    flame:     { damage: 3, fireRate: 5, range: 3 },
+    rock:      { damage: 5, fireRate: 2, range: 3 },
+    poison:    { damage: 2, fireRate: 3, range: 5 },
+    wind:      { damage: 3, fireRate: 5, range: 3 },
+    light:     { damage: 5, fireRate: 3, range: 3 },
+    dragon:    { damage: 5, fireRate: 2, range: 5 },
   },
 };
+
+/**
+ * 메타 업그레이드 다음 레벨 구매 비용을 계산한다.
+ * 비용 공식: baseCost + (nextLevel - 1) * step
+ * 예: Lv1=5, Lv2=8, Lv3=11, Lv4=14, Lv5=17
+ * @param {number} currentLevel - 현재 레벨 (0이면 미강화)
+ * @returns {number} 다음 레벨 구매 비용 (다이아몬드)
+ */
+export function calcMetaUpgradeCost(currentLevel) {
+  const nextLevel = currentLevel + 1;
+  return META_UPGRADE_CONFIG.BASE_COST + (nextLevel - 1) * META_UPGRADE_CONFIG.COST_STEP;
+}
 
 // ── Utility Upgrades ───────────────────────────────────────────
 /**
@@ -2220,7 +1983,7 @@ function createDefaultStats() {
 }
 
 /** @const {number} 현재 세이브 데이터 스키마 버전 */
-export const SAVE_DATA_VERSION = 4;
+export const SAVE_DATA_VERSION = 5;
 
 /**
  * 세이브 데이터를 최신 스키마로 마이그레이션한다.
@@ -2316,6 +2079,13 @@ export function migrateSaveData(saveData) {
     }
     saveData.unlockedTowers = newUnlocked;
     saveData.saveDataVersion = 4;
+  }
+
+  // ── v4 → v5 마이그레이션: 메타 업그레이드 시스템 리디자인 (tier A/B → 슬롯별 레벨) ──
+  if (saveData.saveDataVersion < 5) {
+    // 기존 tier1/tier2/tier3 구조를 { damage: 0, fireRate: 0, range: 0 } 형식으로 리셋
+    saveData.towerUpgrades = {};
+    saveData.saveDataVersion = 5;
   }
 
   // ── Ensure all v2 fields exist ──
