@@ -512,7 +512,7 @@ test.describe('LevelSelectScene', () => {
 // ── 4. HUD Wave Display ──────────────────────────────────────────
 
 test.describe('HUD Wave Display', () => {
-  test('Campaign mode shows Wave: X/Y format', async ({ page }) => {
+  test('Campaign mode shows X/Y format', async ({ page }) => {
     await waitForGame(page);
     await waitForScene(page, 'MenuScene');
 
@@ -552,12 +552,12 @@ test.describe('HUD Wave Display', () => {
       return null;
     });
 
-    // Should be "⚔ Wave: 1/8" (f1_m1 has 8 total waves)
+    // Should be "1/8" or "⚔ 1/8" (f1_m1 has 8 total waves, "Wave:" 접두사 생략)
     expect(waveText).not.toBeNull();
-    expect(waveText).toMatch(/Wave: 1\/\d+/);
+    expect(waveText).toMatch(/1\/\d+/);
   });
 
-  test('Endless mode shows Wave: X format (no total)', async ({ page }) => {
+  test('Endless mode shows X format without total', async ({ page }) => {
     await waitForGame(page);
 
     // Start GameScene with CLASSIC_MAP (endless) via game's own code
@@ -579,9 +579,9 @@ test.describe('HUD Wave Display', () => {
       return null;
     });
 
-    // Should be "⚔ Wave: 1" (no slash)
+    // Should be "1" or "⚔ 1" (no slash, "Wave:" 접두사 생략)
     expect(waveText).not.toBeNull();
-    expect(waveText).toMatch(/Wave: \d+$/);
+    expect(waveText).toMatch(/^\u2694?\s?\d+$/);
     expect(waveText).not.toContain('/');
   });
 });

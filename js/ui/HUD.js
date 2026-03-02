@@ -80,18 +80,18 @@ export class HUD {
     this.dangerBorderGraphics.setDepth(32);
     this.dangerBorderGraphics.setAlpha(0);
 
-    // 웨이브 아이콘 + 텍스트 (좌측)
+    // 웨이브 아이콘 + 텍스트 (좌측, "Wave:" 접두사 생략하여 공간 절약)
     if (this.scene.textures.exists('icon_sword')) {
       this.waveIcon = this.scene.add.image(18, HUD_HEIGHT / 2, 'icon_sword')
         .setDisplaySize(14, 14).setDepth(31);
-      this.waveText = this.scene.add.text(28, HUD_HEIGHT / 2, 'Wave: 1', {
+      this.waveText = this.scene.add.text(28, HUD_HEIGHT / 2, '1', {
         fontSize: '16px',
         fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#ffffff',
       }).setOrigin(0, 0.5).setDepth(31);
     } else {
       this.waveIcon = null;
-      this.waveText = this.scene.add.text(10, HUD_HEIGHT / 2, '\u2694 Wave: 1', {
+      this.waveText = this.scene.add.text(10, HUD_HEIGHT / 2, '\u2694 1', {
         fontSize: '16px',
         fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#ffffff',
@@ -100,16 +100,16 @@ export class HUD {
 
     // 골드 아이콘 + 텍스트 (중앙)
     if (this.scene.textures.exists('icon_diamond')) {
-      this.goldIcon = this.scene.add.image(135, HUD_HEIGHT / 2, 'icon_diamond')
+      this.goldIcon = this.scene.add.image(103, HUD_HEIGHT / 2, 'icon_diamond')
         .setDisplaySize(14, 14).setDepth(31);
-      this.goldText = this.scene.add.text(146, HUD_HEIGHT / 2, '200', {
+      this.goldText = this.scene.add.text(114, HUD_HEIGHT / 2, '200', {
         fontSize: '16px',
         fontFamily: 'Galmuri11, Arial, sans-serif',
         color: GOLD_TEXT_CSS,
       }).setOrigin(0, 0.5).setDepth(31);
     } else {
       this.goldIcon = null;
-      this.goldText = this.scene.add.text(135, HUD_HEIGHT / 2, '\u25C6 200', {
+      this.goldText = this.scene.add.text(103, HUD_HEIGHT / 2, '\u25C6 200', {
         fontSize: '16px',
         fontFamily: 'Galmuri11, Arial, sans-serif',
         color: GOLD_TEXT_CSS,
@@ -118,16 +118,16 @@ export class HUD {
 
     // HP 아이콘 + 텍스트 (우측)
     if (this.scene.textures.exists('icon_heart')) {
-      this.hpIcon = this.scene.add.image(237, HUD_HEIGHT / 2, 'icon_heart')
+      this.hpIcon = this.scene.add.image(175, HUD_HEIGHT / 2, 'icon_heart')
         .setDisplaySize(14, 14).setDepth(31);
-      this.hpText = this.scene.add.text(248, HUD_HEIGHT / 2, '20', {
+      this.hpText = this.scene.add.text(186, HUD_HEIGHT / 2, '20', {
         fontSize: '16px',
         fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#ffffff',
       }).setOrigin(0, 0.5).setDepth(31);
     } else {
       this.hpIcon = null;
-      this.hpText = this.scene.add.text(235, HUD_HEIGHT / 2, '\u2665 20', {
+      this.hpText = this.scene.add.text(175, HUD_HEIGHT / 2, '\u2665 20', {
         fontSize: '16px',
         fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#ffffff',
@@ -151,15 +151,16 @@ export class HUD {
   /**
    * 웨이브 번호 텍스트를 갱신한다.
    * total이 유한값이면 캠페인 모드 형식(X/Y), 아니면 엔드리스 형식(X)으로 표시한다.
+   * 아이콘이 있으면 숫자만, 없으면 검 이모지(⚔) 접두사를 붙인다.
    * @param {number} round - 현재 라운드(웨이브) 번호
    * @param {number|null} [total=null] - 총 웨이브 수 (null 또는 Infinity면 엔드리스)
    */
   updateWave(round, total = null) {
     const prefix = this.waveIcon ? '' : '\u2694 ';
     if (total !== null && isFinite(total)) {
-      this.waveText.setText(`${prefix}Wave: ${round}/${total}`);
+      this.waveText.setText(`${prefix}${round}/${total}`);
     } else {
-      this.waveText.setText(`${prefix}Wave: ${round}`);
+      this.waveText.setText(`${prefix}${round}`);
     }
   }
 
