@@ -4,13 +4,15 @@ Gold (인게임 화폐) + Diamond (메타 화폐) + 메타 업그레이드 + 컬
 
 ## Gold 시스템
 
-- 초기: 250G (유틸리티 Gold Boost 적용 시 최대 350G)
+- 초기: 200G (유틸리티 Gold Boost 적용 시 최대 350G)
 - 적 처치 시 타입별 보상 (Normal 5G, Fast 3G, Tank 15G, Boss 100G, Swarm 2G, Splitter 12G, Armored 20G)
   - 배율 적용: `enemy.gold * goldRainMultiplier * adGoldMultiplier` (Gold Rain 소모품 2x, 광고 골드 부스트 2x, 최대 4배)
-- 웨이브 클리어 보너스: `round * 4 + floor(currentHP / maxHP * 15)`
+- 웨이브 클리어 보너스: `round * 3 + floor(currentHP / maxHP * 8)`
   - 배율 적용: `bonusGold * metaWaveBonusMultiplier * adGoldMultiplier` (유틸리티 Wave Bonus, 광고 골드 부스트 2x)
-- 소비: 타워 설치, 업그레이드 (Lv.2, Lv.3), 타워 강화, HP 회복, 소모품 능력
-- 판매 환급: 총 투자 비용의 60%
+- 소비: 타워 설치, 업그레이드 (Lv.2, Lv.3), 타워 강화, HP 회복, 소모품 능력, 합성 비용
+- 판매 환급: 총 투자 비용의 50% (`SELL_RATIO = 0.5`)
+- 타워 배치 한도: 최대 30기 동시 배치 (`MAX_TOWER_COUNT = 30`)
+- 합성 골드 비용: T2=30G, T3=80G, T4=150G, T5=250G (`MERGE_COST`)
 
 ## 기지 HP 시스템
 
@@ -68,7 +70,7 @@ floor(round / 5) * 2 + floor(round / 10) * 3
 | 업그레이드 | 효과 |
 |---|---|
 | Base HP+ | 20 → 22 / 25 / 30 |
-| Gold Boost | 250 → 275 / 300 / 350G |
+| Gold Boost | 200 → 275 / 300 / 350G |
 | Wave Bonus x | 1.0 → 1.1 / 1.2 / 1.3 |
 
 ### 세이브 데이터 마이그레이션

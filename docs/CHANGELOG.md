@@ -4,6 +4,47 @@
 
 ---
 
+## 2026-03-03 -- 밸런스 전면 조정 (Balance Overhaul)
+
+### 추가
+
+- **`js/config.js`** -- `MAX_TOWER_COUNT = 30` 타워 배치 슬롯 상한 상수 추가
+- **`js/config.js`** -- `MERGE_COST = {2:30, 3:80, 4:150, 5:250}` 합성 티어별 골드 비용 상수 추가
+- **`js/config.js`** -- `calcHpScale()` HP 스케일링 함수 신규 (R21-35: 0.20/R, R36-50: 0.30/R, R51+: 0.45/R)
+- **`js/config.js`** -- `getBossHpMultiplier()` 보스 HP 배율 함수 신규 (<=R30: 3.0x, <=R40: 4.0x, R41+: 5.0x)
+- **`js/config.js`** -- `calcWaveClearBonus()` 웨이브 클리어 보너스 공식 함수 신규 (`round * 3 + floor(HP/maxHP * 8)`)
+- **`js/ui/HUD.js`** -- `updateTowerCount(count, max)` 메서드 추가. 타워 카운트 텍스트(x=230), 80% 이상 노란색, 100% 빨간색 경고 색상
+- **`js/i18n.js`** -- 4개 키 추가: `merge.cost`, `merge.noGold`, `tower.limit`, `hud.towers` (ko/en)
+- **`tools/balance-simulator.mjs`** -- Node.js 헤드리스 밸런스 시뮬레이터 (Phaser 의존성 없음, 5개 AI 전략 시나리오, CLI 지원)
+
+### 변경
+
+- **`js/config.js`** -- `INITIAL_GOLD` 250 -> 200
+- **`js/config.js`** -- `SELL_RATIO` 0.6 -> 0.5
+- **`js/config.js`** -- T5 star_forge: burnDamage 120->50, burnDuration 12->8
+- **`js/config.js`** -- T5 omega_herald: chainCount 20->16, burnDamage 40->25, burnDuration 10->7, poisonDamage 30->18, poisonDuration 12->8
+- **`js/config.js`** -- T5 extinction_engine: poisonDamage 30->18, poisonDuration 12->8, burnDamage 35->20, burnDuration 9->6
+- **`js/config.js`** -- T5 absolute_dominion: chainCount 18->14, chainDecay 0.92->0.88
+- **`js/config.js`** -- T5 void_maelstrom: burnDamage 50->30, burnDuration 10->7, poisonDamage 40->25, poisonDuration 12->8
+- **`js/scenes/GameScene.js`** -- `_onTowerMerge()`: 합성 비용 체크 + 골드 차감 로직 추가, totalInvested에 mergeCost 합산
+- **`js/scenes/GameScene.js`** -- `_buyAndPlaceTower()`: `MAX_TOWER_COUNT` 체크 + 초과 시 경고 메시지
+- **`js/scenes/GameScene.js`** -- `update()`: 매 프레임 HUD 타워 카운트 갱신
+- **`js/ui/TowerPanel.js`** -- 합성 미리보기 버블에 비용 표시 (`MERGE_COST[tier]`), 골드 부족 시 빨간색
+
+### 수정
+
+- **`js/scenes/GameScene.js`** -- 합성 골드 부족 시 드래그된 타워 투명화 버그 수정 (`towerA.graphics.setAlpha(1)` 복원 추가)
+
+### 참고
+
+- 스펙: `.claude/specs/2026-03-03-balance-overhaul.md`
+- QA: `.claude/specs/2026-03-03-balance-overhaul-qa.md`
+- 1차 QA FAIL (합성 실패 시 타워 alpha=0 잔류 버그) -> 수정 후 PASS
+- 세이브 데이터 변경 없음 (SAVE_DATA_VERSION 4 유지)
+- Gold Boost 메타 업그레이드 Tier 값(275/300/350G)은 기존 INITIAL_GOLD=250 기준이며, 200G 변경 후 상대적 효과 증가됨 (의도된 사항으로 유지)
+
+---
+
 ## 2026-03-02 -- AdMob 통합 Phase 4 (일일 제한 시스템 검증 + 통합 QA) -- AdMob 통합 완료
 
 ### 검증 완료 (코드 변경 없음)

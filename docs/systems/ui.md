@@ -14,6 +14,7 @@ HUD, TowerPanel, TowerInfoOverlay(타워 정보 오버레이), 머지 프리뷰,
 - HP <= 5 시 빨간 깜빡임
 - 웨이브 카운트다운: 대기 시간 잔여량 표시
 - 다음 웨이브 적 미리보기 도트 표시
+- 타워 카운트: `updateTowerCount(count, max)` 메서드 (x=230, 11px). `타워 N/30` 형식. 80% 이상 노란색(#fdcb6e), 100% 빨간색(#ff4757) 경고
 - 음소거 토글 버튼: `icon_sound_on`/`icon_sound_off` 아이콘(16x16, depth=32), 폴백 텍스트 '♪'/'M'
 - Pause 버튼: `icon_pause` 아이콘(18x18, depth=32), 폴백 텍스트 '||' -- 우측 상단 (x=310, y=20)
 - 배경: `hud_bar_bg` 이미지 (360x40px), 폴백 그라데이션
@@ -190,9 +191,10 @@ TowerPanel.showTowerInfo(tower) / MergeCodexScene._showCodexCardOverlay(entry)
 
 | 요소 | 크기/위치 | 스타일 |
 |---|---|---|
-| 배경 | 90x32px | fill 0x0a0e1a (alpha 0.9), 결과 color 테두리 (lineWidth 2) |
-| 결과 이름 | center y=-5 | 결과 color, 10px bold |
-| 티어 | center y=8 | #aaaaaa, 9px |
+| 배경 | 100x44px (비용 있을 때) / 100x32px (비용 없을 때) | fill 0x0a0e1a (alpha 0.9), 결과 color 테두리 (lineWidth 2) |
+| 결과 이름 | center y=-11 (비용 있을 때) / y=-5 (없을 때) | 결과 color, 10px bold |
+| 티어 | center y=2 (비용 있을 때) / y=8 (없을 때) | #aaaaaa, 9px |
+| 합성 비용 | center y=+15 | 금색(#ffd700), 골드 부족 시 빨간색(#ff4757), 9px. `MERGE_COST[tier]`G 표시 |
 
 - Container depth 41
 - Y 클리핑: `Math.max(HUD_HEIGHT + 20, tower.y - 34)` -- 맵 상단 침범 방지
