@@ -4,6 +4,55 @@
 
 ---
 
+## 2026-03-02 -- AdMob 통합 Phase 4 (일일 제한 시스템 검증 + 통합 QA) -- AdMob 통합 완료
+
+### 검증 완료 (코드 변경 없음)
+
+- **일일 제한 시스템 전수 검증** -- AdManager.js의 `_getToday()` YYYY-MM-DD 형식, `_ensureTodayData()` 자정 리셋, `getDailyAdCount()`/`incrementDailyAdCount()`/`isAdLimitReached()`/`getRemainingAdCount()` 전체 동작 확인
+- **AD_LIMITS 매핑 정확성** -- `diamond: AD_LIMIT_DIAMOND(5)`, `goldBoost: AD_LIMIT_GOLD_BOOST(3)`, `clearBoost: AD_LIMIT_CLEAR_BOOST(3)` -- config.js 상수 사용, 하드코딩 없음
+- **각 씬별 일일 제한 사용** -- MenuScene(diamond), LevelSelectScene(goldBoost/clearBoost), MapClearScene(clearBoost 카운터 공유), GameOverScene(부활은 판당 1회, 일일 제한 아님) 전부 확인
+- **카운터 증가 타이밍** -- 모든 씬에서 `result.rewarded === true` 일 때만 `incrementDailyAdCount` 호출, 실패 시 미호출 확인
+- **localStorage 에러 내성** -- `_loadDailyLimits()` 파싱 실패 시 기본값, `_saveDailyLimits()` 저장 실패 시 무시 확인
+- **전면 광고 검증** -- GameOverScene 진입 시 showInterstitial 호출, MapClearScene 진입 시 미호출, AdManager 부재 시 0.5초 폴백 확인
+- **코드 품질** -- 한국어 주석 완비, i18n 10개 키 ko/en 등록 완료, 모든 광고 버튼 isProcessing 중복 탭 방지, 불필요한 console.log 없음
+
+### 참고
+
+- 스펙: `.claude/specs/2026-03-02-admob-integration.md`
+- Phase 4 리포트: `.claude/specs/2026-03-02-admob-integration-phase4-report.md`
+- Phase 4 QA: `.claude/specs/2026-03-02-admob-integration-phase4-qa.md`
+- Phase 4는 코드 변경 없이 Phase 1-3 구현의 검증만 수행. 모든 항목이 올바르게 구현되어 있어 수정 불필요
+- **Playwright 테스트 48개 전체 PASS** (일일 제한 8 + 전면 광고 2 + Diamond 3 + 부활 4 + Gold 2배 3 + 클리어 2배 3 + 교차 기능 3 + Mock 3 + 비기능 4 + 시각적 5 + 엣지케이스 7 + 회귀 3)
+- AdMob 통합 전체 완료 (Phase 1~4). 네이티브(Android) 실제 광고 테스트는 APK 빌드 후 별도 수행 필요
+
+---
+
+## 2026-03-02 -- AdMob 통합 Phase 3 (보상형 광고: Gold 2배 부스트 + 클리어 보상 2배)
+
+### 추가
+
+- **`js/scenes/LevelSelectScene.js`** -- 각 해금 맵 카드에 "2배 골드" / "보상 2배" 소형 광고 버튼 2개 배치 (`_createGoldBoostButton`, `_createClearBoostButton`). 70x18px 버튼, 카드 좌측 하단에 횡으로 배치 (cardLeft+38, cardLeft+114). 활성화 시 녹색(0x00b894) + 금색 "ON" 텍스트, 한도 소진 시 회색(BTN_SELL) 비활성화, 기본 상태 퍼플(BTN_META) 배경. `_goldBoostActiveFor`/`_clearBoostActiveFor`로 맵 ID별 활성 상태 추적. START 버튼 클릭 시 `goldBoostActive`/`clearBoostActive` 플래그를 GameScene에 전달
+- **`js/scenes/MapClearScene.js`** -- "보상 2배" 사후 광고 버튼 추가 (`_createClearBoostButton`). 120x22px 퍼플 메타 버튼, 별점 등급 텍스트 아래(centerY+58)에 배치. `clearBoostActive` 미활성 + 보상 > 0 + 한도 미초과 시에만 표시. 광고 완료 후 보상 재계산(baseDiamond * AD_CLEAR_BOOST_MULTIPLIER) + 다이아몬드 텍스트 "(x2)" 갱신 + 버튼 숨김. `_applyDiamondAndSave()`/`_ensureSaved()` 세이브 안전장치 추가. `_saved` 플래그로 이중 저장 방지
+- **`js/i18n.js`** -- 광고 UI 텍스트 4개 키 추가 (ko/en 양쪽): `ui.ad.goldBoost`(2배 골드/2x Gold), `ui.ad.clearBoost`(보상 2배/2x Reward), `ui.ad.goldBoostActive`(2배 골드 ON/2x Gold ON), `ui.ad.clearBoostActive`(보상 2배 ON/2x Reward ON)
+
+### 변경
+
+- **`js/scenes/GameScene.js`** -- `init()`에 `goldBoostActive`(boolean)/`clearBoostActive`(boolean) 파라미터 추가. 적 처치 골드(line 753)와 웨이브 클리어 보너스(line 1495)에 `AD_GOLD_BOOST_MULTIPLIER`(=2) 배율 적용. Gold Rain 소모품과 곱셈 결합(`enemy.gold * goldRainMultiplier * adGoldMultiplier`). 타워 판매 환불에는 미적용. MapClearScene 전환 시 `clearBoostActive` 플래그 전달(line 1555)
+- **`js/scenes/MapClearScene.js`** -- `init()`에 `clearBoostActive` 파라미터 수신. `create()`에서 보상 계산을 `baseDiamond * boostMultiplier` 방식으로 변경 (clearBoostActive 시 `AD_CLEAR_BOOST_MULTIPLIER`=2 적용). 세이브 저장을 즉시/지연 분기: 사후 광고 가능성이 있으면 지연, 씬 전환 전 `_ensureSaved()`로 안전 저장
+- **`js/scenes/LevelSelectScene.js`** -- `init()`에 `_goldBoostActiveFor`/`_clearBoostActiveFor` 상태 추가. `AD_LIMIT_GOLD_BOOST`, `AD_LIMIT_CLEAR_BOOST`, `ADMOB_REWARDED_GOLD_BOOST_ID`, `ADMOB_REWARDED_CLEAR_BOOST_ID`, `BTN_META`, `BTN_SELL` import 추가
+
+### 참고
+
+- 스펙: `.claude/specs/2026-03-02-admob-integration.md`
+- QA: `.claude/specs/2026-03-02-admob-integration-phase3-qa.md`
+- 골드 부스트 적용 범위: 적 처치 골드와 웨이브 클리어 보너스에만 2배 적용. 타워 판매 환불에는 미적용 (투자금 회수이므로 게임플레이 보상이 아님)
+- Gold Rain 소모품(2x)과 광고 골드 부스트(2x) 동시 활성 시 최대 4배 골드 획득
+- clearBoost 일일 카운터는 LevelSelectScene(사전)과 MapClearScene(사후) 양쪽에서 같은 'clearBoost' 키를 공유
+- goldBoost는 해당 판에서만 유효하며, 게임 종료(GameOver/MapClear) 시 자동 소멸 (플래그가 init 시점에만 전달되므로)
+- Phase 4에서 통합 QA (일일 제한 전체 검증, Mock 모드 Playwright 테스트) 예정
+
+---
+
 ## 2026-03-02 -- AdMob 통합 Phase 2 (보상형 광고: Diamond 지급 + 부활)
 
 ### 추가

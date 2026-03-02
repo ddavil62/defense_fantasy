@@ -720,11 +720,11 @@ test.describe('AdMob 통합 Phase 1 검증', () => {
       });
 
       // 스펙에 명시된 값과 비교
-      expect(result.ADMOB_INTERSTITIAL_ID).toBe('ca-app-pub-3940256099942544/1033173712');
-      expect(result.ADMOB_REWARDED_DIAMOND_ID).toBe('ca-app-pub-3940256099942544/5224354917');
-      expect(result.ADMOB_REWARDED_REVIVE_ID).toBe('ca-app-pub-3940256099942544/5224354917');
-      expect(result.ADMOB_REWARDED_GOLD_BOOST_ID).toBe('ca-app-pub-3940256099942544/5224354917');
-      expect(result.ADMOB_REWARDED_CLEAR_BOOST_ID).toBe('ca-app-pub-3940256099942544/5224354917');
+      expect(result.ADMOB_INTERSTITIAL_ID).toBe('ca-app-pub-9149509805250873/9251091751');
+      expect(result.ADMOB_REWARDED_DIAMOND_ID).toBe('ca-app-pub-9149509805250873/2494111716');
+      expect(result.ADMOB_REWARDED_REVIVE_ID).toBe('ca-app-pub-9149509805250873/8867948374');
+      expect(result.ADMOB_REWARDED_GOLD_BOOST_ID).toBe('ca-app-pub-9149509805250873/9354674749');
+      expect(result.ADMOB_REWARDED_CLEAR_BOOST_ID).toBe('ca-app-pub-9149509805250873/4751086889');
       expect(result.AD_LIMIT_DIAMOND).toBe(5);
       expect(result.AD_LIMIT_GOLD_BOOST).toBe(3);
       expect(result.AD_LIMIT_CLEAR_BOOST).toBe(3);

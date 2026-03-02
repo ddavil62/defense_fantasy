@@ -33,11 +33,11 @@ Phaser.js 3 기반 판타지 타워 디펜스 게임. 도형 기반 프로토타
 | `js/config.js` | 모든 게임 상수/밸런스 수치 집중 관리 (타워 10종, 적 8종, 웨이브 R1~R20, 메타 업그레이드 트리, 유틸리티 업그레이드, 저항 캡 0.55, 골드 싱크 상수, 머지 레시피 102종/스탯 102종 (T2 55종 + T3 30종 + T4 12종 + T5 5종), 별점 계산(calcStarRating), 캠페인 다이아몬드 보상(CAMPAIGN_DIAMOND_REWARDS), TOWER_UNLOCK_MAP(월드→타워 해금 매핑), 세이브 마이그레이션 v4, AdMob 광고 ID 5개/일일 제한 3개/보상 수치 4개/localStorage 키 1개) |
 | `js/scenes/BootScene.js` | 초기 설정, localStorage 로드, 세이브 마이그레이션 (stats 필드 포함), UI 에셋 56장 preload (아이콘 16장 포함), `async create()` + AdManager 초기화/registry 등록 + `await document.fonts.ready`로 Galmuri 폰트 로딩 대기 후 메뉴 전환 |
 | `js/scenes/MenuScene.js` | 메뉴 화면, Diamond 표시, "Diamond 받기" 보상형 광고 버튼(일일 5회, Diamond +3), CAMPAIGN/ENDLESS(endlessUnlocked 조건부 활성)/COLLECTION/STATISTICS 버튼, 종료 확인 다이얼로그(_openExitDialog) |
-| `js/scenes/GameScene.js` | 핵심 게임플레이 (맵/타워/적/투사체/웨이브/AoE/체인/빔/메타 업그레이드/ProjectilePool/delta 캡/통계 추적/사거리 프리뷰/골드 싱크/머지 드래그 핸들링/Pause 오버레이 합성도감 버튼/wake 이벤트 처리/mapClear 이벤트→MapClearScene 전환/일시정지 시 BGM 정지·복원/소모품 아이콘+툴팁/일시정지·음소거 버튼 아이콘/게임오버 전면 광고/부활 처리(revived/startWave 플래그, HP 절반 설정, 웨이브 재개)) |
+| `js/scenes/GameScene.js` | 핵심 게임플레이 (맵/타워/적/투사체/웨이브/AoE/체인/빔/메타 업그레이드/ProjectilePool/delta 캡/통계 추적/사거리 프리뷰/골드 싱크/머지 드래그 핸들링/Pause 오버레이 합성도감 버튼/wake 이벤트 처리/mapClear 이벤트→MapClearScene 전환(clearBoostActive 전달)/일시정지 시 BGM 정지·복원/소모품 아이콘+툴팁/일시정지·음소거 버튼 아이콘/게임오버 전면 광고/부활 처리(revived/startWave 플래그, HP 절반 설정, 웨이브 재개)/광고 골드 2배 부스트(goldBoostActive, 적 처치+웨이브 보너스에 AD_GOLD_BOOST_MULTIPLIER 적용)) |
 | `js/scenes/GameOverScene.js` | 결과 표시, Diamond 획득, 통계 저장, 게임 히스토리 관리, "광고 보고 부활" 보상형 광고 버튼(판당 1회, HP=maxHP/2로 해당 라운드 재개), RETRY/WORLD MAP(캠페인)/MENU 버튼 (RETRY 시 mapData/gameMode 전달) |
-| `js/scenes/MapClearScene.js` | 캠페인 맵 클리어 결과 씬 (별점 1~3성 애니메이션, 다이아몬드 차액 보상 실제 지급, worldProgress/campaignStats/endlessUnlocked 세이브 갱신, 월드 클리어 시 타워 자동 해금+알림 UI, NEXT MAP(다음 맵 또는 월드 클리어)/RETRY/WORLD MAP 버튼) |
+| `js/scenes/MapClearScene.js` | 캠페인 맵 클리어 결과 씬 (별점 1~3성 애니메이션, 다이아몬드 차액 보상 실제 지급, clearBoostActive 시 보상 2배, 사후 "보상 2배" 광고 버튼(120x22px), 세이브 지연 패턴(_ensureSaved), worldProgress/campaignStats/endlessUnlocked 세이브 갱신, 월드 클리어 시 타워 자동 해금+알림 UI, NEXT MAP/RETRY/WORLD MAP 버튼) |
 | `js/scenes/WorldSelectScene.js` | 월드 선택 씬 (5개 월드 패널, 세이브 데이터 기반 해금/잠금, 별점 진행도, LevelSelectScene 이동) |
-| `js/scenes/LevelSelectScene.js` | 레벨 선택 씬 (6개 맵 카드, 세이브 데이터 기반 별점/해금, 기둥 장식 안쪽 패딩 35px, 설명 wordWrap 160px, START -> GameScene) |
+| `js/scenes/LevelSelectScene.js` | 레벨 선택 씬 (6개 맵 카드, 세이브 데이터 기반 별점/해금, 기둥 장식 안쪽 패딩 35px, 설명 wordWrap 160px, "2배 골드"/"보상 2배" 광고 버튼(70x18px), START -> GameScene(goldBoostActive/clearBoostActive 플래그 전달)) |
 | `js/scenes/EndlessMapSelectScene.js` | 엔드리스 맵 선택 씬 (6탭: 클래식+5월드, 맵 카드, 기둥 장식 안쪽 패딩 35px, 설명 wordWrap 160px, GameScene endless 모드 시작) |
 | `js/scenes/CollectionScene.js` | 컬렉션 모드 -- 이중 탭: (1) 메타업그레이드 (타워 카드 그리드, 메타 업그레이드 트리, 유틸리티 업그레이드, 잠긴 타워 월드 클리어 조건 안내), (2) 합성도감 탭 클릭 시 MergeCodexScene으로 전환 |
 | `js/scenes/MergeCodexScene.js` | 합성도감 전용 씬 -- T1~T5 서브탭, 전체 112종 타워 카드(발견 여부 무관 전부 공개), 카드 클릭 시 TowerInfoOverlay(codex 모드)로 상세 정보 표시, 드래그 스크롤, shutdown 핸들러로 리소스 정리. GameScene(Pause)과 CollectionScene 양쪽에서 진입 |
@@ -103,7 +103,7 @@ BootScene -> MenuScene
 - MenuScene -> WorldSelectScene: CAMPAIGN 버튼 (fadeOut 200ms)
 - MenuScene -> EndlessMapSelectScene: ENDLESS 버튼 (endlessUnlocked === true, fadeOut 200ms)
 - WorldSelectScene -> LevelSelectScene: 해금된 월드 패널 탭 (worldId 전달, fadeOut 200ms)
-- LevelSelectScene -> GameScene: START 버튼 (mapData, gameMode: campaign, fadeOut 200ms)
+- LevelSelectScene -> GameScene: START 버튼 (mapData, gameMode: campaign, goldBoostActive, clearBoostActive, fadeOut 200ms)
 - GameScene -> GameOverScene: 기지 HP 0 → `_gameOver()` → 전면 광고(AdManager.showInterstitial()) → GameOverScene 전환. AdManager 미등록 시 0.5초 딜레이 폴백
 - GameScene -> MapClearScene: 캠페인 맵 클리어 시 전환 (mapClear 이벤트, 1초 딜레이, 전면 광고 없음)
 - MapClearScene -> GameScene: NEXT MAP (다음 맵) / RETRY (동일 맵) (fadeOut 200ms)
@@ -330,6 +330,8 @@ npx cap open android  # 또는 npx cap open ios
 - UI 아이콘 일괄 개선 (판매/배속/일시정지/음소거): Playwright 테스트 19개 (정상 10 + 예외 4 + 시각적 5) + 시각적 검증 8건, QA PASS
 - AdMob 통합 Phase 1 (전면 광고 + AdManager 기반): Playwright 테스트 25개 (정상 9 + 예외 8 + 단위 6 + UI 2) + 시각적 검증 8건, QA PASS
 - AdMob 통합 Phase 2 (보상형 광고: Diamond 지급 + 부활): Playwright 테스트 31개 (정상 12 + 예외/엣지케이스 11 + 회귀 4 + 기타 4) + 시각적 검증 10건, QA PASS
+- AdMob 통합 Phase 3 (보상형 광고: Gold 2배 + 클리어 보상 2배): Playwright 테스트 39개 (정상 24 + 예외 9 + 회귀 4 + UI 안정성 3) + 시각적 검증 9건, QA PASS
+- AdMob 통합 Phase 4 (일일 제한 검증 + 통합 QA): Playwright 테스트 48개 (일일 제한 8 + 전면 광고 2 + Diamond 3 + 부활 4 + Gold 2배 3 + 클리어 2배 3 + 교차 기능 3 + Mock 3 + 비기능 4 + 시각적 5 + 엣지케이스 7 + 회귀 3) + 시각적 검증 9건, QA PASS -- **AdMob 통합 전체 완료**
 
 ## 시스템별 상세 문서
 
@@ -358,5 +360,5 @@ npx cap open android  # 또는 npx cap open ios
 | ~~월드맵 Phase 5~~ | ~~맵 콘텐츠 + 엔드리스 맵 선택~~ | ~~완료 (19개 맵 고유 경로 완성, 씬 전환 페이드, EndlessMapSelectScene)~~ |
 | ~~AdMob Phase 1~~ | ~~AdManager 기반 + 전면 광고~~ | ~~완료 (AdManager 클래스, Mock 모드, 게임오버 전면 광고, 일일 제한 인프라)~~ |
 | ~~AdMob Phase 2~~ | ~~보상형 광고: Diamond + 부활~~ | ~~완료 (MenuScene Diamond 받기 버튼(일일 5회, +3D), GameOverScene 부활 버튼(판당 1회, HP 절반, 웨이브 재개))~~ |
-| AdMob Phase 3 | 보상형 광고: Gold 2배 + 클리어 보상 2배 | LevelSelectScene/MapClearScene 광고 버튼 |
-| AdMob Phase 4 | 통합 QA | 일일 제한 전체 검증, Mock 모드 Playwright 테스트 |
+| ~~AdMob Phase 3~~ | ~~보상형 광고: Gold 2배 + 클리어 보상 2배~~ | ~~완료 (LevelSelectScene "2배 골드"/"보상 2배" 버튼(일일 3회씩), GameScene 골드 2배 부스트, MapClearScene 사후 "보상 2배" 광고 버튼, 세이브 지연 패턴)~~ |
+| ~~AdMob Phase 4~~ | ~~통합 QA~~ | ~~완료 (일일 제한 시스템 전수 검증, Playwright 48건 통합 테스트 PASS, 코드 변경 없음)~~ |

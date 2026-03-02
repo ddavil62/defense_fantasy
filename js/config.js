@@ -1663,15 +1663,15 @@ export const AD_DAILY_LIMIT_KEY = 'ftd_ad_daily_limit';
 
 // ── AdMob 광고 단위 ID ──────────────────────────────────────────
 /** @const {string} 전면 광고 단위 ID (테스트용) */
-export const ADMOB_INTERSTITIAL_ID = 'ca-app-pub-3940256099942544/1033173712';
+export const ADMOB_INTERSTITIAL_ID = 'ca-app-pub-9149509805250873/9251091751';
 /** @const {string} 보상형 광고 - Diamond 지급 단위 ID (테스트용) */
-export const ADMOB_REWARDED_DIAMOND_ID = 'ca-app-pub-3940256099942544/5224354917';
+export const ADMOB_REWARDED_DIAMOND_ID = 'ca-app-pub-9149509805250873/2494111716';
 /** @const {string} 보상형 광고 - 부활 단위 ID (테스트용) */
-export const ADMOB_REWARDED_REVIVE_ID = 'ca-app-pub-3940256099942544/5224354917';
+export const ADMOB_REWARDED_REVIVE_ID = 'ca-app-pub-9149509805250873/8867948374';
 /** @const {string} 보상형 광고 - Gold 2배 부스트 단위 ID (테스트용) */
-export const ADMOB_REWARDED_GOLD_BOOST_ID = 'ca-app-pub-3940256099942544/5224354917';
+export const ADMOB_REWARDED_GOLD_BOOST_ID = 'ca-app-pub-9149509805250873/9354674749';
 /** @const {string} 보상형 광고 - 클리어 보상 2배 단위 ID (테스트용) */
-export const ADMOB_REWARDED_CLEAR_BOOST_ID = 'ca-app-pub-3940256099942544/5224354917';
+export const ADMOB_REWARDED_CLEAR_BOOST_ID = 'ca-app-pub-9149509805250873/4751086889';
 
 // ── 광고 일일 제한 ──────────────────────────────────────────────
 /** @const {number} Diamond 보상형 광고 일일 제한 횟수 */

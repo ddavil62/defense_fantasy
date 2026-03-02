@@ -6,7 +6,9 @@ Gold (인게임 화폐) + Diamond (메타 화폐) + 메타 업그레이드 + 컬
 
 - 초기: 250G (유틸리티 Gold Boost 적용 시 최대 350G)
 - 적 처치 시 타입별 보상 (Normal 5G, Fast 3G, Tank 15G, Boss 100G, Swarm 2G, Splitter 12G, Armored 20G)
+  - 배율 적용: `enemy.gold * goldRainMultiplier * adGoldMultiplier` (Gold Rain 소모품 2x, 광고 골드 부스트 2x, 최대 4배)
 - 웨이브 클리어 보너스: `round * 4 + floor(currentHP / maxHP * 15)`
+  - 배율 적용: `bonusGold * metaWaveBonusMultiplier * adGoldMultiplier` (유틸리티 Wave Bonus, 광고 골드 부스트 2x)
 - 소비: 타워 설치, 업그레이드 (Lv.2, Lv.3), 타워 강화, HP 회복, 소모품 능력
 - 판매 환급: 총 투자 비용의 60%
 
@@ -37,6 +39,7 @@ floor(round / 5) * 2 + floor(round / 10) * 3
 - 게임 오버 시 획득, 영구 축적
 - 게임 오버 화면에 획득량/총량 표시
 - 보상형 광고 시청: MenuScene "Diamond 받기" 버튼으로 1회당 3개 지급 (일일 5회 제한, `AD_REWARD_DIAMOND`/`AD_LIMIT_DIAMOND`)
+- 캠페인 클리어 보상 2배: LevelSelectScene/MapClearScene "보상 2배" 광고 시청으로 다이아몬드 차액 보상 2배 (일일 3회 제한, `AD_CLEAR_BOOST_MULTIPLIER`/`AD_LIMIT_CLEAR_BOOST`)
 
 ### 소비처
 
