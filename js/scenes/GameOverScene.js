@@ -2,6 +2,7 @@
  * @fileoverview 게임 오버 씬(GameOverScene).
  * 게임 결과(라운드, 킬 수), 다이아몬드 보상을 표시하고,
  * 기록을 localStorage에 저장한 뒤 RETRY / MENU 버튼을 제공한다.
+ * 광고 보고 부활 기능: 판당 1회, 이전에 부활하지 않은 경우에만 버튼 표시.
  *
  * 다크 패널 + 골드 테두리, GAME OVER 글로우, 골드 강조 수치,
  * 시맨틱 버튼 컬러 적용.
@@ -11,7 +12,9 @@ import {
   GAME_WIDTH, GAME_HEIGHT, COLORS, VISUALS, SAVE_KEY,
   calcDiamondReward, migrateSaveData,
   BTN_PRIMARY, BTN_BACK, BTN_DANGER, BTN_PRIMARY_CSS, BTN_DANGER_CSS,
+  ADMOB_REWARDED_REVIVE_ID, BTN_META,
 } from '../config.js';
+import { t } from '../i18n.js';
 
 /** @const {number} 보관하는 최대 게임 히스토리 수 */
 const MAX_HISTORY = 20;
@@ -35,6 +38,7 @@ export class GameOverScene extends Phaser.Scene {
    * @param {object} data.gameStats - 해당 판의 세부 통계
    * @param {import('../data/maps.js').MapData} [data.mapData] - 맵 데이터
    * @param {string} [data.gameMode] - 게임 모드
+   * @param {boolean} [data.revived] - 이미 부활한 판인지 여부
    */
   init(data) {
     /** @type {number} 도달한 라운드 */
@@ -51,6 +55,9 @@ export class GameOverScene extends Phaser.Scene {
 
     /** @type {string|undefined} 게임 모드 (RETRY 시 전달용) */
     this.gameMode = data.gameMode;
+
+    /** @type {boolean} 이미 부활한 판인지 여부 (true이면 부활 버튼 숨김) */
+    this.revived = data.revived || false;
   }
 
   /**
@@ -95,8 +102,11 @@ export class GameOverScene extends Phaser.Scene {
 
     // ── 결과 패널 (이미지 또는 폴백 사각형) ──
     const isCampaign = this.gameMode === 'campaign';
+    const canRevive = !this.revived;
     const panelW = 280;
-    const panelH = isCampaign ? 420 : 380;
+    // 부활 버튼이 표시될 경우 패널 높이를 56px 확장
+    const reviveExtra = canRevive ? 56 : 0;
+    const panelH = (isCampaign ? 420 : 380) + reviveExtra;
     if (this.textures.exists('panel_result')) {
       this.add.image(centerX, centerY, 'panel_result');
     } else {
@@ -229,8 +239,18 @@ export class GameOverScene extends Phaser.Scene {
       }).setOrigin(0.5);
     }
 
+    // ── 부활 버튼 (판당 1회, 이전에 부활하지 않은 경우에만 표시) ──
+    // 부활 가능 시 버튼 영역만큼 아래로 밀어내기
+    const hasReviveOption = !this.revived;
+    const reviveOffset = hasReviveOption ? 28 : 0;
+
+    if (hasReviveOption) {
+      const reviveY = centerY + 58;
+      this._createReviveButton(centerX, reviveY);
+    }
+
     // ── RETRY 버튼 (대형 160x44로 표준화) ──
-    const retryY = centerY + 75;
+    const retryY = centerY + 75 + reviveOffset;
     const restartBg = this._createImageButton(
       centerX, retryY, 'btn_large_primary', 160, 44, BTN_PRIMARY, 0xffffff
     );
@@ -313,6 +333,90 @@ export class GameOverScene extends Phaser.Scene {
         });
       });
     }
+  }
+
+  // ── 부활 버튼 ────────────────────────────────────────────────
+
+  /**
+   * "광고 보고 부활" 버튼을 생성한다.
+   * 클릭 시 보상형 광고를 재생하고, 완료 시 GameScene을 현재 라운드에서 재개한다.
+   * 광고 실패 시 안내 메시지를 표시하고 버튼을 재활성화한다.
+   * @param {number} x - 버튼 중심 X
+   * @param {number} y - 버튼 중심 Y
+   * @private
+   */
+  _createReviveButton(x, y) {
+    // 부활 버튼 (중형 160x36, 퍼플 메타 스타일)
+    const reviveBg = this._createImageButton(
+      x, y, 'btn_medium_meta', 160, 36, BTN_META, COLORS.DIAMOND
+    );
+
+    const reviveLabel = this.add.text(x, y, t('ui.ad.revive'), {
+      fontSize: '14px',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
+      color: '#ffffff',
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+
+    /** @type {Phaser.GameObjects.Text|null} 광고 실패 안내 텍스트 */
+    let failText = null;
+
+    /** @type {boolean} 버튼 처리 중 여부 (중복 탭 방지) */
+    let isProcessing = false;
+
+    reviveBg.on('pointerdown', async () => {
+      if (isProcessing) return;
+      isProcessing = true;
+
+      // 실패 메시지가 있으면 제거
+      if (failText) {
+        failText.destroy();
+        failText = null;
+      }
+
+      // 로딩 상태 표시
+      reviveLabel.setText(t('ui.ad.loading'));
+
+      const adManager = this.registry.get('adManager');
+      if (!adManager) {
+        // AdManager가 없으면 바로 부활 처리 (Mock 동작과 동일)
+        this._doRevive();
+        return;
+      }
+
+      const result = await adManager.showRewarded(ADMOB_REWARDED_REVIVE_ID);
+
+      if (result.rewarded) {
+        this._doRevive();
+      } else {
+        // 광고 실패: 안내 메시지 표시, 버튼 재활성화
+        reviveLabel.setText(t('ui.ad.revive'));
+        failText = this.add.text(x, y + 22, t('ui.ad.failed'), {
+          fontSize: '11px',
+          fontFamily: 'Galmuri11, Arial, sans-serif',
+          color: '#e74c3c',
+        }).setOrigin(0.5);
+        isProcessing = false;
+      }
+    });
+  }
+
+  /**
+   * 부활 처리: GameScene을 현재 라운드에서 재개한다.
+   * revived: true 플래그와 startWave를 전달하여 GameScene에서
+   * 기지 HP를 절반으로 설정하고 해당 웨이브부터 시작하게 한다.
+   * @private
+   */
+  _doRevive() {
+    this.cameras.main.fadeOut(200, 0, 0, 0);
+    this.cameras.main.once('camerafadeoutcomplete', () => {
+      this.scene.start('GameScene', {
+        mapData: this.mapData,
+        gameMode: this.gameMode,
+        revived: true,
+        startWave: this.round,
+      });
+    });
   }
 
   // ── 이미지 버튼 생성 헬퍼 ────────────────────────────────────

@@ -12,6 +12,7 @@
     "cap:ios": "cap open ios"
   },
   "dependencies": {
+    "@capacitor-community/admob": "^7.0.0",
     "phaser": "^3.87.0"
   },
   "devDependencies": {

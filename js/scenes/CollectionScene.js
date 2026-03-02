@@ -348,10 +348,17 @@ export class CollectionScene extends Phaser.Scene {
         .setInteractive({ useHandCursor: true });
       this.tabContent.add(bg);
 
-      // 타워 아이콘 (0.6배 축소)
-      const iconG = this.add.graphics();
-      this._drawTowerIcon(iconG, type, cx, y + 20, 0.6);
-      this.tabContent.add(iconG);
+      // 타워 아이콘 (이미지 우선, 폴백 시 0.6배 도형)
+      const towerTexKey = `tower_${type}`;
+      if (this.textures.exists(towerTexKey)) {
+        const iconImg = this.add.image(cx, y + 20, towerTexKey)
+          .setDisplaySize(40, 40);
+        this.tabContent.add(iconImg);
+      } else {
+        const iconG = this.add.graphics();
+        this._drawTowerIcon(iconG, type, cx, y + 20, 0.6);
+        this.tabContent.add(iconG);
+      }
 
       // 타워 이름
       const nameText = this.add.text(cx, y + 52, stats.displayName, {
@@ -715,10 +722,17 @@ export class CollectionScene extends Phaser.Scene {
       this._rebuildScene();
     });
 
-    // 타워 아이콘 (1.5배 확대)
-    const iconG = this.add.graphics();
-    this._drawTowerIcon(iconG, type, panelX - 60, panelTop + 45, 1.5);
-    this.overlay.add(iconG);
+    // 타워 아이콘 (이미지 우선, 폴백 시 1.5배 도형)
+    const detailTexKey = `tower_${type}`;
+    if (this.textures.exists(detailTexKey)) {
+      const iconImg = this.add.image(panelX - 60, panelTop + 45, detailTexKey)
+        .setDisplaySize(60, 60);
+      this.overlay.add(iconImg);
+    } else {
+      const iconG = this.add.graphics();
+      this._drawTowerIcon(iconG, type, panelX - 60, panelTop + 45, 1.5);
+      this.overlay.add(iconG);
+    }
 
     // 타워 이름
     const nameText = this.add.text(panelX, panelTop + 38, stats.displayName, {
@@ -1236,10 +1250,17 @@ export class CollectionScene extends Phaser.Scene {
       .setStrokeStyle(2, stats.color);
     this.overlay.add(popBg);
 
-    // 타워 아이콘
-    const iconG = this.add.graphics();
-    this._drawTowerIcon(iconG, type, popX - 50, popY - 45, 1.2);
-    this.overlay.add(iconG);
+    // 타워 아이콘 (이미지 우선, 폴백 시 1.2배 도형)
+    const unlockTexKey = `tower_${type}`;
+    if (this.textures.exists(unlockTexKey)) {
+      const iconImg = this.add.image(popX - 50, popY - 45, unlockTexKey)
+        .setDisplaySize(48, 48);
+      this.overlay.add(iconImg);
+    } else {
+      const iconG = this.add.graphics();
+      this._drawTowerIcon(iconG, type, popX - 50, popY - 45, 1.2);
+      this.overlay.add(iconG);
+    }
 
     // 타이틀
     const titleText = this.add.text(popX + 10, popY - 45, `${stats.displayName} Tower`, {

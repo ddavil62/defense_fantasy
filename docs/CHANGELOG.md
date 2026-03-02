@@ -4,6 +4,61 @@
 
 ---
 
+## 2026-03-02 -- AdMob 통합 Phase 2 (보상형 광고: Diamond 지급 + 부활)
+
+### 추가
+
+- **`js/scenes/MenuScene.js`** -- "Diamond 받기" 보상형 광고 버튼 추가 (`_createDiamondAdButton`). 소형 140x26px 퍼플 메타 버튼, 잔여 횟수 `(N/5)` 표시, 5회 소진 시 회색 비활성화 + "오늘 한도 초과" 텍스트. 광고 시청 완료 시 `saveData.diamond += 3` 즉시 지급 + localStorage 저장 + 화면 텍스트 갱신. 중복 탭 방지(`isProcessing`), AdManager null 가드, saveData null 가드 포함
+- **`js/scenes/GameOverScene.js`** -- "광고 보고 부활" 버튼 추가 (`_createReviveButton`, `_doRevive`). 중형 160x36px 퍼플 메타 버튼, RETRY 위(centerY+58)에 배치. `revived !== true`일 때만 표시(판당 1회). 부활 시 fadeOut 후 GameScene으로 `{ mapData, gameMode, revived: true, startWave: round }` 전달. 광고 실패 시 에러 메시지 표시 + 버튼 재활성화. 부활 버튼 표시 시 패널 높이 +56px, 하위 버튼들 +28px 이동
+- **`js/i18n.js`** -- 광고 관련 UI 텍스트 6개 키 추가 (ko/en 양쪽): `ui.ad.revive`, `ui.ad.diamond`, `ui.ad.loading`, `ui.ad.failed`, `ui.ad.limitReached`, `ui.ad.remaining`
+
+### 변경
+
+- **`js/scenes/GameScene.js`** -- `init()`에 `revived`(boolean)/`startWave`(number) 파라미터 추가. `create()`에서 부활 시 기지 HP를 `Math.ceil(maxBaseHP * AD_REVIVE_HP_RATIO)` (최대 HP의 50%)로 설정하고, `waveManager.currentWave = startWave` 후 `_announceWave()`로 해당 웨이브부터 재개. `_gameOver()`에서 `revived: this.revived` 플래그를 GameOverScene에 전달하여 재 게임오버 시 부활 버튼 숨김. `AD_REVIVE_HP_RATIO` import 추가
+- **`js/scenes/MenuScene.js`** -- `AD_REWARD_DIAMOND`, `AD_LIMIT_DIAMOND`, `ADMOB_REWARDED_DIAMOND_ID`, `SAVE_KEY` import 추가. 다이아몬드 텍스트 참조 `_diamondText` 보관. 최고 기록 Y 위치를 315->328로 13px 하향 이동하여 Diamond 버튼 공간 확보
+- **`js/scenes/GameOverScene.js`** -- `init()`에 `revived` 파라미터 수신. `ADMOB_REWARDED_REVIVE_ID`, `BTN_META` import 추가. 패널 높이 동적 계산 (`reviveExtra = canRevive ? 56 : 0`)
+
+### 참고
+
+- 스펙: `.claude/specs/2026-03-02-admob-integration.md`
+- QA: `.claude/specs/2026-03-02-admob-integration-phase2-qa.md`
+- 부활 시 GameScene을 `scene.start()`로 새로 시작하므로 타워 배치, 골드, 적 위치 등은 초기화된다. 해당 웨이브부터 시작하지만 기존 타워와 골드는 리셋된다 (스펙에 명시된 설계)
+- `waveManager._announceWave()`는 private 메서드 외부 접근이나, JavaScript에서 접근 가능하며 코드베이스에서 유사 패턴 사용. 향후 public 래퍼 추가 권장
+- `ui.ad.remaining` i18n 키가 정의되어 있으나 코드에서 미사용 (수동 문자열 조합으로 대체). 미사용 키 정리 권장
+- 모바일 뷰포트에서 GameOverScene의 "(Total: ...)" 텍스트와 부활 버튼이 근접하나 겹침은 아님 (LOW 이슈)
+- Phase 3에서 Gold 2배 부스트 + 클리어 보상 2배 보상형 광고 추가 예정
+
+---
+
+## 2026-03-02 -- AdMob 통합 Phase 1 (전면 광고 + AdManager 기반)
+
+### 추가
+
+- **`js/managers/AdManager.js`** -- AdMob 플러그인 래핑 클래스 (261줄). 네이티브 환경에서 `@capacitor-community/admob` 플러그인을 동적 import하여 전면/보상형 광고를 관리하고, 웹 환경에서는 Mock 모드로 즉시 resolve. 일일 광고 시청 제한 카운터를 별도 localStorage 키(`ftd_ad_daily_limit`)에 저장/관리
+- **`js/config.js`** -- AdMob 관련 상수 13개 추가:
+  - 광고 ID 5개: `ADMOB_INTERSTITIAL_ID` (전면), `ADMOB_REWARDED_DIAMOND_ID` / `ADMOB_REWARDED_REVIVE_ID` / `ADMOB_REWARDED_GOLD_BOOST_ID` / `ADMOB_REWARDED_CLEAR_BOOST_ID` (보상형 4종) -- 모두 Google 테스트 ID
+  - 일일 제한 3개: `AD_LIMIT_DIAMOND`=5, `AD_LIMIT_GOLD_BOOST`=3, `AD_LIMIT_CLEAR_BOOST`=3
+  - 보상 수치 4개: `AD_REWARD_DIAMOND`=3, `AD_REVIVE_HP_RATIO`=0.5, `AD_GOLD_BOOST_MULTIPLIER`=2, `AD_CLEAR_BOOST_MULTIPLIER`=2
+  - localStorage 키 1개: `AD_DAILY_LIMIT_KEY`='ftd_ad_daily_limit'
+
+### 변경
+
+- **`js/scenes/BootScene.js`** -- AdManager import 추가. `create()`에서 AdManager 인스턴스 생성, `await adManager.initialize()` 호출, `registry.set('adManager', adManager)`로 전역 등록 (기존 SoundManager 패턴과 동일)
+- **`js/scenes/GameScene.js`** -- `_gameOver()` 메서드 수정: 기존 `delayedCall(500)` 딜레이 방식 대신 `adManager.showInterstitial().then()` 방식으로 전면 광고 표시 후 GameOverScene 전환. `.catch()` 블록으로 광고 실패 시에도 정상 전환. AdManager가 registry에 없으면 기존 딜레이 방식으로 폴백
+- **`android/app/src/main/AndroidManifest.xml`** -- `<application>` 내부에 AdMob App ID meta-data 추가 (테스트 ID: `ca-app-pub-3940256099942544~3347511713`)
+- **`package.json`** -- `@capacitor-community/admob` ^7.0.0 의존성 추가 (실제 설치: v7.2.0, Capacitor 7 호환)
+
+### 참고
+
+- 스펙: `.claude/specs/2026-03-02-admob-integration.md`
+- QA: `.claude/specs/2026-03-02-admob-integration-phase1-qa.md`
+- Mock 모드에서 `showInterstitial()`이 즉시 resolve하므로 기존 0.5초 딜레이가 제거됨. 네이티브 환경에서는 광고 표시 시간이 딜레이 역할을 대체
+- 일일 제한 카운터는 `saveData`가 아닌 별도 localStorage 키에 저장하여 세이브 마이그레이션 체인과 분리
+- `GameScene._gameOver()`의 `.catch()` 블록은 `showInterstitial()` 내부에서 이미 catch하므로 사실상 도달 불가하나, 방어적 코딩으로 유지
+- Phase 2-4에서 보상형 광고 UI(Diamond 지급, 부활, Gold 2배, 클리어 보상 2배) 추가 예정
+
+---
+
 ## 2026-03-02 -- UI 아이콘 일괄 개선 (판매/배속/일시정지/음소거)
 
 ### 추가

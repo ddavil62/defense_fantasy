@@ -7,7 +7,12 @@
  * 시맨틱 버튼 컬러, 퍼플 다이아몬드 표시.
  */
 
-import { GAME_WIDTH, GAME_HEIGHT, COLORS, BTN_PRIMARY, BTN_META, BTN_BACK, BTN_SELL, BTN_DANGER, BTN_META_CSS, BTN_BACK_CSS, BTN_SELL_CSS } from '../config.js';
+import {
+  GAME_WIDTH, GAME_HEIGHT, COLORS,
+  BTN_PRIMARY, BTN_META, BTN_BACK, BTN_SELL, BTN_DANGER,
+  BTN_META_CSS, BTN_BACK_CSS, BTN_SELL_CSS,
+  AD_REWARD_DIAMOND, AD_LIMIT_DIAMOND, ADMOB_REWARDED_DIAMOND_ID, SAVE_KEY,
+} from '../config.js';
 import { CLASSIC_MAP } from '../data/maps.js';
 import { t } from '../i18n.js';
 
@@ -73,23 +78,27 @@ export class MenuScene extends Phaser.Scene {
     // ── 다이아몬드 보유량 (퍼플) ──
     const saveData = this.registry.get('saveData');
     const diamond = saveData?.diamond || 0;
-    this.add.text(centerX, 280 + offsetY, `\u25C6 ${diamond}`, {
+    /** @type {Phaser.GameObjects.Text} 다이아몬드 보유량 텍스트 (광고 보상 후 갱신용) */
+    this._diamondText = this.add.text(centerX, 280 + offsetY, `\u25C6 ${diamond}`, {
       fontSize: '18px',
       fontFamily: 'Galmuri11, Arial, sans-serif',
       color: COLORS.DIAMOND_CSS,
       align: 'center',
     }).setOrigin(0.5);
 
+    // ── "Diamond 받기" 광고 버튼 ──
+    this._createDiamondAdButton(centerX, 302 + offsetY);
+
     // ── 최고 기록 표시 ──
     if (saveData && saveData.bestRound > 0) {
-      this.add.text(centerX, 315 + offsetY, `Best: Round ${saveData.bestRound}`, {
+      this.add.text(centerX, 328 + offsetY, `Best: Round ${saveData.bestRound}`, {
         fontSize: '18px',
         fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#ffd700',
         align: 'center',
       }).setOrigin(0.5);
 
-      this.add.text(centerX, 338 + offsetY, `Kills: ${saveData.bestKills} | Games: ${saveData.totalGames}`, {
+      this.add.text(centerX, 351 + offsetY, `Kills: ${saveData.bestKills} | Games: ${saveData.totalGames}`, {
         fontSize: '13px',
         fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#b2bec3',
@@ -241,6 +250,130 @@ export class MenuScene extends Phaser.Scene {
       // 메뉴 BGM 재생
       sm.playBgm('menu');
     }
+  }
+
+  // ── Diamond 광고 버튼 ────────────────────────────────────────
+
+  /**
+   * "Diamond 받기" 보상형 광고 버튼을 생성한다.
+   * 일일 제한 횟수와 잔여 횟수를 표시하고, 소진 시 비활성화한다.
+   * 광고 시청 완료 시 Diamond를 즉시 지급하고 화면을 갱신한다.
+   * @param {number} x - 버튼 중심 X
+   * @param {number} y - 버튼 중심 Y
+   * @private
+   */
+  _createDiamondAdButton(x, y) {
+    /** @type {import('../managers/AdManager.js').AdManager|null} */
+    const adManager = this.registry.get('adManager');
+    const remaining = adManager ? adManager.getRemainingAdCount('diamond') : 0;
+    const isLimitReached = adManager ? adManager.isAdLimitReached('diamond') : true;
+
+    // 버튼 텍스트: "Diamond 받기 (N/5)" 또는 "오늘 한도 초과"
+    const btnText = isLimitReached
+      ? t('ui.ad.limitReached')
+      : `${t('ui.ad.diamond')} (${remaining}/${AD_LIMIT_DIAMOND})`;
+
+    if (isLimitReached) {
+      // 비활성 상태: 회색 소형 버튼
+      this._createImageButton(
+        x, y, 'btn_small_disabled', 140, 26, BTN_SELL, 0x636e72, true
+      );
+
+      this.add.text(x, y, btnText, {
+        fontSize: '11px',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
+        color: '#636e72',
+      }).setOrigin(0.5);
+      return;
+    }
+
+    // 활성 상태: 퍼플 메타 소형 버튼
+    const btnBg = this._createImageButton(
+      x, y, 'btn_small_meta', 140, 26, BTN_META, COLORS.DIAMOND
+    );
+
+    const label = this.add.text(x, y, btnText, {
+      fontSize: '11px',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
+      color: BTN_META_CSS,
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+
+    /** @type {Phaser.GameObjects.Text|null} 광고 실패 안내 텍스트 */
+    let failText = null;
+
+    /** @type {boolean} 버튼 처리 중 여부 (중복 탭 방지) */
+    let isProcessing = false;
+
+    btnBg.on('pointerdown', async () => {
+      if (isProcessing) return;
+      if (!adManager) return;
+      if (adManager.isAdLimitReached('diamond')) return;
+
+      isProcessing = true;
+
+      // 실패 메시지가 있으면 제거
+      if (failText) {
+        failText.destroy();
+        failText = null;
+      }
+
+      // 로딩 상태 표시
+      label.setText(t('ui.ad.loading'));
+
+      const result = await adManager.showRewarded(ADMOB_REWARDED_DIAMOND_ID);
+
+      if (result.rewarded) {
+        // Diamond 지급: saveData 갱신 + localStorage 저장
+        const saveData = this.registry.get('saveData');
+        if (saveData) {
+          saveData.diamond = (saveData.diamond || 0) + AD_REWARD_DIAMOND;
+          this.registry.set('saveData', saveData);
+          try {
+            localStorage.setItem(SAVE_KEY, JSON.stringify(saveData));
+          } catch {
+            // localStorage 저장 실패 시 무시
+          }
+
+          // 다이아몬드 표시 텍스트 갱신
+          if (this._diamondText) {
+            this._diamondText.setText(`\u25C6 ${saveData.diamond}`);
+          }
+        }
+
+        // 일일 카운터 증가
+        adManager.incrementDailyAdCount('diamond');
+
+        // 잔여 횟수 갱신 또는 비활성화
+        const newRemaining = adManager.getRemainingAdCount('diamond');
+        if (adManager.isAdLimitReached('diamond')) {
+          label.setText(t('ui.ad.limitReached'));
+          label.setColor('#636e72');
+          label.setStyle({ fontStyle: '' });
+          // 버튼 비활성화: 인터랙티브 해제 + 색상 변경
+          btnBg.disableInteractive();
+          if (typeof btnBg.setFillStyle === 'function') {
+            btnBg.setFillStyle(BTN_SELL);
+            btnBg.setStrokeStyle(2, 0x636e72);
+          } else if (typeof btnBg.setTint === 'function') {
+            btnBg.setTint(0x636e72);
+          }
+        } else {
+          label.setText(`${t('ui.ad.diamond')} (${newRemaining}/${AD_LIMIT_DIAMOND})`);
+          isProcessing = false;
+        }
+      } else {
+        // 광고 실패: 안내 메시지 표시, 버튼 재활성화
+        const curRemaining = adManager.getRemainingAdCount('diamond');
+        label.setText(`${t('ui.ad.diamond')} (${curRemaining}/${AD_LIMIT_DIAMOND})`);
+        failText = this.add.text(x, y + 16, t('ui.ad.failed'), {
+          fontSize: '10px',
+          fontFamily: 'Galmuri11, Arial, sans-serif',
+          color: '#e74c3c',
+        }).setOrigin(0.5);
+        isProcessing = false;
+      }
+    });
   }
 
   // ── 종료 확인 다이얼로그 ──────────────────────────────────────

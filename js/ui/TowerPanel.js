@@ -791,8 +791,8 @@ export class TowerPanel {
   // ── 합성 하이라이트 ─────────────────────────────────────────
 
   /**
-   * 드래그 시작 시 합성 가능한 모든 타워에 금색 원 하이라이트를 표시한다.
-   * 하이라이트는 펄스 애니메이션으로 점멸한다.
+   * 드래그 시작 시 합성 가능한 모든 타워에 하이라이트를 표시한다.
+   * merge_rune 이미지가 있으면 회전 마법진 스프라이트를, 없으면 기존 금색 원+펄스 tween을 사용한다.
    * @param {object} dragTower - 드래그 중인 타워 인스턴스
    * @private
    */
@@ -804,6 +804,7 @@ export class TowerPanel {
 
     const selfId = dragTower.mergeId || dragTower.type;
     const towers = getTowers();
+    const useMergeRune = this.scene.textures.exists('merge_rune');
 
     for (const target of towers) {
       if (target === dragTower) continue;
@@ -813,20 +814,36 @@ export class TowerPanel {
       const result = getMergeResult(selfId, targetId);
       if (!result) continue;
 
-      const g = this.scene.add.graphics().setDepth(40);
-      g.lineStyle(3, 0xffd700, 1);
-      g.strokeCircle(target.x, target.y, 22);
+      if (useMergeRune) {
+        // 마법진 이미지 + 회전 tween
+        const sprite = this.scene.add.image(target.x, target.y, 'merge_rune')
+          .setDisplaySize(48, 48)
+          .setDepth(40);
 
-      // 펄스 애니메이션 (투명도 1.0 <-> 0.5, 무한 반복)
-      const tween = this.scene.tweens.add({
-        targets: g,
-        alpha: { from: 1.0, to: 0.5 },
-        duration: 600,
-        yoyo: true,
-        repeat: -1,
-      });
+        const tween = this.scene.tweens.add({
+          targets: sprite,
+          angle: 360,
+          duration: 1000,
+          repeat: -1,
+        });
 
-      this._mergeHighlights.push({ tower: target, graphics: g, tween, result });
+        this._mergeHighlights.push({ tower: target, graphics: null, sprite, tween, result });
+      } else {
+        // 폴백: 기존 Graphics strokeCircle + alpha 펄스
+        const g = this.scene.add.graphics().setDepth(40);
+        g.lineStyle(3, 0xffd700, 1);
+        g.strokeCircle(target.x, target.y, 22);
+
+        const tween = this.scene.tweens.add({
+          targets: g,
+          alpha: { from: 1.0, to: 0.5 },
+          duration: 600,
+          yoyo: true,
+          repeat: -1,
+        });
+
+        this._mergeHighlights.push({ tower: target, graphics: g, sprite: null, tween, result });
+      }
     }
   }
 
@@ -887,13 +904,14 @@ export class TowerPanel {
   }
 
   /**
-   * 모든 합성 하이라이트 (그래픽 + 트윈)를 정리한다.
+   * 모든 합성 하이라이트 (그래픽/스프라이트 + 트윈)를 정리한다.
    * @private
    */
   _clearMergeHighlights() {
     for (const h of this._mergeHighlights) {
       h.tween.stop();
-      h.graphics.destroy();
+      if (h.graphics) h.graphics.destroy();
+      if (h.sprite) h.sprite.destroy();
     }
     this._mergeHighlights = [];
   }

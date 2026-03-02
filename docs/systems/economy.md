@@ -36,6 +36,7 @@ floor(round / 5) * 2 + floor(round / 10) * 3
 
 - 게임 오버 시 획득, 영구 축적
 - 게임 오버 화면에 획득량/총량 표시
+- 보상형 광고 시청: MenuScene "Diamond 받기" 버튼으로 1회당 3개 지급 (일일 5회 제한, `AD_REWARD_DIAMOND`/`AD_LIMIT_DIAMOND`)
 
 ### 소비처
 

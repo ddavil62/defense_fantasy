@@ -21,6 +21,8 @@ import {
   getMergeResult, MERGE_RECIPES, SAVE_KEY,
   BTN_SELL, BTN_META, BTN_DANGER, BTN_PRIMARY, BTN_BACK,
   getEnemySpriteKey,
+  AD_REVIVE_HP_RATIO,
+  AD_GOLD_BOOST_MULTIPLIER,
 } from '../config.js';
 
 // ── 매니저 ──
@@ -56,6 +58,10 @@ export class GameScene extends Phaser.Scene {
    * @param {object} [data={}] - 씬 전환 시 전달된 데이터
    * @param {import('../data/maps.js').MapData} [data.mapData] - 맵 데이터 (기본: CLASSIC_MAP)
    * @param {string} [data.gameMode='endless'] - 게임 모드 ('endless' | 'campaign')
+   * @param {boolean} [data.revived=false] - 광고 부활 여부 (true면 재 게임오버 시 부활 불가)
+   * @param {number} [data.startWave=0] - 부활 시 재개할 웨이브 번호
+   * @param {boolean} [data.goldBoostActive=false] - 광고 골드 2배 부스트 활성 여부
+   * @param {boolean} [data.clearBoostActive=false] - 광고 클리어 보상 2배 활성 여부
    */
   init(data = {}) {
     /** @type {import('../data/maps.js').MapData} 현재 맵 데이터 */
@@ -63,6 +69,18 @@ export class GameScene extends Phaser.Scene {
 
     /** @type {string} 게임 모드 ('endless' = 엔드리스, 'campaign' = 캠페인) */
     this.gameMode = data.gameMode || 'endless';
+
+    /** @type {boolean} 광고 부활 여부 (판당 1회, true이면 재 게임오버 시 부활 불가) */
+    this.revived = data.revived || false;
+
+    /** @type {number} 부활 시 재개할 웨이브 번호 (0이면 일반 시작) */
+    this._reviveStartWave = data.startWave || 0;
+
+    /** @type {boolean} 광고 골드 2배 부스트 활성 여부 (모든 골드 획득에 AD_GOLD_BOOST_MULTIPLIER 적용) */
+    this.goldBoostActive = data.goldBoostActive || false;
+
+    /** @type {boolean} 광고 클리어 보상 2배 활성 여부 (MapClearScene에 전달) */
+    this.clearBoostActive = data.clearBoostActive || false;
 
     /** @type {number|null} 총 웨이브 수 (캠페인: 유한값, 엔드리스: null) */
     this.totalWaves = isFinite(this.mapData.totalWaves) ? this.mapData.totalWaves : null;
@@ -203,8 +221,14 @@ export class GameScene extends Phaser.Scene {
     // ── 유틸리티 메타 업그레이드 적용 (기지 HP, 시작 골드) ──
     const metaBaseHP = getMetaBaseHP(this.utilityUpgrades);
     const metaMaxHP = getMetaMaxBaseHP(this.utilityUpgrades);
-    this.baseHP = metaBaseHP;
     this.maxBaseHP = metaMaxHP;
+
+    // 부활 시 기지 HP를 최대 HP의 절반으로 설정
+    if (this.revived && this._reviveStartWave > 0) {
+      this.baseHP = Math.ceil(this.maxBaseHP * AD_REVIVE_HP_RATIO);
+    } else {
+      this.baseHP = metaBaseHP;
+    }
 
     const metaGold = getMetaInitialGold(this.utilityUpgrades);
 
@@ -272,8 +296,13 @@ export class GameScene extends Phaser.Scene {
     // 캠페인 모드: 맵 클리어 이벤트 리스너 (WaveManager에서 발행)
     this.events.on('mapClear', (clearData) => this._onMapClear(clearData));
 
-    // 첫 번째 웨이브 시작
-    this.waveManager.startFirstWave();
+    // 웨이브 시작 (부활 시 해당 라운드부터 재개)
+    if (this.revived && this._reviveStartWave > 0) {
+      this.waveManager.currentWave = this._reviveStartWave;
+      this.waveManager._announceWave();
+    } else {
+      this.waveManager.startFirstWave();
+    }
   }
 
   /**
@@ -719,9 +748,10 @@ export class GameScene extends Phaser.Scene {
         enemy.destroy();
         this.enemies.splice(i, 1);
       } else if (!enemy.alive) {
-        // 적 처치: 골드 지급 (Gold Rain 활성 시 2배)
-        const goldMultiplier = this.consumableState.goldRain.active ? 2 : 1;
-        const killGold = enemy.gold * goldMultiplier;
+        // 적 처치: 골드 지급 (Gold Rain 활성 시 2배, 광고 골드 부스트 시 추가 2배)
+        const goldRainMultiplier = this.consumableState.goldRain.active ? 2 : 1;
+        const adGoldMultiplier = this.goldBoostActive ? AD_GOLD_BOOST_MULTIPLIER : 1;
+        const killGold = Math.floor(enemy.gold * goldRainMultiplier * adGoldMultiplier);
         this.goldManager.earn(killGold);
         this.gameStats.goldEarned += killGold;
         this.totalKills++;
@@ -1460,9 +1490,10 @@ export class GameScene extends Phaser.Scene {
    * @private
    */
   _onWaveClear(bonusGold) {
-    // 유틸리티 업그레이드의 웨이브 보너스 배율 적용
+    // 유틸리티 업그레이드의 웨이브 보너스 배율 적용 + 광고 골드 부스트
     const multiplier = getMetaWaveBonusMultiplier(this.utilityUpgrades);
-    const adjustedBonus = Math.floor(bonusGold * multiplier);
+    const adGoldMultiplier = this.goldBoostActive ? AD_GOLD_BOOST_MULTIPLIER : 1;
+    const adjustedBonus = Math.floor(bonusGold * multiplier * adGoldMultiplier);
     this.goldManager.earn(adjustedBonus);
     this.gameStats.goldEarned += adjustedBonus;
     this.gameStats.wavesCleared++;
@@ -1521,6 +1552,7 @@ export class GameScene extends Phaser.Scene {
         gameStats: { ...this.gameStats },
         mapData: this.mapData,
         gameMode: this.gameMode,
+        clearBoostActive: this.clearBoostActive,
       });
     });
   }
@@ -1529,8 +1561,9 @@ export class GameScene extends Phaser.Scene {
 
   /**
    * 게임오버 시퀀스를 트리거한다.
-   * BGM을 멈추고, 0.5초 후 GameOverScene으로 전환하며
+   * BGM을 멈추고, 전면 광고를 표시한 뒤 GameOverScene으로 전환하며
    * 최종 라운드/킬 수/통계를 전달한다.
+   * 광고 실패 시에도 정상적으로 GameOverScene으로 전환된다.
    * @private
    */
   _gameOver() {
@@ -1547,16 +1580,31 @@ export class GameScene extends Phaser.Scene {
 
     this.waveManager.destroy();
 
-    // 0.5초 딜레이 후 게임오버 씬으로 전환
-    this.time.delayedCall(500, () => {
-      this.scene.start('GameOverScene', {
-        round: finalRound,
-        kills: finalKills,
-        gameStats: { ...this.gameStats },
-        mapData: this.mapData,
-        gameMode: this.gameMode,
+    // 전면 광고 표시 후 GameOverScene 전환
+    // 광고 표시 시간이 기존 0.5초 딜레이 역할을 대체한다
+    const sceneData = {
+      round: finalRound,
+      kills: finalKills,
+      gameStats: { ...this.gameStats },
+      mapData: this.mapData,
+      gameMode: this.gameMode,
+      revived: this.revived,
+    };
+
+    const adManager = this.registry.get('adManager');
+    if (adManager) {
+      adManager.showInterstitial().then(() => {
+        this.scene.start('GameOverScene', sceneData);
+      }).catch(() => {
+        // 광고 실패 시에도 정상 전환
+        this.scene.start('GameOverScene', sceneData);
       });
-    });
+    } else {
+      // AdManager가 없으면 기존 딜레이 방식 유지
+      this.time.delayedCall(500, () => {
+        this.scene.start('GameOverScene', sceneData);
+      });
+    }
   }
 
   /**

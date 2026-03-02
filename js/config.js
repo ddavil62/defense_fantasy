@@ -1658,6 +1658,39 @@ export const SAVE_KEY = 'fantasy-td-save';
 /** @const {string} 사운드 설정 localStorage 키 */
 export const SOUND_SAVE_KEY = 'fantasy-td-sound';
 
+/** @const {string} 광고 일일 제한 카운터 localStorage 키 */
+export const AD_DAILY_LIMIT_KEY = 'ftd_ad_daily_limit';
+
+// ── AdMob 광고 단위 ID ──────────────────────────────────────────
+/** @const {string} 전면 광고 단위 ID (테스트용) */
+export const ADMOB_INTERSTITIAL_ID = 'ca-app-pub-3940256099942544/1033173712';
+/** @const {string} 보상형 광고 - Diamond 지급 단위 ID (테스트용) */
+export const ADMOB_REWARDED_DIAMOND_ID = 'ca-app-pub-3940256099942544/5224354917';
+/** @const {string} 보상형 광고 - 부활 단위 ID (테스트용) */
+export const ADMOB_REWARDED_REVIVE_ID = 'ca-app-pub-3940256099942544/5224354917';
+/** @const {string} 보상형 광고 - Gold 2배 부스트 단위 ID (테스트용) */
+export const ADMOB_REWARDED_GOLD_BOOST_ID = 'ca-app-pub-3940256099942544/5224354917';
+/** @const {string} 보상형 광고 - 클리어 보상 2배 단위 ID (테스트용) */
+export const ADMOB_REWARDED_CLEAR_BOOST_ID = 'ca-app-pub-3940256099942544/5224354917';
+
+// ── 광고 일일 제한 ──────────────────────────────────────────────
+/** @const {number} Diamond 보상형 광고 일일 제한 횟수 */
+export const AD_LIMIT_DIAMOND = 5;
+/** @const {number} Gold 2배 부스트 광고 일일 제한 횟수 */
+export const AD_LIMIT_GOLD_BOOST = 3;
+/** @const {number} 클리어 보상 2배 광고 일일 제한 횟수 */
+export const AD_LIMIT_CLEAR_BOOST = 3;
+
+// ── 광고 보상 수치 ──────────────────────────────────────────────
+/** @const {number} Diamond 보상형 광고 1회당 지급 수량 */
+export const AD_REWARD_DIAMOND = 3;
+/** @const {number} 부활 시 기지 HP 회복 비율 (maxBaseHP 대비) */
+export const AD_REVIVE_HP_RATIO = 0.5;
+/** @const {number} Gold 2배 부스트 배율 */
+export const AD_GOLD_BOOST_MULTIPLIER = 2;
+/** @const {number} 클리어 보상 2배 배율 */
+export const AD_CLEAR_BOOST_MULTIPLIER = 2;
+
 // ── 게임 속도 설정 ──────────────────────────────────────────────
 export const SPEED_NORMAL = 1.0;
 export const SPEED_FAST = 2.0;

@@ -2,13 +2,17 @@
  * @fileoverview 맵 클리어 결과 씬(MapClearScene).
  * 캠페인 모드에서 모든 웨이브를 클리어했을 때 표시된다.
  * 별점(1~3성) 애니메이션, 다이아몬드 보상, NEXT MAP / WORLD MAP 버튼을 제공한다.
+ * Phase 3: clearBoostActive 플래그 또는 사후 광고 시청으로 보상 2배 적용.
  */
 
 import {
   GAME_WIDTH, GAME_HEIGHT, COLORS, VISUALS,
   calcStarRating, CAMPAIGN_DIAMOND_REWARDS,
-  BTN_PRIMARY, BTN_BACK, BTN_DANGER,
+  BTN_PRIMARY, BTN_BACK, BTN_DANGER, BTN_META, BTN_SELL,
   SAVE_KEY, migrateSaveData, TOWER_UNLOCK_MAP, TOWER_STATS,
+  AD_CLEAR_BOOST_MULTIPLIER,
+  AD_LIMIT_CLEAR_BOOST,
+  ADMOB_REWARDED_CLEAR_BOOST_ID,
 } from '../config.js';
 import { t } from '../i18n.js';
 import { getNextMapId, WORLDS } from '../data/worlds.js';
@@ -34,6 +38,7 @@ export class MapClearScene extends Phaser.Scene {
    * @param {object} data.gameStats - 게임 통계
    * @param {import('../data/maps.js').MapData} data.mapData - 맵 데이터
    * @param {string} data.gameMode - 게임 모드
+   * @param {boolean} [data.clearBoostActive=false] - 광고 클리어 보상 2배 활성 여부
    */
   init(data) {
     /** @type {number} 클리어 시점 HP */
@@ -56,11 +61,15 @@ export class MapClearScene extends Phaser.Scene {
 
     /** @type {string} 게임 모드 */
     this.gameMode = data.gameMode || 'campaign';
+
+    /** @type {boolean} 광고 클리어 보상 2배 활성 여부 */
+    this.clearBoostActive = data.clearBoostActive || false;
   }
 
   /**
    * 맵 클리어 UI를 생성한다.
-   * 별점 계산 → 애니메이션 → 보상 표시 → 버튼 배치
+   * 별점 계산 -> 보상 계산 -> 세이브 저장(즉시 또는 광고 후 지연) ->
+   * 애니메이션 -> 보상 표시 -> 버튼 배치
    */
   create() {
     const centerX = GAME_WIDTH / 2;
@@ -69,24 +78,38 @@ export class MapClearScene extends Phaser.Scene {
     // 별점 계산
     const stars = calcStarRating(this.currentHP, this.maxHP);
 
-    // ── 세이브 처리: 진행 상태 갱신 + 다이아몬드 차액 보상 ──
+    // ── 보상 계산 (세이브는 아직 저장하지 않음 - 광고 시청 가능성 대기) ──
     const saveData = this._loadSave();
     const mapId = this.mapData.id;
     const prevStars = saveData.worldProgress[mapId]?.stars || 0;
 
-    // 차액 보상: 이전 별점보다 높을 때만 차이분 지급
-    const earnedDiamond = Math.max(0,
+    // 기본 차액 보상
+    const baseDiamond = Math.max(0,
       (CAMPAIGN_DIAMOND_REWARDS[stars] || 0) - (CAMPAIGN_DIAMOND_REWARDS[prevStars] || 0));
+
+    // 부스트 배율 적용
+    const boostMultiplier = this.clearBoostActive ? AD_CLEAR_BOOST_MULTIPLIER : 1;
+
+    /** @type {number} 최종 다이아몬드 보상 (부스트 포함) */
+    this._earnedDiamond = baseDiamond * boostMultiplier;
+
+    /** @type {number} 부스트 없는 기본 다이아몬드 보상 */
+    this._baseDiamond = baseDiamond;
+
+    /** @type {number} 별점 */
+    this._stars = stars;
+
+    /** @type {number} 이전 별점 */
+    this._prevStars = prevStars;
+
+    /** @type {boolean} 세이브 저장 완료 여부 */
+    this._saved = false;
 
     // worldProgress 갱신 (최고 별점 유지)
     saveData.worldProgress[mapId] = {
       cleared: true,
       stars: Math.max(prevStars, stars),
     };
-
-    // 다이아몬드 지급
-    saveData.diamond += earnedDiamond;
-    saveData.totalDiamondEarned += earnedDiamond;
 
     // campaignStats 갱신
     if (prevStars === 0) {
@@ -124,9 +147,18 @@ export class MapClearScene extends Phaser.Scene {
       }
     }
 
-    // 세이브 저장 + 레지스트리 갱신
-    this._saveToDB(saveData);
-    this.registry.set('saveData', saveData);
+    // 세이브 데이터 참조 보관 (광고 시청 후 다이아몬드 갱신에 사용)
+    this._saveData = saveData;
+
+    // clearBoost가 이미 활성화되었거나 광고 한도가 이미 도달한 경우 즉시 세이브
+    // 그렇지 않으면 광고 시청 가능성이 있으므로 세이브를 지연
+    const adManager = this.registry.get('adManager');
+    const adLimitReached = adManager ? adManager.isAdLimitReached('clearBoost') : true;
+
+    if (this.clearBoostActive || baseDiamond <= 0 || adLimitReached) {
+      // 즉시 세이브: 부스트가 이미 적용되었거나, 보상이 없거나, 광고 한도 초과
+      this._applyDiamondAndSave(saveData, this._earnedDiamond);
+    }
 
     // ── 어두운 오버레이 ──
     this.add.rectangle(centerX, centerY, GAME_WIDTH, GAME_HEIGHT, 0x000000)
@@ -227,10 +259,12 @@ export class MapClearScene extends Phaser.Scene {
 
     // ── 다이아몬드 보상 ──
     const diamondY = centerY + 5;
-    if (earnedDiamond > 0) {
-      // 차액 보상이 있는 경우 표시
-      const diamondText = this.add.text(centerX, diamondY,
-        `\u25C6 +${earnedDiamond} Diamond`, {
+    if (this._earnedDiamond > 0) {
+      // 차액 보상이 있는 경우 표시 (부스트 포함)
+      const boostSuffix = this.clearBoostActive ? ' (x2)' : '';
+      /** @type {Phaser.GameObjects.Text} 다이아몬드 보상 텍스트 참조 (광고 후 갱신용) */
+      this._diamondText = this.add.text(centerX, diamondY,
+        `\u25C6 +${this._earnedDiamond} Diamond${boostSuffix}`, {
           fontSize: '18px',
           fontFamily: 'Galmuri11, Arial, sans-serif',
           color: COLORS.DIAMOND_CSS,
@@ -239,7 +273,7 @@ export class MapClearScene extends Phaser.Scene {
 
       // 별점 애니메이션 이후에 페이드인
       this.tweens.add({
-        targets: diamondText,
+        targets: this._diamondText,
         alpha: 1,
         duration: 400,
         delay: 1400,
@@ -267,7 +301,7 @@ export class MapClearScene extends Phaser.Scene {
     if (this._newlyUnlockedTower) {
       const towerName = t(`tower.${this._newlyUnlockedTower}.name`);
       const unlockLabel = this.add.text(centerX, diamondY + 28,
-        `🔓 ${towerName} ${t('ui.towerUnlocked')}`, {
+        `\uD83D\uDD13 ${towerName} ${t('ui.towerUnlocked')}`, {
           fontSize: '16px',
           fontFamily: 'Galmuri11, Arial, sans-serif',
           color: '#00b894',
@@ -292,6 +326,11 @@ export class MapClearScene extends Phaser.Scene {
       color: stars === 3 ? '#ffd700' : stars === 2 ? '#fdcb6e' : '#b2bec3',
     }).setOrigin(0.5);
 
+    // ── "보상 2배" 광고 버튼 (clearBoost 미적용 + 보상 있음 + 한도 미초과 시 표시) ──
+    if (!this.clearBoostActive && baseDiamond > 0 && !adLimitReached) {
+      this._createClearBoostButton(centerX, centerY + 58);
+    }
+
     // ── NEXT MAP 버튼 (대형 160x44로 표준화) ──
     const nextY = centerY + 75;
     const nextMapId = getNextMapId(this.mapData.id);
@@ -309,6 +348,8 @@ export class MapClearScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     nextBg.on('pointerdown', () => {
+      // 씬 전환 전에 아직 세이브하지 않았으면 저장
+      this._ensureSaved();
       this.cameras.main.fadeOut(200, 0, 0, 0);
       this.cameras.main.once('camerafadeoutcomplete', () => {
         if (nextMapId) {
@@ -336,6 +377,7 @@ export class MapClearScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     retryBg.on('pointerdown', () => {
+      this._ensureSaved();
       this.cameras.main.fadeOut(200, 0, 0, 0);
       this.cameras.main.once('camerafadeoutcomplete', () => {
         this.scene.start('GameScene', {
@@ -359,11 +401,108 @@ export class MapClearScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     worldBg.on('pointerdown', () => {
+      this._ensureSaved();
       this.cameras.main.fadeOut(200, 0, 0, 0);
       this.cameras.main.once('camerafadeoutcomplete', () => {
         this.scene.start('WorldSelectScene');
       });
     });
+  }
+
+  // ── 보상 2배 광고 버튼 ──────────────────────────────────────
+
+  /**
+   * "보상 2배" 보상형 광고 버튼을 생성한다.
+   * clearBoostActive가 아직 false이고 보상이 있을 때만 표시된다.
+   * 광고 완료 후 보상을 재계산하고 화면을 갱신한 뒤 버튼을 숨긴다.
+   * @param {number} x - 버튼 중심 X
+   * @param {number} y - 버튼 중심 Y
+   * @private
+   */
+  _createClearBoostButton(x, y) {
+    /** @type {import('../managers/AdManager.js').AdManager|null} */
+    const adManager = this.registry.get('adManager');
+
+    // 소형 버튼 (퍼플 메타 스타일)
+    const btnBg = this.add.rectangle(x, y, 120, 22, BTN_META)
+      .setInteractive({ useHandCursor: true })
+      .setStrokeStyle(1, COLORS.DIAMOND);
+
+    const label = this.add.text(x, y, t('ui.ad.clearBoost'), {
+      fontSize: '11px',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
+      color: '#ffffff',
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+
+    /** @type {boolean} 버튼 처리 중 여부 (중복 탭 방지) */
+    let isProcessing = false;
+
+    btnBg.on('pointerdown', async () => {
+      if (isProcessing) return;
+      if (!adManager) return;
+      if (adManager.isAdLimitReached('clearBoost')) return;
+
+      isProcessing = true;
+      label.setText(t('ui.ad.loading'));
+
+      const result = await adManager.showRewarded(ADMOB_REWARDED_CLEAR_BOOST_ID);
+
+      if (result.rewarded) {
+        adManager.incrementDailyAdCount('clearBoost');
+        this.clearBoostActive = true;
+
+        // 보상 재계산: 기본 보상에 2배 적용
+        this._earnedDiamond = this._baseDiamond * AD_CLEAR_BOOST_MULTIPLIER;
+
+        // 다이아몬드 텍스트 갱신
+        if (this._diamondText) {
+          this._diamondText.setText(`\u25C6 +${this._earnedDiamond} Diamond (x2)`);
+        }
+
+        // 세이브 처리 (재계산된 보상으로 저장)
+        this._applyDiamondAndSave(this._saveData, this._earnedDiamond);
+
+        // 버튼 숨김
+        btnBg.setVisible(false);
+        btnBg.disableInteractive();
+        label.setVisible(false);
+      } else {
+        // 광고 실패: 텍스트 복원
+        label.setText(t('ui.ad.clearBoost'));
+        isProcessing = false;
+      }
+    });
+  }
+
+  // ── 다이아몬드 지급 및 세이브 ──────────────────────────────────
+
+  /**
+   * 다이아몬드를 세이브 데이터에 지급하고 저장한다.
+   * @param {object} saveData - 세이브 데이터 객체
+   * @param {number} diamond - 지급할 다이아몬드 수량
+   * @private
+   */
+  _applyDiamondAndSave(saveData, diamond) {
+    if (this._saved) return;
+
+    saveData.diamond += diamond;
+    saveData.totalDiamondEarned += diamond;
+
+    this._saveToDB(saveData);
+    this.registry.set('saveData', saveData);
+    this._saved = true;
+  }
+
+  /**
+   * 씬 전환 전 세이브가 완료되지 않았으면 현재 보상으로 저장한다.
+   * 광고를 시청하지 않고 바로 버튼을 누른 경우에 대한 안전장치.
+   * @private
+   */
+  _ensureSaved() {
+    if (!this._saved) {
+      this._applyDiamondAndSave(this._saveData, this._earnedDiamond);
+    }
   }
 
   // ── 이미지 버튼 생성 헬퍼 ────────────────────────────────────

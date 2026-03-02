@@ -2,9 +2,15 @@
  * @fileoverview 레벨(맵) 선택 씬(LevelSelectScene).
  * 선택된 월드의 6개 맵을 카드 목록으로 표시하고,
  * 해금된 맵의 START 버튼을 탭하면 GameScene으로 이동한다.
+ * Phase 3: 각 해금 맵 카드에 "2배 골드" / "보상 2배" 광고 버튼을 배치한다.
  */
 
-import { GAME_WIDTH, GAME_HEIGHT, COLORS, BTN_PRIMARY } from '../config.js';
+import {
+  GAME_WIDTH, GAME_HEIGHT, COLORS, BTN_PRIMARY,
+  BTN_META, BTN_SELL,
+  AD_LIMIT_GOLD_BOOST, AD_LIMIT_CLEAR_BOOST,
+  ADMOB_REWARDED_GOLD_BOOST_ID, ADMOB_REWARDED_CLEAR_BOOST_ID,
+} from '../config.js';
 import { t } from '../i18n.js';
 import { getWorldById } from '../data/worlds.js';
 import { getMapById } from '../data/maps.js';
@@ -30,6 +36,12 @@ export class LevelSelectScene extends Phaser.Scene {
 
     /** @type {object} 세이브 데이터 캐싱 (진행 상태 조회용) */
     this._saveData = this.registry.get('saveData') || {};
+
+    /** @type {string|null} "2배 골드" 부스트가 활성화된 맵 ID */
+    this._goldBoostActiveFor = null;
+
+    /** @type {string|null} "보상 2배" 부스트가 활성화된 맵 ID */
+    this._clearBoostActiveFor = null;
   }
 
   /**
@@ -170,6 +182,11 @@ export class LevelSelectScene extends Phaser.Scene {
           diffGfx.fillCircle(dotStartX + d * 12, dotY, 4);
         }
 
+        // ── 광고 버튼 영역: 좌측 하단에 "2배 골드" / "보상 2배" 소형 버튼 ──
+        const adBtnY = cardY + cardH / 2 - 12;
+        this._createGoldBoostButton(cardLeft + 38, adBtnY, mapId);
+        this._createClearBoostButton(cardLeft + 114, adBtnY, mapId);
+
         // 하단 우측: START 버튼 (소형 80x26)
         const btnW = 80;
         const btnH = 26;
@@ -195,6 +212,8 @@ export class LevelSelectScene extends Phaser.Scene {
             this.scene.start('GameScene', {
               mapData: mapData,
               gameMode: 'campaign',
+              goldBoostActive: this._goldBoostActiveFor === mapId,
+              clearBoostActive: this._clearBoostActiveFor === mapId,
             });
           });
         });
@@ -232,6 +251,176 @@ export class LevelSelectScene extends Phaser.Scene {
             color: '#636e72',
           }).setOrigin(0.5);
         }
+      }
+    });
+  }
+
+  // ── 광고 버튼: 2배 골드 ──────────────────────────────────────
+
+  /**
+   * "2배 골드" 보상형 광고 버튼을 생성한다.
+   * 광고 시청 완료 시 해당 판의 모든 골드 획득이 2배가 된다.
+   * 일일 3회 제한이며, 활성화 시 하이라이트 표시된다.
+   * @param {number} x - 버튼 중심 X
+   * @param {number} y - 버튼 중심 Y
+   * @param {string} mapId - 해당 맵 ID
+   * @private
+   */
+  _createGoldBoostButton(x, y, mapId) {
+    /** @type {import('../managers/AdManager.js').AdManager|null} */
+    const adManager = this.registry.get('adManager');
+    const isLimitReached = adManager ? adManager.isAdLimitReached('goldBoost') : true;
+    const isActive = this._goldBoostActiveFor === mapId;
+
+    // 활성화 상태이면 하이라이트 텍스트
+    if (isActive) {
+      const activeBg = this.add.rectangle(x, y, 70, 18, 0x00b894)
+        .setStrokeStyle(1, 0xffd700);
+      this.add.text(x, y, t('ui.ad.goldBoostActive'), {
+        fontSize: '9px',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
+        color: '#ffd700',
+        fontStyle: 'bold',
+      }).setOrigin(0.5);
+      return;
+    }
+
+    // 한도 소진 시 비활성 표시
+    if (isLimitReached) {
+      this.add.rectangle(x, y, 70, 18, BTN_SELL)
+        .setStrokeStyle(1, 0x4a4a5a);
+      this.add.text(x, y, t('ui.ad.goldBoost'), {
+        fontSize: '9px',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
+        color: '#636e72',
+      }).setOrigin(0.5);
+      return;
+    }
+
+    // 활성 상태: 소형 버튼
+    const btnBg = this.add.rectangle(x, y, 70, 18, BTN_META)
+      .setInteractive({ useHandCursor: true })
+      .setStrokeStyle(1, COLORS.DIAMOND);
+
+    const label = this.add.text(x, y, t('ui.ad.goldBoost'), {
+      fontSize: '9px',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
+      color: '#ffffff',
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+
+    /** @type {boolean} 버튼 처리 중 여부 (중복 탭 방지) */
+    let isProcessing = false;
+
+    btnBg.on('pointerdown', async () => {
+      if (isProcessing) return;
+      if (!adManager) return;
+      if (adManager.isAdLimitReached('goldBoost')) return;
+
+      isProcessing = true;
+      label.setText(t('ui.ad.loading'));
+
+      const result = await adManager.showRewarded(ADMOB_REWARDED_GOLD_BOOST_ID);
+
+      if (result.rewarded) {
+        adManager.incrementDailyAdCount('goldBoost');
+        this._goldBoostActiveFor = mapId;
+
+        // 하이라이트 상태로 전환
+        label.setText(t('ui.ad.goldBoostActive'));
+        label.setColor('#ffd700');
+        btnBg.setFillStyle(0x00b894);
+        btnBg.setStrokeStyle(1, 0xffd700);
+        btnBg.disableInteractive();
+      } else {
+        // 광고 실패: 텍스트 복원
+        label.setText(t('ui.ad.goldBoost'));
+        isProcessing = false;
+      }
+    });
+  }
+
+  // ── 광고 버튼: 보상 2배 ──────────────────────────────────────
+
+  /**
+   * "보상 2배" 보상형 광고 버튼을 생성한다.
+   * 광고 시청 완료 시 클리어 보상(Diamond)이 2배가 된다.
+   * 일일 3회 제한이며, 활성화 시 하이라이트 표시된다.
+   * @param {number} x - 버튼 중심 X
+   * @param {number} y - 버튼 중심 Y
+   * @param {string} mapId - 해당 맵 ID
+   * @private
+   */
+  _createClearBoostButton(x, y, mapId) {
+    /** @type {import('../managers/AdManager.js').AdManager|null} */
+    const adManager = this.registry.get('adManager');
+    const isLimitReached = adManager ? adManager.isAdLimitReached('clearBoost') : true;
+    const isActive = this._clearBoostActiveFor === mapId;
+
+    // 활성화 상태이면 하이라이트 텍스트
+    if (isActive) {
+      const activeBg = this.add.rectangle(x, y, 70, 18, 0x00b894)
+        .setStrokeStyle(1, 0xffd700);
+      this.add.text(x, y, t('ui.ad.clearBoostActive'), {
+        fontSize: '9px',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
+        color: '#ffd700',
+        fontStyle: 'bold',
+      }).setOrigin(0.5);
+      return;
+    }
+
+    // 한도 소진 시 비활성 표시
+    if (isLimitReached) {
+      this.add.rectangle(x, y, 70, 18, BTN_SELL)
+        .setStrokeStyle(1, 0x4a4a5a);
+      this.add.text(x, y, t('ui.ad.clearBoost'), {
+        fontSize: '9px',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
+        color: '#636e72',
+      }).setOrigin(0.5);
+      return;
+    }
+
+    // 활성 상태: 소형 버튼
+    const btnBg = this.add.rectangle(x, y, 70, 18, BTN_META)
+      .setInteractive({ useHandCursor: true })
+      .setStrokeStyle(1, COLORS.DIAMOND);
+
+    const label = this.add.text(x, y, t('ui.ad.clearBoost'), {
+      fontSize: '9px',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
+      color: '#ffffff',
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+
+    /** @type {boolean} 버튼 처리 중 여부 (중복 탭 방지) */
+    let isProcessing = false;
+
+    btnBg.on('pointerdown', async () => {
+      if (isProcessing) return;
+      if (!adManager) return;
+      if (adManager.isAdLimitReached('clearBoost')) return;
+
+      isProcessing = true;
+      label.setText(t('ui.ad.loading'));
+
+      const result = await adManager.showRewarded(ADMOB_REWARDED_CLEAR_BOOST_ID);
+
+      if (result.rewarded) {
+        adManager.incrementDailyAdCount('clearBoost');
+        this._clearBoostActiveFor = mapId;
+
+        // 하이라이트 상태로 전환
+        label.setText(t('ui.ad.clearBoostActive'));
+        label.setColor('#ffd700');
+        btnBg.setFillStyle(0x00b894);
+        btnBg.setStrokeStyle(1, 0xffd700);
+        btnBg.disableInteractive();
+      } else {
+        // 광고 실패: 텍스트 복원
+        label.setText(t('ui.ad.clearBoost'));
+        isProcessing = false;
       }
     });
   }

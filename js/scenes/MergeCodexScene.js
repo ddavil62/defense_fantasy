@@ -388,11 +388,18 @@ export class MergeCodexScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true });
     this.codexScrollContainer.add(bg);
 
-    // 타워 색상 원 (반지름 14)
-    const circleG = this.add.graphics();
-    circleG.fillStyle(entry.color, 1);
-    circleG.fillCircle(cx, y + 20, 14);
-    this.codexScrollContainer.add(circleG);
+    // 타워 아이콘 (이미지 우선, 폴백 시 색상 원)
+    const codexTexKey = `tower_${entry.id}`;
+    if (this.textures.exists(codexTexKey)) {
+      const iconImg = this.add.image(cx, y + 20, codexTexKey)
+        .setDisplaySize(32, 32);
+      this.codexScrollContainer.add(iconImg);
+    } else {
+      const circleG = this.add.graphics();
+      circleG.fillStyle(entry.color, 1);
+      circleG.fillCircle(cx, y + 20, 14);
+      this.codexScrollContainer.add(circleG);
+    }
 
     // 타워 이름 (6자 초과 시 5자+'..' 로 말줄임)
     const displayName = entry.displayName.length > 6

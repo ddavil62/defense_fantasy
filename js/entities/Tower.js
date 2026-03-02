@@ -114,10 +114,14 @@ export class Tower {
 
   /**
    * 타워 타입과 레벨에 따라 도형을 그린다.
-   * 티어 >= 2이면 테두리 표시, 강화 레벨 > 0이면 발광 효과를 추가한다.
+   * 마법진 발판을 가장 먼저 그리고, 티어 >= 2이면 테두리 표시,
+   * 강화 레벨 > 0이면 발광 효과를 추가한다.
    */
   draw() {
     this.graphics.clear();
+
+    // 마법진 발판을 타워 아래에 렌더링
+    this._drawRuneBase();
 
     // 스프라이트가 있으면 도형 그리기를 건너뛴다 (T1 기본 타워)
     if (!this.sprite) {
@@ -171,10 +175,13 @@ export class Tower {
 
   /**
    * 티어별 테두리 인디케이터를 그린다.
+   * 마법진 이미지가 존재하면 마법진으로 대체되므로 생략한다.
    * 티어 2 = 실버, 티어 3 = 골드, 티어 4 = 퍼플, 티어 5 = 레인보우(간략화).
    * @private
    */
   _drawTierBorder() {
+    // 마법진 이미지가 있으면 테두리 대신 마법진으로 대체
+    if (this.runeSprite) return;
     const tierColors = {
       2: { color: 0xb2bec3, alpha: 0.8, width: 2 },    // 실버
       3: { color: 0xffd700, alpha: 0.7, width: 2.5 },   // 골드
@@ -462,6 +469,30 @@ export class Tower {
     this.graphics.lineBetween(this.x + wx, this.y - wy, this.x - wx, this.y + wy);
   }
 
+  // ── 마법진 발판 ───────────────────────────────────────────────
+
+  /**
+   * 타워 아래에 티어별 마법진 발판 이미지를 렌더링한다.
+   * rune_t1~rune_t5 텍스처가 존재할 때만 표시하며,
+   * 타워 스프라이트보다 낮은 depth로 배치한다.
+   * @private
+   */
+  _drawRuneBase() {
+    // 기존 마법진 스프라이트가 있으면 먼저 정리
+    if (this.runeSprite) {
+      this.runeSprite.destroy();
+      this.runeSprite = null;
+    }
+
+    const runeKey = `rune_t${this.tier}`;
+    if (!this.scene.textures.exists(runeKey)) return;
+
+    const towerDepth = 10 + (this.y / 1000);
+    this.runeSprite = this.scene.add.image(this.x, this.y, runeKey)
+      .setDisplaySize(64, 64)
+      .setDepth(towerDepth - 0.5);
+  }
+
   // ── 강화 (Lv.3+ 골드 싱크) ────────────────────────────────────
 
   /**
@@ -700,6 +731,10 @@ export class Tower {
    */
   destroy() {
     this.hideRangeCircle();
+    if (this.runeSprite) {
+      this.runeSprite.destroy();
+      this.runeSprite = null;
+    }
     if (this.sprite) {
       this.sprite.destroy();
       this.sprite = null;

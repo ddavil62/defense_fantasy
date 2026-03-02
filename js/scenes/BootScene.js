@@ -5,6 +5,7 @@
 
 import { SAVE_KEY, migrateSaveData, MERGE_RECIPES } from '../config.js';
 import { SoundManager } from '../managers/SoundManager.js';
+import { AdManager } from '../managers/AdManager.js';
 
 /**
  * 게임 최초 진입 시 실행되는 부팅 씬.
@@ -39,6 +40,12 @@ export class BootScene extends Phaser.Scene {
     for (const id of mergeIds) {
       this.load.image(`tower_${id}`, `assets/tower/${id}.png`);
     }
+
+    // 타워 발판 마법진 (rune_t1~t5) 및 합성 하이라이트 마법진 (merge_rune)
+    for (let tier = 1; tier <= 5; tier++) {
+      this.load.image(`rune_t${tier}`, `assets/ui/rune_t${tier}.png`);
+    }
+    this.load.image('merge_rune', 'assets/ui/merge_rune.png');
 
     // ── UI 에셋 로드 ──
 
@@ -121,6 +128,13 @@ export class BootScene extends Phaser.Scene {
     // SoundManager 싱글턴 초기화 (이미 존재하면 건너뜀)
     if (!this.registry.get('soundManager')) {
       this.registry.set('soundManager', new SoundManager());
+    }
+
+    // AdManager 초기화 (이미 존재하면 건너뜀)
+    if (!this.registry.get('adManager')) {
+      const adManager = new AdManager();
+      await adManager.initialize();
+      this.registry.set('adManager', adManager);
     }
 
     // 커스텀 폰트(Galmuri)가 완전히 로드된 후 MenuScene으로 전환

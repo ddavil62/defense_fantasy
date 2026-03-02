@@ -15,7 +15,8 @@ Phaser.js 3 기반 판타지 타워 디펜스 게임. 도형 기반 프로토타
 | 모듈 구조 | ES6 모듈 기반 멀티 파일 (30개) |
 | 폰트 | Galmuri11 픽셀 폰트 (Regular + Bold), SIL OFL 라이선스, woff2 로컬 번들링 |
 | 렌더링 | HTML5 Canvas (Phaser 기본, pixelArt: true, antialias: false) |
-| 데이터 저장 | localStorage (최고 기록, Diamond, 메타 업그레이드, 타워 해금, 머지 발견, 통계, 게임 히스토리, 월드 진행 상태, 엔드리스 해금) -- 세이브 v4 |
+| 데이터 저장 | localStorage (최고 기록, Diamond, 메타 업그레이드, 타워 해금, 머지 발견, 통계, 게임 히스토리, 월드 진행 상태, 엔드리스 해금) -- 세이브 v4. 광고 일일 제한 카운터는 별도 키(`ftd_ad_daily_limit`)에 저장 |
+| 광고 SDK | `@capacitor-community/admob` v7.2.0 (Capacitor 7 호환, 네이티브 전용, 웹 Mock 모드) |
 | 해상도 | 360x640 (모바일 세로, portrait) |
 | 서버 요구 | Vite dev 서버 (`npm run dev`) |
 
@@ -29,11 +30,11 @@ Phaser.js 3 기반 판타지 타워 디펜스 게임. 도형 기반 프로토타
 | `index.html` | 진입점 (Vite용 간소화, CDN 제거) |
 | `style.css` | 바디 배경, 터치 방지(`touch-action: none`), safe-area 패딩, Galmuri @font-face 선언 |
 | `js/main.js` | Phaser.Game 인스턴스 생성 (npm import, 360x640, FIT + CENTER_BOTH, pixelArt: true), Android 뒤로가기 키(ESC) 내비게이션 핸들러 (오버레이 우선 처리: TowerInfoOverlay/pauseOverlay 열림 시 씬 전환 대신 오버레이 닫기) |
-| `js/config.js` | 모든 게임 상수/밸런스 수치 집중 관리 (타워 10종, 적 8종, 웨이브 R1~R20, 메타 업그레이드 트리, 유틸리티 업그레이드, 저항 캡 0.55, 골드 싱크 상수, 머지 레시피 102종/스탯 102종 (T2 55종 + T3 30종 + T4 12종 + T5 5종), 별점 계산(calcStarRating), 캠페인 다이아몬드 보상(CAMPAIGN_DIAMOND_REWARDS), TOWER_UNLOCK_MAP(월드→타워 해금 매핑), 세이브 마이그레이션 v4) |
-| `js/scenes/BootScene.js` | 초기 설정, localStorage 로드, 세이브 마이그레이션 (stats 필드 포함), UI 에셋 56장 preload (아이콘 16장 포함), `async create()` + `await document.fonts.ready`로 Galmuri 폰트 로딩 대기 후 메뉴 전환 |
-| `js/scenes/MenuScene.js` | 메뉴 화면, Diamond 표시, CAMPAIGN/ENDLESS(endlessUnlocked 조건부 활성)/COLLECTION/STATISTICS 버튼, 종료 확인 다이얼로그(_openExitDialog) |
-| `js/scenes/GameScene.js` | 핵심 게임플레이 (맵/타워/적/투사체/웨이브/AoE/체인/빔/메타 업그레이드/ProjectilePool/delta 캡/통계 추적/사거리 프리뷰/골드 싱크/머지 드래그 핸들링/Pause 오버레이 합성도감 버튼/wake 이벤트 처리/mapClear 이벤트→MapClearScene 전환/일시정지 시 BGM 정지·복원/소모품 아이콘+툴팁/일시정지·음소거 버튼 아이콘) |
-| `js/scenes/GameOverScene.js` | 결과 표시, Diamond 획득, 통계 저장, 게임 히스토리 관리, RETRY/WORLD MAP(캠페인)/MENU 버튼 (RETRY 시 mapData/gameMode 전달) |
+| `js/config.js` | 모든 게임 상수/밸런스 수치 집중 관리 (타워 10종, 적 8종, 웨이브 R1~R20, 메타 업그레이드 트리, 유틸리티 업그레이드, 저항 캡 0.55, 골드 싱크 상수, 머지 레시피 102종/스탯 102종 (T2 55종 + T3 30종 + T4 12종 + T5 5종), 별점 계산(calcStarRating), 캠페인 다이아몬드 보상(CAMPAIGN_DIAMOND_REWARDS), TOWER_UNLOCK_MAP(월드→타워 해금 매핑), 세이브 마이그레이션 v4, AdMob 광고 ID 5개/일일 제한 3개/보상 수치 4개/localStorage 키 1개) |
+| `js/scenes/BootScene.js` | 초기 설정, localStorage 로드, 세이브 마이그레이션 (stats 필드 포함), UI 에셋 56장 preload (아이콘 16장 포함), `async create()` + AdManager 초기화/registry 등록 + `await document.fonts.ready`로 Galmuri 폰트 로딩 대기 후 메뉴 전환 |
+| `js/scenes/MenuScene.js` | 메뉴 화면, Diamond 표시, "Diamond 받기" 보상형 광고 버튼(일일 5회, Diamond +3), CAMPAIGN/ENDLESS(endlessUnlocked 조건부 활성)/COLLECTION/STATISTICS 버튼, 종료 확인 다이얼로그(_openExitDialog) |
+| `js/scenes/GameScene.js` | 핵심 게임플레이 (맵/타워/적/투사체/웨이브/AoE/체인/빔/메타 업그레이드/ProjectilePool/delta 캡/통계 추적/사거리 프리뷰/골드 싱크/머지 드래그 핸들링/Pause 오버레이 합성도감 버튼/wake 이벤트 처리/mapClear 이벤트→MapClearScene 전환/일시정지 시 BGM 정지·복원/소모품 아이콘+툴팁/일시정지·음소거 버튼 아이콘/게임오버 전면 광고/부활 처리(revived/startWave 플래그, HP 절반 설정, 웨이브 재개)) |
+| `js/scenes/GameOverScene.js` | 결과 표시, Diamond 획득, 통계 저장, 게임 히스토리 관리, "광고 보고 부활" 보상형 광고 버튼(판당 1회, HP=maxHP/2로 해당 라운드 재개), RETRY/WORLD MAP(캠페인)/MENU 버튼 (RETRY 시 mapData/gameMode 전달) |
 | `js/scenes/MapClearScene.js` | 캠페인 맵 클리어 결과 씬 (별점 1~3성 애니메이션, 다이아몬드 차액 보상 실제 지급, worldProgress/campaignStats/endlessUnlocked 세이브 갱신, 월드 클리어 시 타워 자동 해금+알림 UI, NEXT MAP(다음 맵 또는 월드 클리어)/RETRY/WORLD MAP 버튼) |
 | `js/scenes/WorldSelectScene.js` | 월드 선택 씬 (5개 월드 패널, 세이브 데이터 기반 해금/잠금, 별점 진행도, LevelSelectScene 이동) |
 | `js/scenes/LevelSelectScene.js` | 레벨 선택 씬 (6개 맵 카드, 세이브 데이터 기반 별점/해금, 기둥 장식 안쪽 패딩 35px, 설명 wordWrap 160px, START -> GameScene) |
@@ -55,13 +56,14 @@ Phaser.js 3 기반 판타지 타워 디펜스 게임. 도형 기반 프로토타
 | `js/data/maps/shadow.js` | 그림자 월드 6개 맵 (totalWaves 18~25, 전부 완성) |
 | `js/managers/GoldManager.js` | Gold 획득/소비/잔액 관리 |
 | `js/managers/ProjectilePool.js` | 오브젝트 풀 (투사체 30개 사전 할당, acquire/release) |
+| `js/managers/AdManager.js` | AdMob 플러그인 래핑 클래스. 네이티브 환경에서 실제 광고, 웹에서 Mock 모드. 전면/보상형 광고 생명주기 관리, 일일 제한 카운터(localStorage) |
 | `js/managers/SoundManager.js` | Web Audio API 프로시저럴 SFX/BGM, 백그라운드 전환 시 BGM 자동 일시정지/재개 |
 | `js/i18n.js` | 다국어 지원 (한국어/영어), 모든 UI 텍스트 번역 키 관리 |
 | `js/ui/HUD.js` | 상단 HUD (Wave/Gold/HP, HP 위험 깜빡임, 웨이브 카운트다운, 적 프리뷰, 캠페인 Wave X/Y 표시) |
 | `js/ui/TowerPanel.js` | 하단 타워 선택(2줄 5열)/판매(아이콘)/강화/드래그&드롭 머지 UI/머지 프리뷰(드래그 하이라이트+호버 말풍선)/3단 속도(아이콘, 1x/2x/3x) 패널. 타워 상세 모달은 TowerInfoOverlay로 위임 |
 | `js/ui/TowerInfoOverlay.js` | 공용 타워 정보 오버레이 (game/codex 모드). NineSlice 동적 패널, T1 스탯 패널, T2+ Y자 합성 트리, 상위 조합 드래그 스크롤, 드릴다운, game 모드 강화/판매 버튼, enhanceLevel 기반 baseH 동적 계산, handleBack() 공개 래퍼(ESC 키 외부 호출용) |
 
-**총 32개 JS 파일** (+ 맵 데이터 5개 파일)
+**총 33개 JS 파일** (+ 맵 데이터 5개 파일)
 
 ## Phaser 씬 구조
 
@@ -87,6 +89,7 @@ BootScene -> MenuScene
                |                                         |     +-> (sleep/wake) MergeCodexScene
                |                                         |
                |                                         +-> GameOverScene
+               |                                              +-> [REVIVE] -> GameScene (same map, revived, HP=50%)
                |                                              +-> [RETRY] -> GameScene (same map)
                |                                              +-> [WORLD MAP] -> WorldSelectScene (campaign)
                |                                              +-> [MENU] -> MenuScene
@@ -101,9 +104,11 @@ BootScene -> MenuScene
 - MenuScene -> EndlessMapSelectScene: ENDLESS 버튼 (endlessUnlocked === true, fadeOut 200ms)
 - WorldSelectScene -> LevelSelectScene: 해금된 월드 패널 탭 (worldId 전달, fadeOut 200ms)
 - LevelSelectScene -> GameScene: START 버튼 (mapData, gameMode: campaign, fadeOut 200ms)
-- GameScene -> MapClearScene: 캠페인 맵 클리어 시 전환 (mapClear 이벤트, 1초 딜레이)
+- GameScene -> GameOverScene: 기지 HP 0 → `_gameOver()` → 전면 광고(AdManager.showInterstitial()) → GameOverScene 전환. AdManager 미등록 시 0.5초 딜레이 폴백
+- GameScene -> MapClearScene: 캠페인 맵 클리어 시 전환 (mapClear 이벤트, 1초 딜레이, 전면 광고 없음)
 - MapClearScene -> GameScene: NEXT MAP (다음 맵) / RETRY (동일 맵) (fadeOut 200ms)
 - MapClearScene -> WorldSelectScene: WORLD MAP 버튼 / 월드 마지막 맵 클리어 시 (fadeOut 200ms)
+- GameOverScene -> GameScene: 부활 버튼 (revived: true, startWave: round, HP=maxHP/2, fadeOut 200ms)
 - GameOverScene -> WorldSelectScene: WORLD MAP 버튼 (캠페인 모드 전용, fadeOut 200ms)
 - GameScene -> MergeCodexScene: Pause 오버레이 합성도감 버튼 (scene.launch + sleep/wake)
 - CollectionScene -> MergeCodexScene: 합성도감 탭 클릭 (scene.start)
@@ -323,6 +328,8 @@ npx cap open android  # 또는 npx cap open ios
 - 유틸리티 카드 레이아웃 수직 재배치: Playwright 테스트 18개 (정상 7 + 시각 3 + 예외 5 + 안정성 3) + 시각적 검증 7건, QA PASS
 - 소모품 버튼 UX 개선 (아이콘+툴팁): Playwright 테스트 39개 (정상 26 + 예외 13) + 시각적 검증 13건, QA PASS
 - UI 아이콘 일괄 개선 (판매/배속/일시정지/음소거): Playwright 테스트 19개 (정상 10 + 예외 4 + 시각적 5) + 시각적 검증 8건, QA PASS
+- AdMob 통합 Phase 1 (전면 광고 + AdManager 기반): Playwright 테스트 25개 (정상 9 + 예외 8 + 단위 6 + UI 2) + 시각적 검증 8건, QA PASS
+- AdMob 통합 Phase 2 (보상형 광고: Diamond 지급 + 부활): Playwright 테스트 31개 (정상 12 + 예외/엣지케이스 11 + 회귀 4 + 기타 4) + 시각적 검증 10건, QA PASS
 
 ## 시스템별 상세 문서
 
@@ -334,6 +341,7 @@ npx cap open android  # 또는 npx cap open ios
 | [systems/economy.md](systems/economy.md) | Gold, Diamond, 메타 업그레이드, 컬렉션, 골드 싱크 |
 | [systems/sound.md](systems/sound.md) | SFX 8종, BGM 3종, Web Audio API, 백그라운드 전환 BGM 자동 일시정지/재개 |
 | [systems/ui.md](systems/ui.md) | HUD(캠페인 Wave X/Y), TowerPanel, TowerInfoOverlay(타워 정보 오버레이, game/codex 모드), 머지 프리뷰, 일시정지(합성도감 버튼 포함), 게임속도, 골드 싱크 UI(소모품 아이콘+툴팁), 컬렉션(이중 탭), MergeCodexScene(TowerInfoOverlay 연동), MapClearScene(차액 보상/세이브 갱신), WorldSelectScene(세이브 기반 해금), LevelSelectScene(세이브 기반 해금), MenuScene(CAMPAIGN/ENDLESS 조건부 활성, 종료 확인 다이얼로그), EndlessMapSelectScene(6탭 맵 선택), GameOverScene(캠페인 3버튼), 씬 전환 페이드(fadeIn/fadeOut), Android 뒤로가기 키(ESC) 내비게이션, UI 이미지 에셋(버튼 23장/패널 5장/HUD 9장/장식 3장/아이콘 16장), Galmuri 픽셀 폰트, 모바일 |
+| [systems/ad.md](systems/ad.md) | AdMob 광고 시스템 (전면 광고, 보상형 광고 4종, 일일 제한, Mock 모드) |
 
 ## 향후 계획
 
@@ -348,3 +356,7 @@ npx cap open android  # 또는 npx cap open ios
 | ~~월드맵 Phase 3~~ | ~~월드/레벨 선택 씬~~ | ~~완료 (WorldSelectScene, LevelSelectScene, HUD 캠페인 웨이브 표시, 캠페인 씬 플로우 완성)~~ |
 | ~~월드맵 Phase 4~~ | ~~세이브 데이터 확장~~ | ~~완료 (세이브 v3, worldProgress/endlessUnlocked/campaignStats, 다이아몬드 차액 보상, 진행 규칙)~~ |
 | ~~월드맵 Phase 5~~ | ~~맵 콘텐츠 + 엔드리스 맵 선택~~ | ~~완료 (19개 맵 고유 경로 완성, 씬 전환 페이드, EndlessMapSelectScene)~~ |
+| ~~AdMob Phase 1~~ | ~~AdManager 기반 + 전면 광고~~ | ~~완료 (AdManager 클래스, Mock 모드, 게임오버 전면 광고, 일일 제한 인프라)~~ |
+| ~~AdMob Phase 2~~ | ~~보상형 광고: Diamond + 부활~~ | ~~완료 (MenuScene Diamond 받기 버튼(일일 5회, +3D), GameOverScene 부활 버튼(판당 1회, HP 절반, 웨이브 재개))~~ |
+| AdMob Phase 3 | 보상형 광고: Gold 2배 + 클리어 보상 2배 | LevelSelectScene/MapClearScene 광고 버튼 |
+| AdMob Phase 4 | 통합 QA | 일일 제한 전체 검증, Mock 모드 Playwright 테스트 |
