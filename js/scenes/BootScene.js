@@ -83,8 +83,8 @@ export class BootScene extends Phaser.Scene {
     this.load.image('divider_header', 'assets/ui/decorations/divider_header.png');
     this.load.image('corner_deco', 'assets/ui/decorations/corner_deco.png');
 
-    // 아이콘 (다이아/하트/검/별/자물쇠)
-    for (const name of ['icon_diamond', 'icon_heart', 'icon_sword', 'icon_star_filled', 'icon_star_empty', 'icon_lock']) {
+    // 아이콘 (다이아/골드/하트/검/별/자물쇠)
+    for (const name of ['icon_diamond', 'icon_gold', 'icon_heart', 'icon_sword', 'icon_star_filled', 'icon_star_empty', 'icon_lock']) {
       this.load.image(name, `assets/ui/icons/${name}.png`);
     }
 

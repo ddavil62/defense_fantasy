@@ -99,9 +99,10 @@ export class HUD {
       }).setOrigin(0, 0.5).setDepth(31);
     }
 
-    // 골드 아이콘 + 텍스트 (중앙)
-    if (this.scene.textures.exists('icon_diamond')) {
-      this.goldIcon = this.scene.add.image(103, HUD_HEIGHT / 2, 'icon_diamond')
+    // 골드 아이콘 + 텍스트 (중앙, 전용 코인 아이콘 사용)
+    const goldIconKey = this.scene.textures.exists('icon_gold') ? 'icon_gold' : 'icon_diamond';
+    if (this.scene.textures.exists(goldIconKey)) {
+      this.goldIcon = this.scene.add.image(103, HUD_HEIGHT / 2, goldIconKey)
         .setDisplaySize(14, 14).setDepth(31);
       this.goldText = this.scene.add.text(114, HUD_HEIGHT / 2, '200', {
         fontSize: '16px',
