@@ -348,6 +348,9 @@ export class MapClearScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     nextBg.on('pointerdown', () => {
+      // 광고 진행 중이면 씬 전환 차단
+      const adManager = this.registry.get('adManager');
+      if (adManager?.isBusy) return;
       // 씬 전환 전에 아직 세이브하지 않았으면 저장
       this._ensureSaved();
       this.cameras.main.fadeOut(200, 0, 0, 0);
@@ -377,6 +380,9 @@ export class MapClearScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     retryBg.on('pointerdown', () => {
+      // 광고 진행 중이면 씬 전환 차단
+      const adManager = this.registry.get('adManager');
+      if (adManager?.isBusy) return;
       this._ensureSaved();
       this.cameras.main.fadeOut(200, 0, 0, 0);
       this.cameras.main.once('camerafadeoutcomplete', () => {
@@ -401,6 +407,9 @@ export class MapClearScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     worldBg.on('pointerdown', () => {
+      // 광고 진행 중이면 씬 전환 차단
+      const adManager = this.registry.get('adManager');
+      if (adManager?.isBusy) return;
       this._ensureSaved();
       this.cameras.main.fadeOut(200, 0, 0, 0);
       this.cameras.main.once('camerafadeoutcomplete', () => {
@@ -447,6 +456,9 @@ export class MapClearScene extends Phaser.Scene {
       label.setText(t('ui.ad.loading'));
 
       const result = await adManager.showRewarded(ADMOB_REWARDED_CLEAR_BOOST_ID);
+
+      // 씬 전환 후 콜백 진입 방지
+      if (!this.scene.isActive('MapClearScene')) return;
 
       if (result.rewarded) {
         adManager.incrementDailyAdCount('clearBoost');

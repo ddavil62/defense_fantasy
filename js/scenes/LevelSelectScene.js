@@ -76,6 +76,9 @@ export class LevelSelectScene extends Phaser.Scene {
     }).setOrigin(0.5).setInteractive({ useHandCursor: true });
 
     backText.on('pointerdown', () => {
+      // 광고 진행 중이면 씬 전환 차단
+      const adManager = this.registry.get('adManager');
+      if (adManager?.isBusy) return;
       this.cameras.main.fadeOut(200, 0, 0, 0);
       this.cameras.main.once('camerafadeoutcomplete', () => {
         this.scene.start('WorldSelectScene');
@@ -205,6 +208,9 @@ export class LevelSelectScene extends Phaser.Scene {
         }).setOrigin(0.5);
 
         startBg.on('pointerdown', () => {
+          // 광고 진행 중이면 씬 전환 차단
+          const adManager = this.registry.get('adManager');
+          if (adManager?.isBusy) return;
           this.cameras.main.fadeOut(200, 0, 0, 0);
           this.cameras.main.once('camerafadeoutcomplete', () => {
             const sm = this.registry.get('soundManager');
@@ -322,6 +328,9 @@ export class LevelSelectScene extends Phaser.Scene {
 
       const result = await adManager.showRewarded(ADMOB_REWARDED_GOLD_BOOST_ID);
 
+      // 씬 전환 후 콜백 진입 방지
+      if (!this.scene.isActive('LevelSelectScene')) return;
+
       if (result.rewarded) {
         adManager.incrementDailyAdCount('goldBoost');
         this._goldBoostActiveFor = mapId;
@@ -406,6 +415,9 @@ export class LevelSelectScene extends Phaser.Scene {
       label.setText(t('ui.ad.loading'));
 
       const result = await adManager.showRewarded(ADMOB_REWARDED_CLEAR_BOOST_ID);
+
+      // 씬 전환 후 콜백 진입 방지
+      if (!this.scene.isActive('LevelSelectScene')) return;
 
       if (result.rewarded) {
         adManager.incrementDailyAdCount('clearBoost');

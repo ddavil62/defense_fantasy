@@ -120,6 +120,9 @@ export class MenuScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     campaignBg.on('pointerdown', () => {
+      // 광고 진행 중이면 씬 전환 차단
+      const adManager = this.registry.get('adManager');
+      if (adManager?.isBusy) return;
       this.cameras.main.fadeOut(200, 0, 0, 0);
       this.cameras.main.once('camerafadeoutcomplete', () => {
         this.scene.start('WorldSelectScene');
@@ -144,6 +147,9 @@ export class MenuScene extends Phaser.Scene {
       }).setOrigin(0.5);
 
       endlessBg.on('pointerdown', () => {
+        // 광고 진행 중이면 씬 전환 차단
+        const adManager = this.registry.get('adManager');
+        if (adManager?.isBusy) return;
         this.cameras.main.fadeOut(200, 0, 0, 0);
         this.cameras.main.once('camerafadeoutcomplete', () => {
           this.scene.start('EndlessMapSelectScene');
@@ -185,6 +191,9 @@ export class MenuScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     collBg.on('pointerdown', () => {
+      // 광고 진행 중이면 씬 전환 차단
+      const adManager = this.registry.get('adManager');
+      if (adManager?.isBusy) return;
       this.cameras.main.fadeOut(200, 0, 0, 0);
       this.cameras.main.once('camerafadeoutcomplete', () => {
         this.scene.start('CollectionScene');
@@ -205,6 +214,9 @@ export class MenuScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     statsBg.on('pointerdown', () => {
+      // 광고 진행 중이면 씬 전환 차단
+      const adManager = this.registry.get('adManager');
+      if (adManager?.isBusy) return;
       this.cameras.main.fadeOut(200, 0, 0, 0);
       this.cameras.main.once('camerafadeoutcomplete', () => {
         this.scene.start('StatsScene');
@@ -322,6 +334,9 @@ export class MenuScene extends Phaser.Scene {
       label.setText(t('ui.ad.loading'));
 
       const result = await adManager.showRewarded(ADMOB_REWARDED_DIAMOND_ID);
+
+      // 씬 전환 후 콜백 진입 방지
+      if (!this.scene.isActive('MenuScene')) return;
 
       if (result.rewarded) {
         // Diamond 지급: saveData 갱신 + localStorage 저장

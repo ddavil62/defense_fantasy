@@ -263,6 +263,9 @@ export class GameOverScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     restartBg.on('pointerdown', () => {
+      // 광고 진행 중이면 씬 전환 차단
+      const adManager = this.registry.get('adManager');
+      if (adManager?.isBusy) return;
       this.cameras.main.fadeOut(200, 0, 0, 0);
       this.cameras.main.once('camerafadeoutcomplete', () => {
         this.scene.start('GameScene', {
@@ -287,6 +290,9 @@ export class GameOverScene extends Phaser.Scene {
       }).setOrigin(0.5);
 
       worldMapBg.on('pointerdown', () => {
+        // 광고 진행 중이면 씬 전환 차단
+        const adManager = this.registry.get('adManager');
+        if (adManager?.isBusy) return;
         this.cameras.main.fadeOut(200, 0, 0, 0);
         this.cameras.main.once('camerafadeoutcomplete', () => {
           this.scene.start('WorldSelectScene');
@@ -307,6 +313,9 @@ export class GameOverScene extends Phaser.Scene {
       }).setOrigin(0.5);
 
       menuBg.on('pointerdown', () => {
+        // 광고 진행 중이면 씬 전환 차단
+        const adManager = this.registry.get('adManager');
+        if (adManager?.isBusy) return;
         this.cameras.main.fadeOut(200, 0, 0, 0);
         this.cameras.main.once('camerafadeoutcomplete', () => {
           this.scene.start('MenuScene');
@@ -327,6 +336,9 @@ export class GameOverScene extends Phaser.Scene {
       }).setOrigin(0.5);
 
       menuBg.on('pointerdown', () => {
+        // 광고 진행 중이면 씬 전환 차단
+        const adManager = this.registry.get('adManager');
+        if (adManager?.isBusy) return;
         this.cameras.main.fadeOut(200, 0, 0, 0);
         this.cameras.main.once('camerafadeoutcomplete', () => {
           this.scene.start('MenuScene');
@@ -385,6 +397,9 @@ export class GameOverScene extends Phaser.Scene {
       }
 
       const result = await adManager.showRewarded(ADMOB_REWARDED_REVIVE_ID);
+
+      // 씬 전환 후 콜백 진입 방지
+      if (!this.scene.isActive('GameOverScene')) return;
 
       if (result.rewarded) {
         this._doRevive();

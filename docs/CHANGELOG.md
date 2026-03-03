@@ -4,6 +4,30 @@
 
 ---
 
+## 2026-03-03 -- 광고 로딩/표시 중 네비게이션 버튼 Race Condition 방지
+
+### 추가
+
+- **`js/managers/AdManager.js`** -- `isBusy: boolean` 퍼블릭 프로퍼티 추가(L47). `showInterstitial()`(L115) 및 `showRewarded()`(L148) 진입 시 `true`, Mock 경로 `return` 전 `false`, try/catch를 try/catch/finally로 변환하여 finally에서 `false` 복원. 성공/실패 무관하게 플래그 복원 보장
+
+### 수정
+
+- **`js/scenes/LevelSelectScene.js`** -- BACK(L80-81), START(L212-213) 핸들러에 `adManager?.isBusy` 가드 추가. `_createGoldBoostButton`(L332), `_createClearBoostButton`(L420)의 `showRewarded` await 후 `this.scene.isActive('LevelSelectScene')` 체크 추가
+- **`js/scenes/MenuScene.js`** -- CAMPAIGN(L124-125), ENDLESS(L151-152), COLLECTION(L195-196), STATISTICS(L218-219) 핸들러에 `adManager?.isBusy` 가드 추가. `_createDiamondAdButton`(L339)의 `showRewarded` await 후 `this.scene.isActive('MenuScene')` 체크 추가
+- **`js/scenes/GameOverScene.js`** -- RETRY(L267-268), WORLD MAP(L294-295), MENU 캠페인(L317-318), MENU 엔드리스(L340-341) 핸들러에 `adManager?.isBusy` 가드 추가. `_createReviveButton`(L402)의 `showRewarded` await 후 `this.scene.isActive('GameOverScene')` 체크 추가
+- **`js/scenes/MapClearScene.js`** -- NEXT MAP(L352-353), RETRY(L384-385), WORLD MAP(L411-412) 핸들러에 `adManager?.isBusy` 가드 추가(`_ensureSaved()` 이전 배치). `_createClearBoostButton`(L461)의 `showRewarded` await 후 `this.scene.isActive('MapClearScene')` 체크 추가
+
+### 참고
+
+- 스펙: `.claude/specs/2026-03-03-ad-busy-guard.md`
+- QA: `.claude/specs/2026-03-03-ad-busy-guard-qa.md`
+- Playwright 테스트 26건 전체 PASS + 시각적 검증 4건
+- 가드 패턴: `const adManager = this.registry.get('adManager'); if (adManager?.isBusy) return;` (옵셔널 체이닝, adManager null 시 falsy 처리)
+- 기존 `isProcessing` 로컬 가드는 그대로 유지 (광고 버튼 자체의 중복 탭 방지)
+- 가드 적용: 네비게이션 버튼 14개 + isActive 씬 체크 5개
+
+---
+
 ## 2026-03-03 -- 합성도감 BACK 버튼 이벤트 가로채기 버그 수정
 
 ### 수정

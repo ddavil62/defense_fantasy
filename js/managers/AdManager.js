@@ -43,6 +43,9 @@ export class AdManager {
     /** @type {object|null} AdMob 플러그인 참조 */
     this._admob = null;
 
+    /** @type {boolean} 광고 표시 진행 중 여부 (씬 네비게이션 차단용) */
+    this.isBusy = false;
+
     /** @type {boolean} 초기화 완료 여부 */
     this._initialized = false;
 
@@ -108,8 +111,11 @@ export class AdManager {
    * @returns {Promise<void>}
    */
   async showInterstitial() {
+    // 광고 표시 시작: 씬 전환 버튼 차단
+    this.isBusy = true;
     if (this.isMock) {
       console.log('[AdManager] Mock: 전면 광고 스킵');
+      this.isBusy = false;
       return;
     }
 
@@ -122,6 +128,9 @@ export class AdManager {
     } catch (e) {
       // 전면 광고 실패 시 무시하고 진행
       console.warn('[AdManager] 전면 광고 표시 실패:', e.message);
+    } finally {
+      // 성공/실패 무관하게 플래그 복원
+      this.isBusy = false;
     }
   }
 
@@ -135,8 +144,11 @@ export class AdManager {
    * @returns {Promise<{rewarded: boolean, error?: string}>} 보상 결과
    */
   async showRewarded(adUnitId) {
+    // 광고 표시 시작: 씬 전환 버튼 차단
+    this.isBusy = true;
     if (this.isMock) {
       console.log('[AdManager] Mock: 보상형 광고 스킵 (rewarded: true)');
+      this.isBusy = false;
       return { rewarded: true };
     }
 
@@ -150,6 +162,9 @@ export class AdManager {
     } catch (e) {
       console.warn('[AdManager] 보상형 광고 표시 실패:', e.message);
       return { rewarded: false, error: e.message };
+    } finally {
+      // 성공/실패 무관하게 플래그 복원
+      this.isBusy = false;
     }
   }
 
