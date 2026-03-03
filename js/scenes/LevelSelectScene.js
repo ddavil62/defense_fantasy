@@ -129,18 +129,19 @@ export class LevelSelectScene extends Phaser.Scene {
           fontStyle: 'bold',
         }).setOrigin(0, 0);
 
-        // 좌측 중단: 맵 이름
+        // 좌측 중단: 맵 이름 (양피지 배경 대비 짙은 갈색)
         this.add.text(cardLeft, cardY - cardH / 2 + 38, t(mapData.meta.nameKey), {
           fontSize: '14px',
           fontFamily: 'Galmuri11, Arial, sans-serif',
-          color: '#ffffff',
+          color: '#2d1f0e',
+          fontStyle: 'bold',
         }).setOrigin(0, 0);
 
-        // 좌측 하단: 맵 설명 (카드 내부 폭에 맞춰 줄바꿈)
+        // 좌측 하단: 맵 설명 (양피지 배경 대비 중간 갈색)
         this.add.text(cardLeft, cardY - cardH / 2 + 58, t(mapData.meta.descKey), {
           fontSize: '11px',
           fontFamily: 'Galmuri11, Arial, sans-serif',
-          color: '#636e72',
+          color: '#5a4632',
           wordWrap: { width: 160 },
         }).setOrigin(0, 0);
 
@@ -164,12 +165,12 @@ export class LevelSelectScene extends Phaser.Scene {
           }).setOrigin(1, 0);
         }
 
-        // 우측 중단: 웨이브 수
+        // 우측 중단: 웨이브 수 (양피지 배경 대비 중간 갈색)
         const totalW = isFinite(mapData.totalWaves) ? mapData.totalWaves : '?';
         this.add.text(cardRight, cardY - cardH / 2 + 32, `Wave: ${totalW}`, {
           fontSize: '11px',
           fontFamily: 'Galmuri11, Arial, sans-serif',
-          color: '#b2bec3',
+          color: '#5a4632',
         }).setOrigin(1, 0);
 
         // 우측 중하단: 난이도 점 (difficulty 수만큼 채워진 원, 최대 3개)
