@@ -14,7 +14,7 @@ import {
   AD_REWARD_DIAMOND, AD_LIMIT_DIAMOND, ADMOB_REWARDED_DIAMOND_ID, SAVE_KEY,
 } from '../config.js';
 import { CLASSIC_MAP } from '../data/maps.js';
-import { t } from '../i18n.js';
+import { t, setLocale, getLocale, SUPPORTED_LOCALES } from '../i18n.js';
 
 /**
  * 타이틀 화면 씬.
@@ -91,14 +91,14 @@ export class MenuScene extends Phaser.Scene {
 
     // ── 최고 기록 표시 ──
     if (saveData && saveData.bestRound > 0) {
-      this.add.text(centerX, 328 + offsetY, `Best: Round ${saveData.bestRound}`, {
+      this.add.text(centerX, 328 + offsetY, t('menu.best').replace('{round}', saveData.bestRound), {
         fontSize: '18px',
         fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#ffd700',
         align: 'center',
       }).setOrigin(0.5);
 
-      this.add.text(centerX, 351 + offsetY, `Kills: ${saveData.bestKills} | Games: ${saveData.totalGames}`, {
+      this.add.text(centerX, 351 + offsetY, t('menu.record').replace('{kills}', saveData.bestKills).replace('{games}', saveData.totalGames), {
         fontSize: '13px',
         fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#b2bec3',
@@ -183,7 +183,7 @@ export class MenuScene extends Phaser.Scene {
       160, 44, BTN_META, COLORS.DIAMOND
     );
 
-    this.add.text(centerX, 492 + offsetY, 'COLLECTION', {
+    this.add.text(centerX, 492 + offsetY, t('menu.collection'), {
       fontSize: '15px',
       fontFamily: 'Galmuri11, Arial, sans-serif',
       color: BTN_META_CSS,
@@ -206,7 +206,7 @@ export class MenuScene extends Phaser.Scene {
       160, 44, BTN_BACK, 0x1a9c7e
     );
 
-    this.add.text(centerX, 544 + offsetY, 'STATISTICS', {
+    this.add.text(centerX, 544 + offsetY, t('menu.statistics'), {
       fontSize: '15px',
       fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffffff',
@@ -223,19 +223,19 @@ export class MenuScene extends Phaser.Scene {
       });
     });
 
-    // ── 음소거 토글 버튼 (소형 80x26, 활성: back 틸, 비활성: disabled 그레이) ──
+    // ── 음소거 토글 버튼 (소형 80x26, 좌측 배치) ──
     /** @type {import('../managers/SoundManager.js').SoundManager|null} */
     const sm = this.registry.get('soundManager');
     if (sm) {
       const isMuted = sm.muted;
       const muteTexKey = isMuted ? 'btn_small_disabled' : 'btn_small_back_normal';
       const muteBg = this._createImageButton(
-        centerX, 596 + offsetY, isMuted ? 'btn_small_disabled' : 'btn_small_back',
+        centerX - 48, 596 + offsetY, isMuted ? 'btn_small_disabled' : 'btn_small_back',
         80, 26, isMuted ? BTN_SELL : BTN_BACK, isMuted ? 0x636e72 : 0x1a9c7e,
         false
       );
 
-      const muteLabel = this.add.text(centerX, 596 + offsetY,
+      const muteLabel = this.add.text(centerX - 48, 596 + offsetY,
         isMuted ? '\u266A OFF' : '\u266A ON',
         {
           fontSize: '13px',
@@ -262,6 +262,35 @@ export class MenuScene extends Phaser.Scene {
       // 메뉴 BGM 재생
       sm.playBgm('menu');
     }
+
+    // ── 언어 전환 버튼 (소형 80x26, 우측 배치) ──
+    const curLocale = getLocale();
+    /** @type {Object<string, string>} 로케일별 버튼 레이블 */
+    const localeLabels = { ko: '한국어', en: 'English' };
+    const langBg = this._createImageButton(
+      centerX + 48, 596 + offsetY, 'btn_small_back',
+      80, 26, BTN_BACK, 0x1a9c7e,
+      false
+    );
+
+    this.add.text(centerX + 48, 596 + offsetY,
+      localeLabels[curLocale] || curLocale,
+      {
+        fontSize: '13px',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
+        color: BTN_BACK_CSS,
+        fontStyle: 'bold',
+      }
+    ).setOrigin(0.5);
+
+    langBg.on('pointerdown', () => {
+      const cur = getLocale();
+      const idx = SUPPORTED_LOCALES.indexOf(cur);
+      const next = SUPPORTED_LOCALES[(idx + 1) % SUPPORTED_LOCALES.length];
+      setLocale(next);
+      // 씬 재시작으로 전체 텍스트 갱신
+      this.scene.restart();
+    });
   }
 
   // ── Diamond 광고 버튼 ────────────────────────────────────────

@@ -118,7 +118,7 @@ export class CollectionScene extends Phaser.Scene {
       .setStrokeStyle(1, 0x636e72)
       .setInteractive({ useHandCursor: true });
 
-    this.add.text(38, 24, '< BACK', {
+    this.add.text(38, 24, t('ui.backNav'), {
       fontSize: '14px',
       fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffffff',
@@ -129,7 +129,7 @@ export class CollectionScene extends Phaser.Scene {
     });
 
     // 타이틀
-    this.add.text(180, 24, 'COLLECTION', {
+    this.add.text(180, 24, t('collection.title'), {
       fontSize: '18px',
       fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffffff',
@@ -530,7 +530,7 @@ export class CollectionScene extends Phaser.Scene {
   _createUtilitySection() {
     // 섹션 헤더
     const headerY = 390;
-    const headerText = this.add.text(GAME_WIDTH / 2, headerY, '── UTILITY ──', {
+    const headerText = this.add.text(GAME_WIDTH / 2, headerY, t('collection.utility'), {
       fontSize: '13px',
       fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#636e72',
@@ -590,7 +590,7 @@ export class CollectionScene extends Phaser.Scene {
     this.tabContent.add(nameText);
 
     // 현재 티어 표시
-    const tierText = this.add.text(cx, y + 52, `Tier ${tier}/${maxTier}`, {
+    const tierText = this.add.text(cx, y + 52, t('collection.tier').replace('{tier}', tier).replace('{maxTier}', maxTier), {
       fontSize: '11px',
       fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffd700',
@@ -600,7 +600,7 @@ export class CollectionScene extends Phaser.Scene {
     // 현재 효과 텍스트 (티어 0이면 기본값 표시)
     let effectStr = '';
     if (tier === 0) {
-      effectStr = key === 'baseHp' ? 'HP: 20' : key === 'goldBoost' ? '250G' : '1.0x';
+      effectStr = key === 'baseHp' ? t('collection.effectBaseHp') : key === 'goldBoost' ? t('collection.effectGoldBoost') : t('collection.effectSpeedBoost');
     } else {
       effectStr = util.tiers[tier - 1].desc;
     }
@@ -889,7 +889,7 @@ export class CollectionScene extends Phaser.Scene {
           .setStrokeStyle(1, canAfford ? 0xffffff : 0x636e72);
         this.overlay.add(btnBg);
 
-        const btnLabel = this.add.text(btnX, btnY, 'UP', {
+        const btnLabel = this.add.text(btnX, btnY, t('collection.upgrade'), {
           fontSize: '12px',
           fontFamily: 'Galmuri11, Arial, sans-serif',
           color: canAfford ? '#ffffff' : '#636e72',
@@ -1056,11 +1056,11 @@ export class CollectionScene extends Phaser.Scene {
     // 현재 상태 텍스트
     let currentDesc = '';
     if (currentTier === 0) {
-      currentDesc = key === 'baseHp' ? 'HP 20' : key === 'goldBoost' ? '250G' : '1.0x';
+      currentDesc = key === 'baseHp' ? t('collection.effectBaseHp') : key === 'goldBoost' ? t('collection.effectGoldBoost') : t('collection.effectSpeedBoost');
     } else {
       currentDesc = util.tiers[currentTier - 1].desc;
     }
-    const statusText = this.add.text(panelX, panelTop + 75, `Current: ${currentDesc} (Tier ${currentTier}/${util.tiers.length})`, {
+    const statusText = this.add.text(panelX, panelTop + 75, t('collection.currentStatus').replace('{desc}', currentDesc).replace('{tier}', currentTier).replace('{maxTier}', util.tiers.length), {
       fontSize: '13px',
       fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#b2bec3',
@@ -1117,7 +1117,7 @@ export class CollectionScene extends Phaser.Scene {
 
       // 티어 라벨 (완료: 체크 표시, 잠금: 자물쇠)
       const labelPrefix = isCompleted ? '\u2713 ' : isLocked ? '\uD83D\uDD12 ' : '';
-      const tierLabel = this.add.text(panelX - panelW / 2 + 40, btnY, `${labelPrefix}Tier ${tier}`, {
+      const tierLabel = this.add.text(panelX - panelW / 2 + 40, btnY, `${labelPrefix}${t('collection.tierLabel').replace('{tier}', tier)}`, {
         fontSize: '13px',
         fontFamily: 'Galmuri11, Arial, sans-serif',
         color: textColor,

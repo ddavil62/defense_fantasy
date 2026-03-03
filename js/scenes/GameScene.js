@@ -2009,7 +2009,7 @@ export class GameScene extends Phaser.Scene {
     this.pauseOverlay.add(panel);
 
     // "PAUSED" 텍스트 (금색 + 글로우)
-    const pausedText = this.add.text(180, 220, 'PAUSED', {
+    const pausedText = this.add.text(180, 220, t('pause.title'), {
       fontSize: '20px',
       fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffd700',
@@ -2030,7 +2030,7 @@ export class GameScene extends Phaser.Scene {
     );
     this.pauseOverlay.add(resumeBtn);
 
-    const resumeText = this.add.text(180, 252, 'Resume', {
+    const resumeText = this.add.text(180, 252, t('pause.resume'), {
       fontSize: '14px',
       fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffffff',
@@ -2069,7 +2069,7 @@ export class GameScene extends Phaser.Scene {
     );
     this.pauseOverlay.add(menuBtn);
 
-    const menuText = this.add.text(180, 332, 'Main Menu', {
+    const menuText = this.add.text(180, 332, t('pause.mainMenu'), {
       fontSize: '14px',
       fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffffff',
@@ -2108,7 +2108,7 @@ export class GameScene extends Phaser.Scene {
     };
 
     // ── SFX 볼륨 조절 행 ──
-    const sfxLabel = this.add.text(100, baseY, 'SFX', labelStyle).setOrigin(0, 0.5).setDepth(52);
+    const sfxLabel = this.add.text(100, baseY, t('pause.sfx'), labelStyle).setOrigin(0, 0.5).setDepth(52);
     this.pauseOverlay.add(sfxLabel);
 
     const sfxValText = this.add.text(180, baseY, `${Math.round(sm.sfxVolume * 100)}%`, valueStyle)
@@ -2138,7 +2138,7 @@ export class GameScene extends Phaser.Scene {
 
     // ── BGM 볼륨 조절 행 ──
     const bgmY = baseY + 30;
-    const bgmLabel = this.add.text(100, bgmY, 'BGM', labelStyle).setOrigin(0, 0.5).setDepth(52);
+    const bgmLabel = this.add.text(100, bgmY, t('pause.bgm'), labelStyle).setOrigin(0, 0.5).setDepth(52);
     this.pauseOverlay.add(bgmLabel);
 
     const bgmValText = this.add.text(180, bgmY, `${Math.round(sm.bgmVolume * 100)}%`, valueStyle)
@@ -2173,7 +2173,7 @@ export class GameScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true }).setDepth(52);
     this.pauseOverlay.add(muteBtn);
 
-    const muteTxt = this.add.text(180, muteY, sm.muted ? 'UNMUTE' : 'MUTE', {
+    const muteTxt = this.add.text(180, muteY, sm.muted ? t('pause.unmute') : t('pause.mute'), {
       fontSize: '12px',
       fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffffff',
@@ -2183,7 +2183,7 @@ export class GameScene extends Phaser.Scene {
 
     muteBtn.on('pointerdown', () => {
       sm.setMuted(!sm.muted);
-      muteTxt.setText(sm.muted ? 'UNMUTE' : 'MUTE');
+      muteTxt.setText(sm.muted ? t('pause.unmute') : t('pause.mute'));
       muteBtn.setFillStyle(BTN_SELL);
       muteBtn.setStrokeStyle(1, sm.muted ? BTN_DANGER : BTN_PRIMARY);
     });

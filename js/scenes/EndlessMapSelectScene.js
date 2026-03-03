@@ -118,7 +118,8 @@ export class EndlessMapSelectScene extends Phaser.Scene {
         .setStrokeStyle(1, accent)
         .setInteractive({ useHandCursor: true });
 
-      const label = this.add.text(tx, tabY, tab.label, {
+      const displayLabel = tab.id === 'classic' ? t('endless.classic') : tab.label;
+      const label = this.add.text(tx, tabY, displayLabel, {
         fontSize: '12px',
         fontFamily: 'Galmuri11, Arial, sans-serif',
         color: isActive ? '#1a1a2e' : '#b2bec3',
@@ -212,7 +213,7 @@ export class EndlessMapSelectScene extends Phaser.Scene {
     this._cardObjects.push(descText);
 
     // 카드 우측: 웨이브 표시 (무한)
-    const waveText = this.add.text(cardRight, cardY - cardH / 2 + 14, 'Wave: \u221E', {
+    const waveText = this.add.text(cardRight, cardY - cardH / 2 + 14, t('endless.waveInfinity'), {
       fontSize: '11px',
       fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#b2bec3',
@@ -303,8 +304,11 @@ export class EndlessMapSelectScene extends Phaser.Scene {
       this._cardObjects.push(descText);
 
       // 우측 상단: 웨이브 수
-      const totalW = isFinite(mapData.totalWaves) ? mapData.totalWaves : '\u221E';
-      const waveLabel = this.add.text(cardRight, cardY - cardH / 2 + 8, `Wave: ${totalW}`, {
+      const totalW = isFinite(mapData.totalWaves) ? mapData.totalWaves : null;
+      const waveLabelStr = totalW !== null
+        ? t('endless.waveCount').replace('{count}', totalW)
+        : t('endless.waveInfinity');
+      const waveLabel = this.add.text(cardRight, cardY - cardH / 2 + 8, waveLabelStr, {
         fontSize: '11px',
         fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#b2bec3',

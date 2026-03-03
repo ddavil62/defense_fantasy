@@ -10,6 +10,7 @@ import {
   GAME_WIDTH, GAME_HEIGHT, COLORS, VISUALS,
   BTN_PRIMARY, BTN_PRIMARY_CSS,
 } from '../config.js';
+import { t } from '../i18n.js';
 
 // ── 표시 색상 매핑 ──
 
@@ -74,7 +75,7 @@ export class StatsScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true })
       .setDepth(50);
 
-    this.add.text(38, y, '< BACK', {
+    this.add.text(38, y, t('ui.backNav'), {
       fontSize: '14px',
       fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffffff',
@@ -82,7 +83,7 @@ export class StatsScene extends Phaser.Scene {
 
     backBg.on('pointerdown', () => this.scene.start('MenuScene'));
 
-    this.add.text(180, y, 'STATISTICS', {
+    this.add.text(180, y, t('stats.title'), {
       fontSize: '18px',
       fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffffff',
@@ -120,17 +121,17 @@ export class StatsScene extends Phaser.Scene {
   _drawOverview(stats, startY) {
     let y = startY;
 
-    this._addSectionTitle('OVERVIEW', y);
+    this._addSectionTitle(t('stats.overview'), y);
     y += 28;
 
     const items = [
-      { label: 'Total Games', value: `${stats.totalGamesPlayed || 0}` },
-      { label: 'Best Round', value: `R${stats.bestRound || 0}` },
-      { label: 'Total Kills', value: this._formatNumber(stats.totalKills || 0) },
-      { label: 'Boss Kills', value: `${stats.totalBossKills || 0}` },
-      { label: 'Towers Placed', value: this._formatNumber(stats.totalTowersPlaced || 0) },
-      { label: 'Gold Earned', value: this._formatNumber(stats.totalGoldEarned || 0) },
-      { label: 'Waves Cleared', value: this._formatNumber(stats.totalWavesCleared || 0) },
+      { label: t('stats.totalGames'), value: `${stats.totalGamesPlayed || 0}` },
+      { label: t('stats.bestRound'), value: `R${stats.bestRound || 0}` },
+      { label: t('stats.totalKills'), value: this._formatNumber(stats.totalKills || 0) },
+      { label: t('stats.bossKills'), value: `${stats.totalBossKills || 0}` },
+      { label: t('stats.towersPlaced'), value: this._formatNumber(stats.totalTowersPlaced || 0) },
+      { label: t('stats.goldEarned'), value: this._formatNumber(stats.totalGoldEarned || 0) },
+      { label: t('stats.wavesCleared'), value: this._formatNumber(stats.totalWavesCleared || 0) },
     ];
 
     for (const item of items) {
@@ -171,7 +172,7 @@ export class StatsScene extends Phaser.Scene {
     const killsByType = stats.killsByEnemyType || {};
     const totalKills = stats.totalKills || 1; // 0으로 나누기 방지
 
-    this._addSectionTitle('KILL BREAKDOWN', y);
+    this._addSectionTitle(t('stats.killBreakdown'), y);
     y += 28;
 
     // 킬 수 내림차순 정렬
@@ -180,7 +181,7 @@ export class StatsScene extends Phaser.Scene {
 
     if (entries.length === 0) {
       this.scrollContainer.add(
-        this.add.text(28, y, 'No kills yet', {
+        this.add.text(28, y, t('stats.noKills'), {
           fontSize: '13px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#636e72',
         })
       );
@@ -235,7 +236,7 @@ export class StatsScene extends Phaser.Scene {
     let y = startY;
     const killsByTower = stats.killsByTowerType || {};
 
-    this._addSectionTitle('TOWER PERFORMANCE', y);
+    this._addSectionTitle(t('stats.towerPerformance'), y);
     y += 28;
 
     const entries = Object.entries(killsByTower)
@@ -243,7 +244,7 @@ export class StatsScene extends Phaser.Scene {
 
     if (entries.length === 0) {
       this.scrollContainer.add(
-        this.add.text(28, y, 'No tower data yet', {
+        this.add.text(28, y, t('stats.noTowerData'), {
           fontSize: '13px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#636e72',
         })
       );
@@ -271,7 +272,7 @@ export class StatsScene extends Phaser.Scene {
 
         // 킬 수
         this.scrollContainer.add(
-          this.add.text(GAME_WIDTH - 24, y, `${this._formatNumber(count)} kills`, {
+          this.add.text(GAME_WIDTH - 24, y, t('stats.kills').replace('{count}', this._formatNumber(count)), {
             fontSize: '12px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#b2bec3',
           }).setOrigin(1, 0)
         );
@@ -300,12 +301,12 @@ export class StatsScene extends Phaser.Scene {
     let y = startY;
     const history = stats.gameHistory || [];
 
-    this._addSectionTitle('RECENT GAMES', y);
+    this._addSectionTitle(t('stats.recentGames'), y);
     y += 28;
 
     if (history.length === 0) {
       this.scrollContainer.add(
-        this.add.text(28, y, 'No games played yet', {
+        this.add.text(28, y, t('stats.noGames'), {
           fontSize: '13px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#636e72',
         })
       );
@@ -338,8 +339,8 @@ export class StatsScene extends Phaser.Scene {
         );
 
         // 라운드 + 킬 수 + 보스 킬
-        const info = `R${game.round}  ${game.kills} kills`;
-        const extra = game.bossKills > 0 ? `  Boss: ${game.bossKills}` : '';
+        const info = t('stats.recentInfo').replace('{round}', game.round).replace('{kills}', game.kills);
+        const extra = game.bossKills > 0 ? t('stats.recentBoss').replace('{bossKills}', game.bossKills) : '';
         this.scrollContainer.add(
           this.add.text(cardX + 55, y + 8, info + extra, {
             fontSize: '12px',

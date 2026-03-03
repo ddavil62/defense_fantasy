@@ -248,7 +248,7 @@ export class TowerInfoOverlay {
       this._container.add(backBg);
 
       const backLabel = this.scene.add.text(
-        panelX - PANEL_W / 2 + 40, panelTop + 15, '< \ub4a4\ub85c', {
+        panelX - PANEL_W / 2 + 40, panelTop + 15, t('ui.backLabel'), {
           fontSize: '11px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#ffffff',
         }
       ).setOrigin(0.5);
@@ -358,7 +358,10 @@ export class TowerInfoOverlay {
         this._applyMetaUpgrades(entry.id, stats);
       }
       const rangeInTiles = (stats.range / CELL_SIZE).toFixed(1);
-      const statsStr = `DMG: ${stats.damage}  |  SPD: ${stats.fireRate}s  |  RNG: ${rangeInTiles}`;
+      const statsStr = t('tower.statLine')
+        .replace('{dmg}', stats.damage)
+        .replace('{spd}', stats.fireRate)
+        .replace('{rng}', rangeInTiles);
       const statsText = this.scene.add.text(panelX, curY, statsStr, {
         fontSize: '11px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#b2bec3',
       }).setOrigin(0.5, 0);
@@ -491,7 +494,10 @@ export class TowerInfoOverlay {
         rng = this._sourceTower.stats.range;
       }
       const rangeInTiles = (rng / CELL_SIZE).toFixed(1);
-      const statsStr = `DMG: ${dmg}  |  SPD: ${spd}s  |  RNG: ${rangeInTiles}`;
+      const statsStr = t('tower.statLine')
+        .replace('{dmg}', dmg)
+        .replace('{spd}', spd)
+        .replace('{rng}', rangeInTiles);
       const statsText = this.scene.add.text(panelX, nextY, statsStr, {
         fontSize: '11px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#b2bec3',
       }).setOrigin(0.5);
@@ -838,7 +844,7 @@ export class TowerInfoOverlay {
     }
     this._container.add(sellBtn);
 
-    const sellText = this.scene.add.text(panelX, sellY, `Sell ${info.sellPrice}G`, {
+    const sellText = this.scene.add.text(panelX, sellY, t('tower.sell').replace('{price}', info.sellPrice), {
       fontSize: '12px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#ffffff', fontStyle: 'bold',
     }).setOrigin(0.5);
     this._container.add(sellText);

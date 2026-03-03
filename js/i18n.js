@@ -7,11 +7,25 @@
 // ── 현재 로케일 (기본값: ko) ────────────────────────────────────
 let _locale = 'ko';
 
+/** @const {string[]} 지원 로케일 목록 (순환 순서) */
+export const SUPPORTED_LOCALES = ['ko', 'en'];
+
+// 앱 시작 시 저장된 언어 복원
+try {
+  const saved = localStorage.getItem('fantasy-td-lang');
+  if (saved === 'ko' || saved === 'en') _locale = saved;
+} catch { /* localStorage 접근 불가 시 기본값 ko 유지 */ }
+
 /**
- * 활성 로케일을 설정한다.
+ * 활성 로케일을 설정하고 localStorage에 저장한다.
  * @param {'ko'|'en'} loc - 로케일 코드
  */
-export function setLocale(loc) { _locale = loc; }
+export function setLocale(loc) {
+  _locale = loc;
+  try {
+    localStorage.setItem('fantasy-td-lang', loc);
+  } catch { /* localStorage 저장 실패 시 무시 */ }
+}
 
 /**
  * 현재 설정된 로케일을 반환한다.
@@ -489,6 +503,81 @@ const STRINGS = {
     'draw.noGold': '골드 부족',
     'draw.pool.title': '뽑기 풀',
     'draw.pool.prob': '각 {count}% 확률',
+    // ── 통계 씬 (StatsScene) ──
+    'stats.title': 'STATISTICS',
+    'stats.overview': 'OVERVIEW',
+    'stats.killBreakdown': 'KILL BREAKDOWN',
+    'stats.towerPerformance': 'TOWER PERFORMANCE',
+    'stats.recentGames': 'RECENT GAMES',
+    'stats.totalGames': '총 게임 수',
+    'stats.bestRound': '최고 라운드',
+    'stats.totalKills': '총 처치 수',
+    'stats.bossKills': '보스 처치',
+    'stats.towersPlaced': '타워 배치',
+    'stats.goldEarned': '총 골드',
+    'stats.wavesCleared': '웨이브 클리어',
+    'stats.noKills': '처치 기록 없음',
+    'stats.noTowerData': '타워 기록 없음',
+    'stats.noGames': '플레이 기록 없음',
+    'stats.kills': '{count} kills',
+    // ── 게임 오버 씬 (GameOverScene) ──
+    'gameover.title': 'GAME OVER',
+    'gameover.round': 'Round:',
+    'gameover.kills': 'Kills:',
+    'gameover.best': 'Best: Round {round}',
+    'gameover.newBest': 'NEW BEST!',
+    'gameover.towersSummary': 'Towers: {towers}  |  Gold: {gold}',
+    'gameover.topTower': 'Top Tower: {name} ({kills} kills)',
+    'gameover.diamondEarned': '\u25C6 +{amount} Diamond',
+    'gameover.diamondTotal': '(Total: \u25C6 {total})',
+    'gameover.noDiamond': 'R5+ for Diamond',
+    'gameover.retry': 'RETRY',
+    'gameover.menu': 'MENU',
+    // ── 일시정지 오버레이 (GameScene) ──
+    'pause.title': 'PAUSED',
+    'pause.resume': 'Resume',
+    'pause.mainMenu': 'Main Menu',
+    'pause.mute': 'MUTE',
+    'pause.unmute': 'UNMUTE',
+    // ── 메뉴 씬 (MenuScene) ──
+    'menu.collection': 'COLLECTION',
+    'menu.statistics': 'STATISTICS',
+    'menu.best': 'Best: Round {round}',
+    'menu.record': 'Kills: {kills} | Games: {games}',
+    // ── 컬렉션 씬 (CollectionScene) ──
+    'collection.title': 'COLLECTION',
+    'collection.utility': '── UTILITY ──',
+    // ── 맵 클리어 씬 (MapClearScene) ──
+    'mapclear.waves': 'Waves: {waves}  |  Kills: {kills}',
+    'mapclear.hp': 'HP: {current}/{max} ({pct}%)',
+    'mapclear.diamondEarned': '\u25C6 +{amount} Diamond',
+    'mapclear.diamondBoosted': '\u25C6 +{amount} Diamond (x2)',
+    'mapclear.retry': 'RETRY',
+    // ── 엔드리스 맵 선택 (EndlessMapSelectScene) ──
+    'endless.classic': 'CLASSIC',
+    // ── 타워 정보 오버레이 (TowerInfoOverlay) ──
+    'tower.sell': '판매 {price}G',
+    'tower.statLine': 'DMG: {dmg}  |  SPD: {spd}s  |  RNG: {rng}',
+    'ui.backLabel': '< 뒤로',
+    // ── 통계 씬 추가 (StatsScene) ──
+    'stats.recentInfo': 'R{round}  {kills} kills',
+    'stats.recentBoss': '  Boss: {bossKills}',
+    // ── 컬렉션 씬 추가 (CollectionScene) ──
+    'collection.tier': 'Tier {tier}/{maxTier}',
+    'collection.tierLabel': 'Tier {tier}',
+    'collection.effectBaseHp': 'HP: 20',
+    'collection.effectGoldBoost': '250G',
+    'collection.effectSpeedBoost': '1.0x',
+    'collection.currentStatus': 'Current: {desc} (Tier {tier}/{maxTier})',
+    'collection.upgrade': 'UP',
+    // ── 엔드리스 맵 선택 추가 (EndlessMapSelectScene) ──
+    'endless.waveInfinity': 'Wave: \u221E',
+    'endless.waveCount': 'Wave: {count}',
+    // ── 일시정지 볼륨 라벨 (GameScene) ──
+    'pause.sfx': 'SFX',
+    'pause.bgm': 'BGM',
+    // ── 공통 네비게이션 ──
+    'ui.backNav': '< BACK',
   },
   en: {
     'tower.archer.name': 'Archer',
@@ -948,5 +1037,80 @@ const STRINGS = {
     'draw.noGold': 'Not enough gold',
     'draw.pool.title': 'Draw Pool',
     'draw.pool.prob': '{count}% each',
+    // ── Stats scene (StatsScene) ──
+    'stats.title': 'STATISTICS',
+    'stats.overview': 'OVERVIEW',
+    'stats.killBreakdown': 'KILL BREAKDOWN',
+    'stats.towerPerformance': 'TOWER PERFORMANCE',
+    'stats.recentGames': 'RECENT GAMES',
+    'stats.totalGames': 'Total Games',
+    'stats.bestRound': 'Best Round',
+    'stats.totalKills': 'Total Kills',
+    'stats.bossKills': 'Boss Kills',
+    'stats.towersPlaced': 'Towers Placed',
+    'stats.goldEarned': 'Gold Earned',
+    'stats.wavesCleared': 'Waves Cleared',
+    'stats.noKills': 'No kills yet',
+    'stats.noTowerData': 'No tower data yet',
+    'stats.noGames': 'No games played yet',
+    'stats.kills': '{count} kills',
+    // ── Game over scene (GameOverScene) ──
+    'gameover.title': 'GAME OVER',
+    'gameover.round': 'Round:',
+    'gameover.kills': 'Kills:',
+    'gameover.best': 'Best: Round {round}',
+    'gameover.newBest': 'NEW BEST!',
+    'gameover.towersSummary': 'Towers: {towers}  |  Gold: {gold}',
+    'gameover.topTower': 'Top Tower: {name} ({kills} kills)',
+    'gameover.diamondEarned': '\u25C6 +{amount} Diamond',
+    'gameover.diamondTotal': '(Total: \u25C6 {total})',
+    'gameover.noDiamond': 'R5+ for Diamond',
+    'gameover.retry': 'RETRY',
+    'gameover.menu': 'MENU',
+    // ── Pause overlay (GameScene) ──
+    'pause.title': 'PAUSED',
+    'pause.resume': 'Resume',
+    'pause.mainMenu': 'Main Menu',
+    'pause.mute': 'MUTE',
+    'pause.unmute': 'UNMUTE',
+    // ── Menu scene (MenuScene) ──
+    'menu.collection': 'COLLECTION',
+    'menu.statistics': 'STATISTICS',
+    'menu.best': 'Best: Round {round}',
+    'menu.record': 'Kills: {kills} | Games: {games}',
+    // ── Collection scene (CollectionScene) ──
+    'collection.title': 'COLLECTION',
+    'collection.utility': '── UTILITY ──',
+    // ── Map clear scene (MapClearScene) ──
+    'mapclear.waves': 'Waves: {waves}  |  Kills: {kills}',
+    'mapclear.hp': 'HP: {current}/{max} ({pct}%)',
+    'mapclear.diamondEarned': '\u25C6 +{amount} Diamond',
+    'mapclear.diamondBoosted': '\u25C6 +{amount} Diamond (x2)',
+    'mapclear.retry': 'RETRY',
+    // ── Endless map select (EndlessMapSelectScene) ──
+    'endless.classic': 'CLASSIC',
+    // ── Tower info overlay (TowerInfoOverlay) ──
+    'tower.sell': 'Sell {price}G',
+    'tower.statLine': 'DMG: {dmg}  |  SPD: {spd}s  |  RNG: {rng}',
+    'ui.backLabel': '< Back',
+    // ── Stats scene extras (StatsScene) ──
+    'stats.recentInfo': 'R{round}  {kills} kills',
+    'stats.recentBoss': '  Boss: {bossKills}',
+    // ── Collection scene extras (CollectionScene) ──
+    'collection.tier': 'Tier {tier}/{maxTier}',
+    'collection.tierLabel': 'Tier {tier}',
+    'collection.effectBaseHp': 'HP: 20',
+    'collection.effectGoldBoost': '250G',
+    'collection.effectSpeedBoost': '1.0x',
+    'collection.currentStatus': 'Current: {desc} (Tier {tier}/{maxTier})',
+    'collection.upgrade': 'UP',
+    // ── Endless map select extras (EndlessMapSelectScene) ──
+    'endless.waveInfinity': 'Wave: \u221E',
+    'endless.waveCount': 'Wave: {count}',
+    // ── Pause volume labels (GameScene) ──
+    'pause.sfx': 'SFX',
+    'pause.bgm': 'BGM',
+    // ── Common navigation ──
+    'ui.backNav': '< BACK',
   },
 };

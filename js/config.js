@@ -1695,6 +1695,9 @@ export const SOUND_SAVE_KEY = 'fantasy-td-sound';
 /** @const {string} 광고 일일 제한 카운터 localStorage 키 */
 export const AD_DAILY_LIMIT_KEY = 'ftd_ad_daily_limit';
 
+/** @const {string} 언어 설정 localStorage 키 */
+export const LANG_SAVE_KEY = 'fantasy-td-lang';
+
 // ── AdMob 광고 단위 ID ──────────────────────────────────────────
 /** @const {string} 전면 광고 단위 ID (테스트용) */
 export const ADMOB_INTERSTITIAL_ID = 'ca-app-pub-9149509805250873/9251091751';

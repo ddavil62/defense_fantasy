@@ -242,7 +242,7 @@ export class MapClearScene extends Phaser.Scene {
     // ── 웨이브/킬 수 ──
     const infoY = centerY - 55;
     this.add.text(centerX, infoY,
-      `Waves: ${this.wavesCleared}  |  Kills: ${this.kills}`, {
+      t('mapclear.waves').replace('{waves}', this.wavesCleared).replace('{kills}', this.kills), {
         fontSize: '14px',
         fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#b2bec3',
@@ -251,7 +251,7 @@ export class MapClearScene extends Phaser.Scene {
     // HP 잔량
     const hpPercent = Math.round((this.currentHP / this.maxHP) * 100);
     this.add.text(centerX, infoY + 22,
-      `HP: ${this.currentHP}/${this.maxHP} (${hpPercent}%)`, {
+      t('mapclear.hp').replace('{current}', this.currentHP).replace('{max}', this.maxHP).replace('{pct}', hpPercent), {
         fontSize: '13px',
         fontFamily: 'Galmuri11, Arial, sans-serif',
         color: hpPercent >= 80 ? '#ffd700' : hpPercent >= 40 ? '#fdcb6e' : '#ff4757',
@@ -261,10 +261,12 @@ export class MapClearScene extends Phaser.Scene {
     const diamondY = centerY + 5;
     if (this._earnedDiamond > 0) {
       // 차액 보상이 있는 경우 표시 (부스트 포함)
-      const boostSuffix = this.clearBoostActive ? ' (x2)' : '';
       /** @type {Phaser.GameObjects.Text} 다이아몬드 보상 텍스트 참조 (광고 후 갱신용) */
+      const diamondStr = this.clearBoostActive
+        ? t('mapclear.diamondBoosted').replace('{amount}', this._earnedDiamond)
+        : t('mapclear.diamondEarned').replace('{amount}', this._earnedDiamond);
       this._diamondText = this.add.text(centerX, diamondY,
-        `\u25C6 +${this._earnedDiamond} Diamond${boostSuffix}`, {
+        diamondStr, {
           fontSize: '18px',
           fontFamily: 'Galmuri11, Arial, sans-serif',
           color: COLORS.DIAMOND_CSS,
@@ -372,7 +374,7 @@ export class MapClearScene extends Phaser.Scene {
       centerX, retryY, 'btn_medium_back', 160, 36, BTN_BACK, 0x1a9c7e
     );
 
-    this.add.text(centerX, retryY, 'RETRY', {
+    this.add.text(centerX, retryY, t('mapclear.retry'), {
       fontSize: '15px',
       fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffffff',
@@ -469,7 +471,7 @@ export class MapClearScene extends Phaser.Scene {
 
         // 다이아몬드 텍스트 갱신
         if (this._diamondText) {
-          this._diamondText.setText(`\u25C6 +${this._earnedDiamond} Diamond (x2)`);
+          this._diamondText.setText(t('mapclear.diamondBoosted').replace('{amount}', this._earnedDiamond));
         }
 
         // 세이브 처리 (재계산된 보상으로 저장)

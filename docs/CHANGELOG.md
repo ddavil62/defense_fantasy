@@ -4,6 +4,63 @@
 
 ---
 
+## 2026-03-03 -- 언어 전환 버튼 (Lang Toggle)
+
+### 추가
+
+- **`js/config.js`** -- `LANG_SAVE_KEY = 'fantasy-td-lang'` localStorage 키 상수 추가 (1698~1699행). i18n.js에서는 순환 의존 방지를 위해 직접 참조하지 않고 리터럴 문자열 사용
+- **`js/i18n.js`** -- `SUPPORTED_LOCALES = ['ko', 'en']` export 추가. 모듈 초기화 시 `localStorage.getItem('fantasy-td-lang')`으로 저장된 언어 복원 (try/catch). `setLocale()`에 `localStorage.setItem()` 저장 추가 (try/catch)
+- **`js/scenes/MenuScene.js`** -- 언어 토글 버튼 추가 (`centerX + 48`, Y=596+offsetY, 80x26, `btn_small_back` 텍스처). 레이블: ko='한국어', en='English'. 클릭 시 `SUPPORTED_LOCALES` 순환 전환 + `this.scene.restart()`로 전체 텍스트 갱신
+
+### 변경
+
+- **`js/scenes/MenuScene.js`** -- 음소거 토글 버튼 X 좌표를 `centerX`에서 `centerX - 48`로 좌측 이동 (언어 버튼과 16px 간격 확보)
+- **`js/scenes/MenuScene.js`** -- import에 `setLocale`, `getLocale`, `SUPPORTED_LOCALES` 추가 (`../i18n.js`)
+
+### 참고
+
+- 스펙: `.claude/specs/2026-03-03-lang-toggle.md`
+- 리포트: `.claude/specs/2026-03-03-lang-toggle-report.md`
+- QA: `.claude/specs/2026-03-03-lang-toggle-qa.md`
+- Playwright 테스트 21건 전체 PASS (정상 10 + 예외 6 + UI 안정성 5)
+- BootScene 변경 없음 (i18n.js 모듈 초기화 시 자동 복원으로 충분)
+- `LANG_SAVE_KEY` 상수는 i18n.js에서 미사용 (순환 의존 방지, 문서화 목적)
+
+---
+
+## 2026-03-03 -- i18n 하드코딩 텍스트 t() 전환
+
+### 추가
+
+- **`js/i18n.js`** -- 신규 i18n 키 16개 추가 (ko/en 양쪽): `tower.statLine`, `ui.backLabel`, `stats.recentInfo`, `stats.recentBoss`, `collection.tier`, `collection.tierLabel`, `collection.effectBaseHp`, `collection.effectGoldBoost`, `collection.effectSpeedBoost`, `collection.currentStatus`, `collection.upgrade`, `endless.waveInfinity`, `endless.waveCount`, `pause.sfx`, `pause.bgm`, `ui.backNav`. 총 키 수 467개 (ko = en)
+
+### 변경
+
+- **`js/scenes/StatsScene.js`** -- Recent Games의 kills/Boss 하드코딩 텍스트를 `t('stats.recentInfo')`, `t('stats.recentBoss')`로 전환 (2개소)
+- **`js/scenes/GameOverScene.js`** -- 기존 약 15개소 하드코딩 텍스트 t() 전환 (1차 작업 범위)
+- **`js/scenes/GameScene.js`** -- SFX/BGM 볼륨 라벨을 `t('pause.sfx')`, `t('pause.bgm')`으로 전환 + 기존 약 10개소 전환 (합계 약 12개소)
+- **`js/scenes/MenuScene.js`** -- 3개소 하드코딩 텍스트 t() 전환
+- **`js/scenes/CollectionScene.js`** -- Tier 표시, 기본 효과 텍스트(HP:20, 250G, 1.0x), UP 버튼, Current 상태, 티어 라벨을 t() 전환 (8개소)
+- **`js/scenes/MergeCodexScene.js`** -- 1개소 하드코딩 텍스트 t() 전환
+- **`js/scenes/MapClearScene.js`** -- 1개소 하드코딩 텍스트 t() 전환
+- **`js/scenes/EndlessMapSelectScene.js`** -- Wave 표시를 `t('endless.waveInfinity')`, `t('endless.waveCount')`로 전환 (3개소)
+- **`js/ui/TowerInfoOverlay.js`** -- 판매 버튼을 `t('tower.sell')`로 전환, 뒤로 버튼을 `t('ui.backLabel')`로 전환, T1/T2+ 스탯 라인을 `t('tower.statLine')`으로 전환 (4개소)
+
+### 수정
+
+- **`js/i18n.js`** -- ko `tower.sell` 값이 영어 `'Sell {price}G'`로 잘못 되어 있던 것을 `'판매 {price}G'`로 수정
+
+### 참고
+
+- 스펙: `.claude/specs/2026-03-03-i18n-hardcode-fix.md`
+- 리포트: `.claude/specs/2026-03-03-i18n-hardcode-fix-report.md`
+- QA: `.claude/specs/2026-03-03-i18n-hardcode-fix-qa-r2.md`
+- Playwright 테스트 27건 전체 PASS
+- 1차 QA FAIL (ko tower.sell 번역 버그 + TowerInfoOverlay Sell 미전환) 수정 후 R2 PASS
+- 스코프 외 잔존 하드코딩: LevelSelectScene `Wave: ${totalW}` (LOW), CollectionScene `${displayName} Tower` (LOW), MenuScene 브랜드명 (INFO), TowerInfoOverlay 공격 유형 배지 (INFO), GameScene 음소거 아이콘 (INFO) -- 별도 과제
+
+---
+
 ## 2026-03-03 -- 랜덤 뽑기 시스템 Phase 3: 이코노미 리밸런스
 
 ### 변경

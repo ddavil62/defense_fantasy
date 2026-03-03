@@ -173,7 +173,7 @@ export class MergeCodexScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true })
       .setDepth(10);
 
-    this.add.text(38, 24, '< BACK', {
+    this.add.text(38, 24, t('ui.backNav'), {
       fontSize: '14px',
       fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffffff',
