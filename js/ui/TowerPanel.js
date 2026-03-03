@@ -1,7 +1,6 @@
 /**
- * @fileoverview TowerPanel - 하단 타워 선택 및 조작 패널.
- * 2행 5열 레이아웃의 타워 선택 버튼, 합성(드래그&드롭) 기능,
- * 판매 버튼, 배속 토글을 제공한다.
+ * @fileoverview TowerPanel - 하단 타워 조작 패널.
+ * 랜덤 뽑기 버튼, 합성(드래그&드롭) 기능, 판매 버튼, 배속 토글을 제공한다.
  * 타워 상세 정보 모달은 TowerInfoOverlay로 위임한다.
  */
 
@@ -12,6 +11,7 @@ import {
   BTN_PRIMARY, BTN_DANGER, BTN_SELL,
   isMergeable, getMergeResult, MERGE_RECIPES, pixelToGrid, GRID_COLS, GRID_ROWS, HUD_HEIGHT,
   MERGE_COST,
+  calcDrawCost,
 } from '../config.js';
 import { t } from '../i18n.js';
 import { TowerInfoOverlay } from './TowerInfoOverlay.js';
@@ -60,8 +60,24 @@ export class TowerPanel {
     /** @type {Phaser.GameObjects.Container} 패널 전체를 감싸는 메인 컨테이너 */
     this.container = scene.add.container(0, 0).setDepth(30);
 
-    /** @type {object[]} 타워 선택 버튼 데이터 배열 */
+    /** @type {object[]} 타워 선택 버튼 데이터 배열 (레거시, 빈 배열) */
     this.towerButtons = [];
+
+    // ── 뽑기 시스템 상태 ──
+    /** @type {number} 게임 세션 내 뽑기 성공 횟수 */
+    this.drawCount = 0;
+
+    /** @type {Phaser.GameObjects.Image|Phaser.GameObjects.Rectangle|null} 뽑기 버튼 배경 오브젝트 */
+    this._drawButton = null;
+
+    /** @type {Phaser.GameObjects.Text|null} 뽑기 비용 텍스트 오브젝트 */
+    this._drawCostText = null;
+
+    /** @type {Phaser.GameObjects.Text|null} 뽑기 라벨 텍스트 오브젝트 */
+    this._drawLabelText = null;
+
+    /** @type {string|null} 뽑기로 선택된 타워 타입 (배치 성공 전까지 보유) */
+    this._pendingDrawType = null;
 
     /** @type {TowerInfoOverlay} 타워 상세 정보 오버레이 */
     this.towerInfoOverlay = new TowerInfoOverlay(scene, {
@@ -131,8 +147,8 @@ export class TowerPanel {
       this.container.add(divider);
     }
 
-    // 타워 선택 버튼 (2행 x 5열)
-    this._createTowerButtons();
+    // 뽑기 버튼 (기존 2행 5열 타워 버튼 대체)
+    this._createDrawButton();
 
     // 판매 버튼
     this._createSellButton();
@@ -141,232 +157,211 @@ export class TowerPanel {
     this._createSpeedButton();
   }
 
-  // ── 타워 선택 버튼 ──────────────────────────────────────────
+  // ── 뽑기 버튼 ────────────────────────────────────────────────
 
   /**
-   * 타워 선택 버튼을 2행 5열 레이아웃으로 생성한다.
-   * 1행: archer, mage, ice, lightning, flame
-   * 2행: rock, poison, wind, light, dragon (잠금 가능)
+   * 뽑기 버튼을 패널 중앙에 생성한다.
+   * 기존 2행 5열 타워 버튼을 단일 뽑기 버튼으로 대체한다.
    * @private
    */
-  _createTowerButtons() {
-    const topRowTypes = ['archer', 'mage', 'ice', 'lightning', 'flame'];
-    const bottomRowTypes = ['rock', 'poison', 'wind', 'light', 'dragon'];
-    const btnSize = VISUALS.TOWER_BUTTON_SIZE;
-    const spacing = VISUALS.BUTTON_SPACING;
-    const startX = 8;
-    const topRowY = PANEL_Y + 8;
-    const bottomRowY = PANEL_Y + 56;
+  _createDrawButton() {
+    const x = GAME_WIDTH / 2 - 40;
+    const y = PANEL_Y + 30;
+    const btnW = 120;
+    const btnH = 44;
 
-    // 상단 행 생성
-    this._createButtonRow(topRowTypes, startX, topRowY, btnSize, spacing);
+    // 뽑기 버튼 배경 (이미지 또는 사각형 폴백)
+    if (this.scene.textures.exists('slot_action_normal')) {
+      this._drawButton = this.scene.add.image(x, y, 'slot_action_normal')
+        .setDisplaySize(btnW, btnH)
+        .setInteractive({ useHandCursor: true });
+    } else {
+      this._drawButton = this.scene.add.rectangle(x, y, btnW, btnH, 0x1a1a2e)
+        .setStrokeStyle(2, BTN_PRIMARY)
+        .setInteractive({ useHandCursor: true });
+    }
+    this.container.add(this._drawButton);
 
-    // 하단 행 생성
-    this._createButtonRow(bottomRowTypes, startX, bottomRowY, btnSize, spacing);
+    // 뽑기 라벨 텍스트 (상단)
+    this._drawLabelText = this.scene.add.text(x, y - 8, t('draw.button'), {
+      fontSize: '14px',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
+      color: '#ffffff',
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+    this.container.add(this._drawLabelText);
+
+    // 뽑기 비용 텍스트 (하단, 금색)
+    const initialCost = calcDrawCost(0);
+    this._drawCostText = this.scene.add.text(x, y + 10, `${initialCost}G`, {
+      fontSize: '11px',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
+      color: GOLD_TEXT_CSS,
+    }).setOrigin(0.5);
+    this.container.add(this._drawCostText);
+
+    // 포인터 이벤트: 짧은 탭 / 롱프레스 구분
+    this._drawButton.on('pointerdown', () => {
+      this._startLongPress('draw', x, y);
+    });
+    this._drawButton.on('pointerup', () => {
+      this._endLongPressForDraw();
+    });
+    this._drawButton.on('pointerout', () => {
+      this._cancelLongPress();
+    });
   }
 
   /**
-   * 타워 버튼 한 행을 생성한다.
-   * 각 버튼은 배경, 아이콘, 비용 텍스트로 구성되며,
-   * 짧은 탭은 타워 선택, 긴 누르기는 설명 팝업을 트리거한다.
-   * @param {string[]} types - 이 행에 배치할 타워 타입 배열
-   * @param {number} startX - 시작 X 좌표
-   * @param {number} rowY - 행의 Y 좌표
-   * @param {number} btnSize - 버튼 크기 (px)
-   * @param {number} spacing - 버튼 간 간격 (px)
+   * 뽑기 버튼 pointerup 핸들러.
+   * 롱프레스 미발동 시 뽑기 실행, 롱프레스 발동 시 풀 팝업 표시.
    * @private
    */
-  _createButtonRow(types, startX, rowY, btnSize, spacing) {
-    for (let i = 0; i < types.length; i++) {
-      const type = types[i];
-      const x = startX + i * (btnSize + spacing) + btnSize / 2;
-      const y = rowY + btnSize / 2;
-      const stats = TOWER_STATS[type];
-      const cost = stats.levels[1].cost;
-      const isLocked = TOWER_STATS[type].locked && !this.unlockedTowers.includes(type);
-
-      // 버튼 배경 - 타워 슬롯 이미지 또는 사각형 폴백
-      const slotKey = isLocked ? 'tower_slot_locked' : 'tower_slot_normal';
-      let bg;
-      if (this.scene.textures.exists(slotKey)) {
-        bg = this.scene.add.image(x, y, slotKey);
-        bg.setInteractive({ useHandCursor: !isLocked });
-        if (isLocked) bg.setAlpha(0.4);
-      } else {
-        bg = this.scene.add.rectangle(x, y, btnSize, btnSize, 0x1a1a2e)
-          .setStrokeStyle(2, isLocked ? COLORS.LOCK_ICON : 0x636e72);
-        bg.setInteractive({ useHandCursor: !isLocked });
-        if (isLocked) bg.setAlpha(0.4);
-      }
-      this.container.add(bg);
-
-      // 타워 아이콘 (잠금 시 자물쇠, 일반 시 이미지 에셋, 폴백 시 도형)
-      let iconObj;
-      const textureKey = `tower_${type}`;
-      if (isLocked) {
-        // 잠금: Graphics 자물쇠 아이콘
-        iconObj = this.scene.add.graphics();
-        this._drawLockIcon(iconObj, x, y - 4);
-      } else if (this.scene.textures.exists(textureKey)) {
-        // 이미지 에셋 사용 (128px → 30px 축소)
-        iconObj = this.scene.add.image(x, y - 4, textureKey);
-        iconObj.setDisplaySize(30, 30);
-      } else {
-        // 폴백: 기존 Graphics 도형
-        iconObj = this.scene.add.graphics();
-        this._drawTowerIcon(iconObj, type, x, y - 4);
-      }
-      this.container.add(iconObj);
-
-      // 배치 비용 텍스트 (잠금 시 '????G' 표시)
-      const costStr = isLocked ? '????G' : `${cost}G`;
-      const costColor = isLocked ? '#636e72' : GOLD_TEXT_CSS;
-      const costText = this.scene.add.text(x, y + 14, costStr, {
-        fontSize: '9px',
-        fontFamily: 'Galmuri11, Arial, sans-serif',
-        color: costColor,
-        align: 'center',
-      }).setOrigin(0.5);
-      this.container.add(costText);
-
-      // 버튼 데이터 저장
-      const btnData = {
-        type,
-        bg,
-        costText,
-        iconGraphics: iconObj,
-        cost,
-        isLocked,
-      };
-      this.towerButtons.push(btnData);
-
-      // 긴 누르기 / 짧은 탭 이벤트 핸들러
-      bg.on('pointerdown', () => {
-        this._startLongPress(type, x, y);
-      });
-      bg.on('pointerup', () => {
-        this._endLongPress(type);
-      });
-      bg.on('pointerout', () => {
-        this._cancelLongPress();
-      });
+  _endLongPressForDraw() {
+    if (this._lpTimer) { this._lpTimer.remove(); this._lpTimer = null; }
+    if (!this._lpFired) {
+      this._onDrawButtonClick();
     }
+    // 롱프레스 발동 시 _showDrawPool()이 이미 호출됨
+  }
+
+  /**
+   * 뽑기 버튼 클릭(짧은 탭) 처리.
+   * 해금된 T1 타워 풀에서 균등 확률로 1종을 랜덤 선택하고 배치 모드로 진입한다.
+   * 골드 차감은 배치 확정 시 GameScene에서 처리한다.
+   * @private
+   */
+  _onDrawButtonClick() {
+    const cost = calcDrawCost(this.drawCount);
+
+    // 골드 부족 시 무시
+    if (this._currentGold < cost) return;
+
+    // 해금된 T1 타워 풀 구성
+    const pool = Object.keys(TOWER_STATS).filter(type => {
+      const stats = TOWER_STATS[type];
+      // T1 타워만 (tier가 없거나 1인 타워)
+      if (stats.tier && stats.tier > 1) return false;
+      // 잠금 해제 체크
+      if (stats.locked && !this.unlockedTowers.includes(type)) return false;
+      return true;
+    });
+
+    if (pool.length === 0) return;
+
+    // 균등 확률 랜덤 선택
+    const type = pool[Math.floor(Math.random() * pool.length)];
+    this._pendingDrawType = type;
+
+    // 기존 배치 모드와 동일하게 타워 선택 콜백 호출
+    this.selectedTower = null;
+    this.selectedTowerType = type;
+    this._hideInfo();
+
+    if (this.callbacks.onTowerSelect) {
+      this.callbacks.onTowerSelect(type);
+    }
+  }
+
+  /**
+   * 뽑기 성공(배치 확정) 시 호출. 뽑기 횟수를 증가시키고 비용 텍스트를 갱신한다.
+   */
+  incrementDrawCount() {
+    this.drawCount++;
+    this._pendingDrawType = null;
+    if (this._drawCostText) {
+      this._drawCostText.setText(`${calcDrawCost(this.drawCount)}G`);
+    }
+  }
+
+  /**
+   * 뽑기 취소(배치 취소) 시 호출. 뽑기 대기 상태를 초기화한다.
+   */
+  cancelDraw() {
+    this._pendingDrawType = null;
+  }
+
+  /**
+   * 뽑기 풀 팝업을 표시한다.
+   * 현재 해금된 타워 목록과 각 확률을 팝업으로 표시한다.
+   * @private
+   */
+  _showDrawPool() {
+    this._hideDescription();
+
+    // 해금된 T1 타워 풀 구성
+    const pool = Object.keys(TOWER_STATS).filter(type => {
+      const stats = TOWER_STATS[type];
+      if (stats.tier && stats.tier > 1) return false;
+      if (stats.locked && !this.unlockedTowers.includes(type)) return false;
+      return true;
+    });
+
+    const prob = pool.length > 0 ? Math.round(100 / pool.length) : 0;
+
+    const popupW = 320;
+    const lineHeight = 16;
+    const headerH = 40;
+    const popupH = headerH + pool.length * lineHeight + 20;
+    const popupX = GAME_WIDTH / 2;
+    const popupY = PANEL_Y - popupH / 2 - 8;
+
+    // 컨테이너로 묶어서 일괄 정리를 용이하게 함
+    this._descContainer = this.scene.add.container(0, 0).setDepth(50);
+
+    // 배경 + 테두리
+    const bg = this.scene.add.rectangle(popupX, popupY, popupW, popupH, 0x0a0e1a, 0.92)
+      .setStrokeStyle(2, BTN_PRIMARY);
+    this._descContainer.add(bg);
+
+    // 타이틀
+    const titleText = this.scene.add.text(popupX, popupY - popupH / 2 + 14, t('draw.pool.title'), {
+      fontSize: '14px',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
+      color: '#ffffff',
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+    this._descContainer.add(titleText);
+
+    // 확률 표시
+    const probText = this.scene.add.text(popupX, popupY - popupH / 2 + 30,
+      t('draw.pool.prob').replace('{count}', prob), {
+        fontSize: '10px',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
+        color: '#a0a0a0',
+      }).setOrigin(0.5);
+    this._descContainer.add(probText);
+
+    // 타워 목록
+    const startY = popupY - popupH / 2 + headerH + 10;
+    for (let i = 0; i < pool.length; i++) {
+      const type = pool[i];
+      const color = TOWER_STATS[type].color;
+      const colorCSS = '#' + color.toString(16).padStart(6, '0');
+      const name = t(`tower.${type}.name`);
+
+      const nameText = this.scene.add.text(popupX, startY + i * lineHeight, name, {
+        fontSize: '11px',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
+        color: colorCSS,
+      }).setOrigin(0.5);
+      this._descContainer.add(nameText);
+    }
+
+    // 다음 프레임에 닫기 핸들러 등록
+    this.scene.time.delayedCall(50, () => {
+      this._descCloseHandler = this.scene.input.once('pointerdown', () => {
+        this._hideDescription();
+      });
+    });
   }
 
   // ── 타워 아이콘 그리기 ──────────────────────────────────────
 
   /**
-   * 타워 타입에 해당하는 아이콘을 그래픽 오브젝트에 그린다.
-   * 각 타워별 고유 도형(삼각형, 원, 다이아몬드, 번개 등)을 사용한다.
-   * @param {Phaser.GameObjects.Graphics} g - 그래픽 오브젝트
-   * @param {string} type - 타워 타입 키
-   * @param {number} x - 중심 X 좌표
-   * @param {number} y - 중심 Y 좌표
-   * @private
-   */
-  _drawTowerIcon(g, type, x, y) {
-    const color = TOWER_STATS[type].color;
-    g.clear();
-
-    switch (type) {
-      case 'archer': {
-        // 삼각형 아이콘
-        const s = 14;
-        g.fillStyle(color, 1);
-        g.fillTriangle(x, y - s / 2, x - s / 2, y + s / 2, x + s / 2, y + s / 2);
-        break;
-      }
-      case 'mage':
-        // 원형 아이콘
-        g.fillStyle(color, 1);
-        g.fillCircle(x, y, 8);
-        break;
-      case 'ice': {
-        // 마름모 아이콘
-        const sz = 6;
-        g.fillStyle(color, 1);
-        g.fillPoints([
-          { x: x, y: y - sz },
-          { x: x + sz, y: y },
-          { x: x, y: y + sz },
-          { x: x - sz, y: y },
-        ], true);
-        break;
-      }
-      case 'lightning': {
-        // 지그재그 번개 아이콘
-        g.lineStyle(2, color, 1);
-        const w = 5;
-        const h = 10;
-        g.lineBetween(x - w, y - h, x + w, y - h * 0.2);
-        g.lineBetween(x + w, y - h * 0.2, x - w, y + h * 0.2);
-        g.lineBetween(x - w, y + h * 0.2, x + w, y + h);
-        break;
-      }
-      case 'flame': {
-        // 불꽃 아이콘 - 원형 몸체 + 작은 삼각형 불꽃
-        g.fillStyle(color, 1);
-        g.fillCircle(x, y + 2, 7);
-        g.fillStyle(0xfdcb6e, 0.9);
-        const offsets = [-4, 0, 4];
-        for (const ox of offsets) {
-          g.fillTriangle(x + ox, y - 8, x + ox - 2, y - 3, x + ox + 2, y - 3);
-        }
-        break;
-      }
-      case 'rock': {
-        // 육각형 아이콘
-        const r = 8;
-        const points = [];
-        for (let i = 0; i < 6; i++) {
-          const angle = (Math.PI / 3) * i - Math.PI / 2;
-          points.push({ x: x + r * Math.cos(angle), y: y + r * Math.sin(angle) });
-        }
-        g.fillStyle(color, 1);
-        g.fillPoints(points, true);
-        break;
-      }
-      case 'poison': {
-        // 오각형 아이콘
-        const r = 7;
-        const points = [];
-        for (let i = 0; i < 5; i++) {
-          const angle = (Math.PI * 2 / 5) * i - Math.PI / 2;
-          points.push({ x: x + r * Math.cos(angle), y: y + r * Math.sin(angle) });
-        }
-        g.fillStyle(color, 1);
-        g.fillPoints(points, true);
-        break;
-      }
-      case 'wind': {
-        // 반원 + 바람 줄기 아이콘
-        g.fillStyle(color, 1);
-        g.slice(x, y, 8, Phaser.Math.DegToRad(180), Phaser.Math.DegToRad(360), false);
-        g.fillPath();
-        g.lineStyle(1.5, color, 0.7);
-        for (let i = 0; i < 3; i++) {
-          g.lineBetween(x - 4 + i * 4, y + 2, x - 2 + i * 4, y + 7);
-        }
-        break;
-      }
-      case 'light': {
-        // 팔각형 아이콘
-        const r = 7;
-        const points = [];
-        for (let i = 0; i < 8; i++) {
-          const angle = (Math.PI * 2 / 8) * i - Math.PI / 8;
-          points.push({ x: x + r * Math.cos(angle), y: y + r * Math.sin(angle) });
-        }
-        g.fillStyle(color, 1);
-        g.fillPoints(points, true);
-        break;
-      }
-    }
-  }
-
-  /**
    * 잠금된 타워 버튼에 자물쇠 아이콘을 그린다.
    * 사각형 몸체 + 반원 고리 + 열쇠구멍으로 구성된다.
+   * (뽑기 풀 표시 등에서 재사용 가능성 고려하여 유지)
    * @param {Phaser.GameObjects.Graphics} g - 그래픽 오브젝트
    * @param {number} x - 중심 X 좌표
    * @param {number} y - 중심 Y 좌표
@@ -548,28 +543,16 @@ export class TowerPanel {
     this._lpFired = false;
     this._lpTimer = this.scene.time.delayedCall(LONG_PRESS_MS, () => {
       this._lpFired = true;
-      this._showDescription(type);
+      // 뽑기 버튼 롱프레스 시 뽑기 풀 표시, 타워 버튼은 설명 팝업 표시
+      if (type === 'draw') {
+        this._showDrawPool();
+      } else {
+        this._showDescription(type);
+      }
     });
   }
 
-  /**
-   * 포인터 업 시 긴 누르기를 종료한다.
-   * 긴 누르기가 발동하지 않았으면 짧은 탭으로 처리하여 타워를 선택한다.
-   * 잠금된 타워는 짧은 탭이 무시된다.
-   * @param {string} type - 타워 타입 키
-   * @private
-   */
-  _endLongPress(type) {
-    if (this._lpTimer) { this._lpTimer.remove(); this._lpTimer = null; }
-    if (!this._lpFired) {
-      // 짧은 탭 -> 잠금되지 않은 타워만 선택 동작 수행
-      const isLocked = TOWER_STATS[type].locked && !this.unlockedTowers.includes(type);
-      if (!isLocked) {
-        this._onTowerButtonClick(type);
-      }
-    }
-    // 긴 누르기가 발동했으면 팝업이 열려 있으며, 다른 곳 탭 시 닫힘
-  }
+  // _endLongPress(type) - 제거됨: 뽑기 시스템에서 _endLongPressForDraw()로 대체
 
   /**
    * 포인터가 버튼 영역을 벗어났을 때 긴 누르기를 취소한다.
@@ -680,56 +663,15 @@ export class TowerPanel {
 
   // ── 타워 선택 로직 ─────────────────────────────────────────
 
-  /**
-   * 타워 버튼 클릭을 처리한다.
-   * 이미 선택된 타입을 다시 클릭하면 선택 해제, 아니면 해당 타입 선택.
-   * @param {string} type - 타워 타입 키
-   * @private
-   */
-  _onTowerButtonClick(type) {
-    if (this.selectedTowerType === type) {
-      // 같은 타입 재클릭 -> 선택 해제
-      this.clearSelection();
-      return;
-    }
-
-    // 새 타워 타입 선택
-    this.selectedTower = null;
-    this.selectedTowerType = type;
-    this._updateButtonHighlights();
-    this._hideInfo();
-
-    if (this.callbacks.onTowerSelect) {
-      this.callbacks.onTowerSelect(type);
-    }
-  }
+  // _onTowerButtonClick(type) - 제거됨: 뽑기 시스템에서 _onDrawButtonClick()으로 대체
 
   /**
-   * 현재 선택 상태에 따라 버튼의 시각적 하이라이트를 갱신한다.
-   * 선택된 타워 버튼은 파란 테두리, 나머지는 회색 테두리로 표시한다.
+   * 뽑기 시스템에서는 개별 타워 버튼이 없으므로 no-op.
+   * clearSelection() 등에서 호출되는 인터페이스를 유지한다.
    * @private
    */
   _updateButtonHighlights() {
-    for (const btn of this.towerButtons) {
-      if (btn.isLocked) continue;
-      if (btn.type === this.selectedTowerType) {
-        // 선택된 타워: selected 슬롯 이미지 또는 색상 변경
-        if (btn.bg.setTexture && this.scene.textures.exists('tower_slot_selected')) {
-          btn.bg.setTexture('tower_slot_selected');
-        } else {
-          btn.bg.setStrokeStyle(2, BTN_PRIMARY);
-          btn.bg.setFillStyle(0x2a2a3e);
-        }
-      } else {
-        // 비선택 타워: normal 슬롯 이미지 또는 기본 색상
-        if (btn.bg.setTexture && this.scene.textures.exists('tower_slot_normal')) {
-          btn.bg.setTexture('tower_slot_normal');
-        } else {
-          btn.bg.setStrokeStyle(2, 0x636e72);
-          btn.bg.setFillStyle(0x1a1a2e);
-        }
-      }
-    }
+    // 뽑기 시스템: 개별 타워 버튼 하이라이트 불필요
   }
 
   /**
@@ -739,16 +681,24 @@ export class TowerPanel {
    */
   updateAffordability(gold) {
     this._currentGold = gold;
-    for (const btn of this.towerButtons) {
-      if (btn.isLocked) continue;
-      if (gold >= btn.cost) {
-        btn.bg.setAlpha(1);
-        btn.iconGraphics.setAlpha(1);
-        btn.costText.setColor(GOLD_TEXT_CSS);
+
+    // 뽑기 버튼 활성화/비활성화
+    if (this._drawButton) {
+      const cost = calcDrawCost(this.drawCount);
+      if (gold >= cost) {
+        this._drawButton.setAlpha(1);
+        if (this._drawLabelText) this._drawLabelText.setAlpha(1);
+        if (this._drawCostText) {
+          this._drawCostText.setAlpha(1);
+          this._drawCostText.setColor(GOLD_TEXT_CSS);
+        }
       } else {
-        btn.bg.setAlpha(0.5);
-        btn.iconGraphics.setAlpha(0.5);
-        btn.costText.setColor('#ff4757');
+        this._drawButton.setAlpha(0.5);
+        if (this._drawLabelText) this._drawLabelText.setAlpha(0.5);
+        if (this._drawCostText) {
+          this._drawCostText.setAlpha(0.5);
+          this._drawCostText.setColor('#ff4757');
+        }
       }
     }
   }
@@ -977,6 +927,11 @@ export class TowerPanel {
 
     // 합성 가능 타워 하이라이트 표시
     this._startMergeHighlights(tower);
+
+    // 빈 셀 하이라이트 표시 (이동 가능 위치 안내)
+    if (this.callbacks.onDragStart) {
+      this.callbacks.onDragStart();
+    }
   }
 
   /**
@@ -1002,13 +957,15 @@ export class TowerPanel {
   }
 
   /**
-   * 드래그를 종료하고 합성을 시도하거나 취소한다.
-   * 유효한 합성 대상 위에 드롭하면 onMerge 콜백을 호출하고,
-   * 대상이 없거나 레시피가 없으면 원본 타워를 복원한다.
+   * 드래그를 종료하고 합성/이동을 시도하거나 취소한다.
+   * 합성 가능한 타워 위에 드롭하면 onMerge 콜백을 호출하고,
+   * 빈 배치 가능 셀이면 onMove 콜백으로 타워를 이동하며,
+   * 그 외 경우 원본 타워를 복원한다.
    * @param {Phaser.Input.Pointer} pointer - 드롭 시점의 포인터
    * @param {Function} getTowerAt - 그리드 좌표(col, row)로 타워를 찾는 함수
+   * @param {Function} [isBuildable] - 그리드 좌표(col, row)가 빈 배치 가능 셀인지 확인하는 함수
    */
-  endDrag(pointer, getTowerAt) {
+  endDrag(pointer, getTowerAt, isBuildable) {
     if (!this._isDragging) return;
 
     const towerA = this._dragTower;
@@ -1025,6 +982,11 @@ export class TowerPanel {
     // 합성 하이라이트 및 미리보기 버블 정리
     this._clearMergeHighlights();
     this._hideMergePreviewBubble();
+
+    // 드래그 종료 콜백 (빈 셀 하이라이트 제거)
+    if (this.callbacks.onDragEnd) {
+      this.callbacks.onDragEnd();
+    }
 
     // 드롭 위치에 유효한 타워가 있는지 확인
     const grid = pixelToGrid(pointer.x, pointer.y);
@@ -1058,10 +1020,16 @@ export class TowerPanel {
           this._playShakeTween(towerB);
           return;
         }
+      } else if (!towerB && isBuildable && isBuildable(col, row)) {
+        // 빈 배치 가능 셀 -> 타워 이동 (비용 무료)
+        if (this.callbacks.onMove) {
+          this.callbacks.onMove(towerA, col, row);
+        }
+        return;
       }
     }
 
-    // 유효한 대상 없음 -> 원본 타워 복원
+    // 유효한 대상 없음 또는 배치 불가 셀 -> 원본 타워 복원
     towerA.graphics.setAlpha(1);
   }
 

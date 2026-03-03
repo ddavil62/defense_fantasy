@@ -224,6 +224,21 @@ export class MapManager {
     return this.towerMap.get(`${col},${row}`) || null;
   }
 
+  /**
+   * 타워를 기존 셀에서 새 셀로 이동시킨다.
+   * 내부 towerMap에서 기존 위치를 제거하고 새 위치에 등록한다.
+   * 타워 그래픽 좌표 갱신은 호출부(GameScene)에서 처리한다.
+   * @param {number} fromCol - 기존 그리드 열
+   * @param {number} fromRow - 기존 그리드 행
+   * @param {number} toCol - 새 그리드 열
+   * @param {number} toRow - 새 그리드 행
+   * @param {object} tower - 이동할 타워 인스턴스
+   */
+  moveTower(fromCol, fromRow, toCol, toRow, tower) {
+    this.towerMap.delete(`${fromCol},${fromRow}`);
+    this.towerMap.set(`${toCol},${toRow}`, tower);
+  }
+
   // ── 하이라이트 ─────────────────────────────────────────────────
 
   /**

@@ -223,8 +223,24 @@ export const PATH_WAYPOINTS = [
 ];
 
 // ── 경제 ────────────────────────────────────────────────────────
-/** @const {number} 시작 골드량 (밸런스 오버홀: 250→200) */
-export const INITIAL_GOLD = 200;
+/** @const {number} 시작 골드량 (밸런스 오버홀: 250→200→160, 뽑기 시스템 도입에 따른 재조정) */
+export const INITIAL_GOLD = 160;
+
+// ── 뽑기 비용 ──────────────────────────────────────────────────
+// 뽑기 횟수 -> 비용 예상표 (DRAW_BASE_COST=80, DRAW_COST_INCREMENT=20 기준)
+// 0회: 80G, 5회: 180G, 10회: 280G, 20회: 480G, 30회: 680G
+/** @const {number} 뽑기 기본 비용 */
+export const DRAW_BASE_COST = 80;
+/** @const {number} 뽑기 횟수당 비용 증가량 */
+export const DRAW_COST_INCREMENT = 20;
+/**
+ * 현재 뽑기 횟수에 따른 뽑기 비용을 계산한다.
+ * @param {number} drawCount - 현재 게임 세션 내 뽑기 성공 횟수
+ * @returns {number} 뽑기 비용
+ */
+export function calcDrawCost(drawCount) {
+  return DRAW_BASE_COST + DRAW_COST_INCREMENT * drawCount;
+}
 
 /** @const {number} 시작 기지 체력 */
 export const BASE_HP = 20;

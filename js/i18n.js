@@ -483,6 +483,12 @@ const STRINGS = {
     'merge.noGold': '골드 부족!',
     'tower.limit': '타워 한도 도달! ({count}/{max})',
     'hud.towers': '타워',
+    // ── 뽑기 시스템 ──
+    'draw.button': '뽑기',
+    'draw.result': '{name} 획득!',
+    'draw.noGold': '골드 부족',
+    'draw.pool.title': '뽑기 풀',
+    'draw.pool.prob': '각 {count}% 확률',
   },
   en: {
     'tower.archer.name': 'Archer',
@@ -936,5 +942,11 @@ const STRINGS = {
     'merge.noGold': 'Not enough gold!',
     'tower.limit': 'Tower limit reached! ({count}/{max})',
     'hud.towers': 'Towers',
+    // ── Draw system ──
+    'draw.button': 'Draw',
+    'draw.result': '{name}!',
+    'draw.noGold': 'Not enough gold',
+    'draw.pool.title': 'Draw Pool',
+    'draw.pool.prob': '{count}% each',
   },
 };

@@ -11,7 +11,7 @@ import {
   TOWER_STATS, ENEMY_STATS,
   INITIAL_GOLD, BASE_HP, MAX_BASE_HP,
   VISUALS, COLORS,
-  pixelToGrid,
+  pixelToGrid, gridToPixel,
   SPEED_NORMAL,
   META_UPGRADE_CONFIG,
   getMetaBaseHP, getMetaMaxBaseHP,
@@ -25,6 +25,7 @@ import {
   AD_GOLD_BOOST_MULTIPLIER,
   MAX_TOWER_COUNT,
   MERGE_COST,
+  calcDrawCost,
 } from '../config.js';
 
 // ── 매니저 ──
@@ -265,6 +266,9 @@ export class GameScene extends Phaser.Scene {
       onSell: (tower) => this._onTowerSell(tower),
       onSpeedToggle: (speed) => this._onSpeedToggle(speed),
       onDeselect: () => this._onDeselect(),
+      onMove: (tower, col, row) => this._onTowerMove(tower, col, row),
+      onDragStart: () => this.mapManager.showBuildableHighlights(),
+      onDragEnd: () => this.mapManager.clearHighlights(),
       getTowers: () => this.towers,
       unlockedTowers: this.unlockedTowers,
     });
@@ -435,6 +439,46 @@ export class GameScene extends Phaser.Scene {
   _onTowerTypeSelect(type) {
     this._deselectAllTowers();
     this.mapManager.showBuildableHighlights();
+
+    // 뽑기로 선택된 타워인 경우 결과 플로팅 텍스트 표시
+    if (this.towerPanel._pendingDrawType === type) {
+      const towerName = t(`tower.${type}.name`);
+      const msg = t('draw.result').replace('{name}', towerName);
+      this._showFloatingDrawResult(msg, type);
+    }
+  }
+
+  /**
+   * 뽑기 결과를 화면 상단에 플로팅 텍스트로 1.5초간 표시한다.
+   * @param {string} message - 표시할 메시지
+   * @param {string} type - 타워 타입 키 (색상 참조용)
+   * @private
+   */
+  _showFloatingDrawResult(message, type) {
+    const color = TOWER_STATS[type]?.color || 0xffffff;
+    const colorCSS = '#' + color.toString(16).padStart(6, '0');
+
+    const resultText = this.add.text(
+      GAME_WIDTH / 2, HUD_HEIGHT + 40,
+      message,
+      {
+        fontSize: '16px',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
+        fontStyle: 'bold',
+        color: colorCSS,
+        stroke: '#000000',
+        strokeThickness: 3,
+      }
+    ).setOrigin(0.5).setDepth(55);
+
+    this.tweens.add({
+      targets: resultText,
+      y: resultText.y - 30,
+      alpha: 0,
+      duration: 1500,
+      ease: 'Cubic.Out',
+      onComplete: () => resultText.destroy(),
+    });
   }
 
   /**
@@ -445,6 +489,39 @@ export class GameScene extends Phaser.Scene {
   _onDeselect() {
     this._deselectAllTowers();
     this.mapManager.clearHighlights();
+    // 뽑기 대기 상태 취소 (비용 차감/횟수 증가 없음)
+    this.towerPanel.cancelDraw();
+  }
+
+  /**
+   * 타워를 드래그하여 빈 셀로 이동시킨다.
+   * MapManager에서 그리드 위치를 갱신하고, 타워의 좌표/그래픽을 새 위치로 재설정한다.
+   * 이동 비용은 무료(골드 차감 없음).
+   * @param {Tower} tower - 이동할 타워 인스턴스
+   * @param {number} col - 이동 대상 그리드 열
+   * @param {number} row - 이동 대상 그리드 행
+   * @private
+   */
+  _onTowerMove(tower, col, row) {
+    // MapManager 내부 타워맵 갱신: 기존 셀 비우기 + 새 셀 등록
+    this.mapManager.moveTower(tower.col, tower.row, col, row, tower);
+
+    // 타워의 그리드/픽셀 좌표 갱신
+    tower.col = col;
+    tower.row = row;
+    const pos = gridToPixel(col, row);
+    tower.x = pos.x;
+    tower.y = pos.y;
+
+    // 스프라이트 위치 갱신 (이미지 타워)
+    if (tower.sprite) {
+      tower.sprite.setPosition(pos.x, pos.y);
+    }
+
+    // 사거리 원 숨기기 및 도형 재그리기 (새 좌표 기준)
+    tower.hideRangeCircle();
+    tower.draw();
+    tower.graphics.setAlpha(1);
   }
 
   /**
@@ -492,8 +569,12 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
-    // Lv.1 배치 비용 확인
-    const cost = TOWER_STATS[type].levels[1].cost;
+    // 뽑기 경유 배치인지 판별하여 비용 분기
+    const isPendingDraw = this.towerPanel._pendingDrawType === type;
+    const cost = isPendingDraw
+      ? calcDrawCost(this.towerPanel.drawCount)
+      : TOWER_STATS[type].levels[1].cost;
+
     if (!this.goldManager.canAfford(cost)) {
       this.mapManager.showInvalidPlacement(col, row);
       return;
@@ -507,6 +588,11 @@ export class GameScene extends Phaser.Scene {
     this.towers.push(tower);
     this.mapManager.placeTower(col, row, tower);
     this.gameStats.towersPlaced++;
+
+    // 뽑기 배치 성공 시 횟수 증가
+    if (isPendingDraw) {
+      this.towerPanel.incrementDrawCount();
+    }
 
     this.towerPanel.clearSelection();
     this.mapManager.clearHighlights();
@@ -2717,7 +2803,11 @@ export class GameScene extends Phaser.Scene {
     const wasDragging = this.towerPanel && this.towerPanel.isDragging();
     this._pendingDrag = null;
     if (wasDragging) {
-      this.towerPanel.endDrag(pointer, (col, row) => this.mapManager.getTowerAt(col, row));
+      this.towerPanel.endDrag(
+        pointer,
+        (col, row) => this.mapManager.getTowerAt(col, row),
+        (col, row) => this.mapManager.isBuildable(col, row)
+      );
     }
 
     // 드래그 없이 깨끗한 클릭(이동 10px 이내)이었을 때만 타워 정보 모달 표시

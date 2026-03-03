@@ -4,6 +4,73 @@
 
 ---
 
+## 2026-03-03 -- 랜덤 뽑기 시스템 Phase 3: 이코노미 리밸런스
+
+### 변경
+
+- **`js/config.js`** -- `INITIAL_GOLD` 200 -> 160으로 하향 조정. 뽑기 시스템 도입(첫 뽑기 80G)에 맞춘 재조정. 주석에 변경 이력 `250→200→160` 반영
+
+### 참고
+
+- 스펙: `.claude/specs/2026-03-03-random-draw-system.md` (Phase 3)
+- 리포트: `.claude/specs/2026-03-03-random-draw-system-p3-report.md`
+- QA: `.claude/specs/2026-03-03-random-draw-system-p3-qa.md`
+- Playwright 테스트 23건 전체 PASS + 시각적 검증 3건
+- Gold Boost 메타 업그레이드 수치(T1=275G, T2=300G, T3=350G)는 사용자 요청에 따라 기존 유지. INITIAL_GOLD=160 기준으로 상대적 보너스 효과 증가 (의도적)
+- 스펙 수용 기준 #2("2회 뽑기 가능")은 수학 오류: 실제 2회 비용은 80+100=180G. 160G로는 첫 뽑기(80G)만 가능하며 이는 "살짝 부족하게" 의도된 설계
+- 웨이브 클리어 보상, 적 처치 골드 보상, 합성 비용(MERGE_COST)은 변경 없음
+
+---
+
+## 2026-03-03 -- 랜덤 뽑기 시스템 Phase 2: 타워 드래그 이동
+
+### 추가
+
+- **`js/managers/MapManager.js`** -- `moveTower(fromCol, fromRow, toCol, toRow, tower)` 메서드 추가. 내부 `towerMap`에서 기존 셀 키를 `delete`하고 새 셀 키에 `set`하여 타워 위치 갱신. 그래픽 좌표 변경은 호출부(GameScene)에서 처리
+
+### 변경
+
+- **`js/ui/TowerPanel.js`** -- `startDrag(tower, pointer)`: 드래그 시작 시 `callbacks.onDragStart()` 콜백 호출 추가(빈 셀 하이라이트 표시 트리거). `endDrag(pointer, getTowerAt, isBuildable)`: 세 번째 파라미터 `isBuildable` 추가(하위 호환: `isBuildable && isBuildable(col, row)` 패턴으로 미전달 시 falsy 처리). 빈 배치 가능 셀 드롭 시 `callbacks.onMove(towerA, col, row)` 호출 분기 추가. 드래그 종료 시 `callbacks.onDragEnd()` 콜백 호출 추가(하이라이트 제거 트리거)
+- **`js/scenes/GameScene.js`** -- `gridToPixel` import 추가. TowerPanel 생성 콜백에 `onMove`, `onDragStart`, `onDragEnd` 3개 콜백 추가. `endDrag` 호출부에 `isBuildable` 파라미터 전달 추가. `_onTowerMove(tower, col, row)` 핸들러 신규 구현: `mapManager.moveTower()` -> 타워 `col`/`row`/`x`/`y` 좌표 갱신 -> sprite 위치 갱신 -> `hideRangeCircle()` + `draw()` + alpha 복원
+
+### 참고
+
+- 스펙: `.claude/specs/2026-03-03-random-draw-system.md` (Phase 2)
+- 리포트: `.claude/specs/2026-03-03-random-draw-system-p2-report.md`
+- QA: `.claude/specs/2026-03-03-random-draw-system-p2-qa.md`
+- Playwright 테스트 30건 전체 PASS + 시각적 검증 3건
+- 이동 비용 무료 (골드 차감 없음)
+- 강화된 타워(enhanceLevel > 0)는 기존 제약 유지 -- 드래그 자체 불가
+- 합성 가능 타워 위 드롭 시 기존 합성 동작 그대로 실행
+- 합성 불가 타워 위 드롭 / 배치 불가 셀 드롭 시 흔들기 피드백 후 원위치 복원
+- QA 소견(LOW 2건): depth 미갱신(체감 영향 극히 낮음), 드래그 중 sprite alpha 미숨김(기존 합성 드래그와 동일 동작)
+
+---
+
+## 2026-03-03 -- 랜덤 뽑기 시스템 Phase 1
+
+### 추가
+
+- **`js/config.js`** -- 뽑기 비용 상수 `DRAW_BASE_COST`(80), `DRAW_COST_INCREMENT`(20) 및 `calcDrawCost(drawCount)` 함수 추가. 비용 공식: `80 + 20 * drawCount`
+- **`js/i18n.js`** -- 뽑기 관련 텍스트 5종 추가 (ko/en 동시): `draw.button`, `draw.result`, `draw.noGold`, `draw.pool.title`, `draw.pool.prob`
+
+### 변경
+
+- **`js/ui/TowerPanel.js`** -- 기존 2행 5열 타워 선택 버튼 10개 제거, 단일 뽑기 버튼으로 대체. `_createTowerButtons()`/`_createButtonRow()`/`_drawTowerIcon()` 메서드 삭제. 신규 필드: `drawCount`(세션 내 뽑기 성공 횟수), `_pendingDrawType`(뽑기로 선택된 타워 타입). 신규 메서드: `_createDrawButton()`, `_onDrawButtonClick()`, `incrementDrawCount()`, `cancelDraw()`, `_showDrawPool()`. `updateAffordability(gold)`를 뽑기 비용 기준으로 변경 (부족 시 alpha 0.5 + 빨간 비용 텍스트). 롱프레스(400ms) 시 해금 타워 목록/확률 팝업 표시
+- **`js/scenes/GameScene.js`** -- `calcDrawCost` import 추가. `_onTowerTypeSelect(type)`: 뽑기 경유 시 결과 플로팅 텍스트 1.5초 표시(`_showFloatingDrawResult`). `_attemptPlaceTower(type, col, row)`: `_pendingDrawType` 기반 비용 분기 (뽑기 비용 vs TOWER_STATS 비용), 배치 성공 시 `incrementDrawCount()` 호출. `_onDeselect()`: `cancelDraw()` 호출 추가
+
+### 참고
+
+- 스펙: `.claude/specs/2026-03-03-random-draw-system.md` (Phase 1)
+- 리포트: `.claude/specs/2026-03-03-random-draw-system-p1-report.md`
+- QA: `.claude/specs/2026-03-03-random-draw-system-p1-qa.md`
+- Playwright 테스트 29건 전체 PASS + 시각적 검증 6건
+- 뽑기 횟수(`drawCount`)는 세션 단위 관리 (저장 불필요, 게임 재시작 시 0으로 초기화)
+- 기존 합성 시스템(드래그 합성, 합성 비용, 합성 하이라이트)은 변경 없음
+- 개별 타워 직접 선택 배치는 불가 (설계 의도)
+
+---
+
 ## 2026-03-03 -- Sell 버튼 패널 하단 고정 배치
 
 ### 변경
