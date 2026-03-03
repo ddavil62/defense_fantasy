@@ -495,8 +495,6 @@ const STRINGS = {
     // ── 밸런스 오버홀: 합성 비용 / 타워 한도 ──
     'merge.cost': '합성 비용: {cost}G',
     'merge.noGold': '골드 부족!',
-    'tower.limit': '타워 한도 도달! ({count}/{max})',
-    'hud.towers': '타워',
     // ── 뽑기 시스템 ──
     'draw.button': '뽑기',
     'draw.result': '{name} 획득!',
@@ -1029,8 +1027,6 @@ const STRINGS = {
     // ── Balance Overhaul: merge cost / tower limit ──
     'merge.cost': 'Merge cost: {cost}G',
     'merge.noGold': 'Not enough gold!',
-    'tower.limit': 'Tower limit reached! ({count}/{max})',
-    'hud.towers': 'Towers',
     // ── Draw system ──
     'draw.button': 'Draw',
     'draw.result': '{name}!',

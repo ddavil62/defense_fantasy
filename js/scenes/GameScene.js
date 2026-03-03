@@ -23,7 +23,6 @@ import {
   getEnemySpriteKey,
   AD_REVIVE_HP_RATIO,
   AD_GOLD_BOOST_MULTIPLIER,
-  MAX_TOWER_COUNT,
   MERGE_COST,
   calcDrawCost,
 } from '../config.js';
@@ -351,7 +350,6 @@ export class GameScene extends Phaser.Scene {
     this.hud.updateGold(this.goldManager.getGold());
     this.hud.updateHP(this.baseHP, this.maxBaseHP);
     this.hud.updateWave(this.waveManager.currentWave, this.totalWaves);
-    this.hud.updateTowerCount(this.towers.length, MAX_TOWER_COUNT);
     this.hud.updateBlink(delta);
 
     // 웨이브 간 휴식 시간 카운트다운 및 다음 웨이브 미리보기 표시
@@ -557,15 +555,6 @@ export class GameScene extends Phaser.Scene {
   _attemptPlaceTower(type, col, row) {
     if (!this.mapManager.isBuildable(col, row)) {
       this.mapManager.showInvalidPlacement(col, row);
-      return;
-    }
-
-    // 타워 배치 슬롯 제한 체크 (밸런스 오버홀)
-    if (this.towers.length >= MAX_TOWER_COUNT) {
-      this.mapManager.showInvalidPlacement(col, row);
-      this._showFloatingWarning(
-        t('tower.limit').replace('{count}', this.towers.length).replace('{max}', MAX_TOWER_COUNT)
-      );
       return;
     }
 

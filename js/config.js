@@ -257,9 +257,6 @@ export const HP_DANGER_THRESHOLD = 5;
 /** @const {number} HP 깜빡임 간격 (ms) */
 export const HP_BLINK_INTERVAL = 500;
 
-/** @const {number} 동시 배치 가능한 최대 타워 수 (밸런스 오버홀) */
-export const MAX_TOWER_COUNT = 30;
-
 /**
  * 합성 결과 티어별 골드 비용 (밸런스 오버홀).
  * T1+T1→T2: 30G, T2+X→T3: 80G, T3+X→T4: 150G, T4+T4→T5: 250G

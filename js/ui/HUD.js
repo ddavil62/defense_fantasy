@@ -199,15 +199,6 @@ export class HUD {
   }
 
   /**
-   * 타워 배치 카운트를 갱신한다 (현재 미사용, 인터페이스 유지용 no-op).
-   * @param {number} _count - 현재 배치된 타워 수
-   * @param {number} _max - 최대 배치 가능 타워 수
-   */
-  updateTowerCount(_count, _max) {
-    // 상단 HUD 공간 부족으로 타워 카운트 표시 제거됨
-  }
-
-  /**
    * HUD에 빨간 발광 테두리를 그린다 (위험 상태 표시용).
    * @private
    */
