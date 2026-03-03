@@ -186,7 +186,7 @@ export class LevelSelectScene extends Phaser.Scene {
         }
 
         // ── 광고 버튼 영역: 좌측 하단에 "2배 골드" / "보상 2배" 소형 버튼 ──
-        const adBtnY = cardY + cardH / 2 - 12;
+        const adBtnY = cardY + cardH / 2 - 4;
         this._createGoldBoostButton(cardLeft + 38, adBtnY, mapId);
         this._createClearBoostButton(cardLeft + 114, adBtnY, mapId);
 

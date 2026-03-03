@@ -87,7 +87,7 @@ export class MenuScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     // ── "Diamond 받기" 광고 버튼 ──
-    this._createDiamondAdButton(centerX, 302 + offsetY);
+    this._createDiamondAdButton(centerX, 312 + offsetY);
 
     // ── 최고 기록 표시 ──
     if (saveData && saveData.bestRound > 0) {
