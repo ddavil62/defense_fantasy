@@ -8,7 +8,7 @@ import {
   GAME_WIDTH, HUD_HEIGHT, COLORS,
   HP_DANGER_THRESHOLD, HP_BLINK_INTERVAL,
   GOLD_TEXT_CSS, HP_DANGER_CSS, ENEMY_STATS,
-  BTN_SELL, MAX_TOWER_COUNT,
+  BTN_SELL,
 } from '../config.js';
 import { t } from '../i18n.js';
 
@@ -135,14 +135,6 @@ export class HUD {
       }).setOrigin(0, 0.5).setDepth(31);
     }
 
-    // 타워 배치 수 카운트 텍스트 (HP 우측, 밸런스 오버홀)
-    const towerLabel = t('hud.towers');
-    this.towerCountText = this.scene.add.text(230, HUD_HEIGHT / 2, `${towerLabel} 0/${MAX_TOWER_COUNT}`, {
-      fontSize: '11px',
-      fontFamily: 'Galmuri11, Arial, sans-serif',
-      color: '#b2bec3',
-    }).setOrigin(0, 0.5).setDepth(31);
-
     // 카운트다운 텍스트 (웨이브 텍스트 아래, 휴식 시간에만 표시)
     this.countdownText = this.scene.add.text(10, HUD_HEIGHT + 4, '', {
       fontSize: '11px',
@@ -207,23 +199,12 @@ export class HUD {
   }
 
   /**
-   * 타워 배치 카운트를 갱신한다.
-   * 한도에 가까우면 경고 색상으로 변경한다.
-   * @param {number} count - 현재 배치된 타워 수
-   * @param {number} max - 최대 배치 가능 타워 수
+   * 타워 배치 카운트를 갱신한다 (현재 미사용, 인터페이스 유지용 no-op).
+   * @param {number} _count - 현재 배치된 타워 수
+   * @param {number} _max - 최대 배치 가능 타워 수
    */
-  updateTowerCount(count, max) {
-    if (!this.towerCountText) return;
-    const label = t('hud.towers');
-    this.towerCountText.setText(`${label} ${count}/${max}`);
-    // 한도 80% 이상이면 경고 색상(노란), 100%이면 빨간색
-    if (count >= max) {
-      this.towerCountText.setColor('#ff4757');
-    } else if (count >= max * 0.8) {
-      this.towerCountText.setColor('#fdcb6e');
-    } else {
-      this.towerCountText.setColor('#b2bec3');
-    }
+  updateTowerCount(_count, _max) {
+    // 상단 HUD 공간 부족으로 타워 카운트 표시 제거됨
   }
 
   /**
@@ -316,7 +297,6 @@ export class HUD {
     if (this.goldText) this.goldText.destroy();
     if (this.hpIcon) this.hpIcon.destroy();
     if (this.hpText) this.hpText.destroy();
-    if (this.towerCountText) this.towerCountText.destroy();
     if (this.countdownText) this.countdownText.destroy();
     if (this.previewGraphics) this.previewGraphics.destroy();
   }
