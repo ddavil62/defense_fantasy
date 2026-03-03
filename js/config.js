@@ -1411,7 +1411,7 @@ export const ENEMY_STATS = {
   normal: {
     hp: 30,
     speed: 60,
-    gold: 5,
+    gold: 10,
     damage: 1,
     color: 0xd63031,
     radius: 10,
@@ -1421,7 +1421,7 @@ export const ENEMY_STATS = {
   fast: {
     hp: 20,
     speed: 120,
-    gold: 3,
+    gold: 6,
     damage: 1,
     color: 0xfdcb6e,
     radius: 8,
@@ -1432,7 +1432,7 @@ export const ENEMY_STATS = {
   tank: {
     hp: 120,
     speed: 35,
-    gold: 15,
+    gold: 30,
     damage: 3,
     color: 0xe17055,
     size: 18,
@@ -1442,7 +1442,7 @@ export const ENEMY_STATS = {
   boss: {
     hp: 500,
     speed: 30,
-    gold: 100,
+    gold: 200,
     damage: 10,
     color: 0xa29bfe,
     radius: 18,
@@ -1453,7 +1453,7 @@ export const ENEMY_STATS = {
   swarm: {
     hp: 15,
     speed: 90,
-    gold: 2,
+    gold: 4,
     damage: 1,
     color: 0x55efc4,
     radius: 6,
@@ -1463,7 +1463,7 @@ export const ENEMY_STATS = {
   splitter: {
     hp: 80,
     speed: 50,
-    gold: 12,
+    gold: 24,
     damage: 2,
     color: 0xfd79a8,
     radius: 13,
@@ -1474,7 +1474,7 @@ export const ENEMY_STATS = {
   armored: {
     hp: 100,
     speed: 45,
-    gold: 20,
+    gold: 40,
     damage: 2,
     resistance: 0.5,
     color: 0x2d3436,
@@ -1485,7 +1485,7 @@ export const ENEMY_STATS = {
   boss_armored: {
     hp: 1500,
     speed: 25,
-    gold: 150,
+    gold: 300,
     damage: 15,
     resistance: 0.3,
     color: 0x2d3436,
