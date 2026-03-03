@@ -377,9 +377,11 @@ T1~T5 전체 112종(기본 10 + 합성 102) 타워를 발견 여부와 무관하
 
 ### TopBar (y=0~48)
 
-- 배경: COLORS.HUD_BG, h=48
-- BACK 버튼: x=38, y=24, 60x28px, "< BACK", 클릭 시 `_goBack()` 호출
-- 타이틀: x=180, y=24, i18n 키 `codex.title` (ko: "합성도감", en: "Merge Codex")
+- 배경: COLORS.HUD_BG, h=48, depth=10
+- BACK 버튼: x=38, y=24, 60x28px, "< BACK", depth=10, 클릭 시 `_goBack()` 호출
+- BACK 텍스트: depth=10
+- 타이틀: x=180, y=24, depth=10, i18n 키 `codex.title` (ko: "합성도감", en: "Merge Codex")
+- 상단 바 전체 depth=10으로 카드 컨테이너(depth 6), 서브탭(depth 8)보다 높게 설정하여 스크롤된 카드가 이벤트를 가로채지 못하도록 함
 
 ### SubTab Bar (y=48~76)
 
@@ -401,8 +403,9 @@ T1~T5 전체 112종(기본 10 + 합성 102) 타워를 발견 여부와 무관하
 - 카드 크기: 62x74px, 5열, 간격 6px
 - CODEX_GRID_X = (360 - (5*62 + 4*6)) / 2 = 16
 - CODEX_GRID_Y = 104
-- Geometry Mask로 CODEX_GRID_Y~GAME_HEIGHT 클리핑
+- Geometry Mask로 CODEX_GRID_Y~GAME_HEIGHT 클리핑 (렌더링만 클리핑, input hit area는 클리핑하지 않음)
 - 드래그 스크롤: `this.input.on()` 전역 이벤트 기반, 5px threshold로 클릭/드래그 구분
+- 스크롤 시 카드 interactive 토글: `_applyCodexScroll()`에서 각 카드의 worldY(`baseY - codexScrollY`)를 계산하여 visible 영역(`cardBottomY > CODEX_GRID_Y && worldY < GAME_HEIGHT`) 밖 카드는 `disableInteractive()`, 안쪽 카드는 `setInteractive()` 재활성화. `_codexCardBgs` 배열로 카드 bg 참조 관리
 
 ### 카드 표시 (전부 공개)
 

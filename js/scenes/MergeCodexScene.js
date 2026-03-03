@@ -163,19 +163,21 @@ export class MergeCodexScene extends Phaser.Scene {
    * @private
    */
   _createTopBar() {
-    // 배경
-    this.add.rectangle(GAME_WIDTH / 2, 24, GAME_WIDTH, 48, COLORS.HUD_BG);
+    // 배경 (depth 10: 카드 컨테이너 depth 6, 서브탭 depth 8 보다 위)
+    this.add.rectangle(GAME_WIDTH / 2, 24, GAME_WIDTH, 48, COLORS.HUD_BG)
+      .setDepth(10);
 
-    // BACK 버튼
+    // BACK 버튼 (depth 10: 스크롤된 카드가 이벤트를 가로채지 못하도록)
     const backBg = this.add.rectangle(38, 24, 60, 28, 0x000000, 0)
       .setStrokeStyle(1, 0x636e72)
-      .setInteractive({ useHandCursor: true });
+      .setInteractive({ useHandCursor: true })
+      .setDepth(10);
 
     this.add.text(38, 24, '< BACK', {
       fontSize: '14px',
       fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffffff',
-    }).setOrigin(0.5);
+    }).setOrigin(0.5).setDepth(10);
 
     backBg.on('pointerdown', () => {
       this._goBack();
@@ -187,7 +189,7 @@ export class MergeCodexScene extends Phaser.Scene {
       fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffffff',
       fontStyle: 'bold',
-    }).setOrigin(0.5);
+    }).setOrigin(0.5).setDepth(10);
   }
 
   /**
@@ -351,6 +353,9 @@ export class MergeCodexScene extends Phaser.Scene {
     const totalContentH = rows * (CODEX_CARD_H + CODEX_CARD_GAP);
     this._codexMaxScroll = Math.max(0, totalContentH - scrollAreaH + 10);
 
+    // 카드 bg 참조 배열 초기화 (스크롤 시 interactive 토글에 사용)
+    this._codexCardBgs = [];
+
     // 카드 생성
     for (let i = 0; i < tierData.length; i++) {
       const col = i % CODEX_COLS;
@@ -387,6 +392,9 @@ export class MergeCodexScene extends Phaser.Scene {
       .setStrokeStyle(2, borderColor)
       .setInteractive({ useHandCursor: true });
     this.codexScrollContainer.add(bg);
+
+    // 스크롤 시 visible 영역 밖 카드의 interactive 비활성화에 사용
+    this._codexCardBgs.push({ bg, baseY: y });
 
     // 타워 아이콘 (이미지 우선, 폴백 시 색상 원)
     const codexTexKey = `tower_${entry.id}`;
@@ -555,6 +563,21 @@ export class MergeCodexScene extends Phaser.Scene {
   _applyCodexScroll() {
     if (this.codexScrollContainer) {
       this.codexScrollContainer.y = -this.codexScrollY;
+    }
+
+    // 스크롤 후 visible 영역 밖 카드의 interactive를 비활성화하여
+    // 마스크 밖에서 포인터 이벤트를 가로채는 것을 방지
+    if (this._codexCardBgs) {
+      for (const { bg, baseY } of this._codexCardBgs) {
+        const worldY = baseY - this.codexScrollY;
+        const cardBottomY = worldY + CODEX_CARD_H;
+        const isVisible = cardBottomY > CODEX_GRID_Y && worldY < GAME_HEIGHT;
+        if (isVisible) {
+          bg.setInteractive({ useHandCursor: true });
+        } else {
+          bg.disableInteractive();
+        }
+      }
     }
   }
 

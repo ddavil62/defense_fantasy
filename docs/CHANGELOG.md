@@ -4,6 +4,23 @@
 
 ---
 
+## 2026-03-03 -- 합성도감 BACK 버튼 이벤트 가로채기 버그 수정
+
+### 수정
+
+- **`js/scenes/MergeCodexScene.js`** -- `_createTopBar()` 내 상단 바 요소 4개(배경 rectangle, backBg, BACK 텍스트, 타이틀 텍스트)의 depth를 기본값 0에서 10으로 상향. 카드 컨테이너(depth 6), 서브탭(depth 8)보다 높게 설정하여 BACK 버튼이 스크롤된 카드보다 먼저 이벤트를 수신하도록 수정 (L167-192)
+- **`js/scenes/MergeCodexScene.js`** -- `_buildCodexContent()`에서 `this._codexCardBgs = []` 배열 초기화(L357), `_createCodexCard()`에서 카드 bg와 baseY를 배열에 등록(L397), `_applyCodexScroll()`에서 각 카드의 worldY를 계산하여 visible 영역(CODEX_GRID_Y=104 ~ GAME_HEIGHT) 밖 카드의 interactive를 `disableInteractive()`로 비활성화(L570-581)
+
+### 참고
+
+- 스펙: `.claude/specs/2026-03-03-codex-back-button-fix.md`
+- QA: `.claude/specs/2026-03-03-codex-back-button-fix-qa.md`
+- Playwright 테스트 27건 (26 PASS / 1 환경 이슈 SKIP)
+- 수정 범위: `MergeCodexScene.js` 단일 파일
+- depth 계층: 상단 바(10) > 서브탭(8) > 카드 컨테이너(6) > TowerInfoOverlay codex 모드(50)
+
+---
+
 ## 2026-03-03 -- 체인 공격 감쇠 공식 변경 (삼각수 지수 감쇠)
 
 ### 변경

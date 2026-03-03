@@ -40,7 +40,7 @@ Phaser.js 3 기반 판타지 타워 디펜스 게임. 도형 기반 프로토타
 | `js/scenes/LevelSelectScene.js` | 레벨 선택 씬 (6개 맵 카드, 세이브 데이터 기반 별점/해금, 기둥 장식 안쪽 패딩 35px, 설명 wordWrap 160px, "2배 골드"/"보상 2배" 광고 버튼(70x18px), START -> GameScene(goldBoostActive/clearBoostActive 플래그 전달)) |
 | `js/scenes/EndlessMapSelectScene.js` | 엔드리스 맵 선택 씬 (6탭: 클래식+5월드, 맵 카드, 기둥 장식 안쪽 패딩 35px, 설명 wordWrap 160px, GameScene endless 모드 시작) |
 | `js/scenes/CollectionScene.js` | 컬렉션 모드 -- 이중 탭: (1) 메타업그레이드 (타워 카드 그리드, 메타 업그레이드 트리, 유틸리티 업그레이드, 잠긴 타워 월드 클리어 조건 안내), (2) 합성도감 탭 클릭 시 MergeCodexScene으로 전환 |
-| `js/scenes/MergeCodexScene.js` | 합성도감 전용 씬 -- T1~T5 서브탭, 전체 112종 타워 카드(발견 여부 무관 전부 공개), 카드 클릭 시 TowerInfoOverlay(codex 모드)로 상세 정보 표시, 드래그 스크롤, shutdown 핸들러로 리소스 정리. GameScene(Pause)과 CollectionScene 양쪽에서 진입 |
+| `js/scenes/MergeCodexScene.js` | 합성도감 전용 씬 -- T1~T5 서브탭, 전체 112종 타워 카드(발견 여부 무관 전부 공개), 카드 클릭 시 TowerInfoOverlay(codex 모드)로 상세 정보 표시, 드래그 스크롤(스크롤 시 visible 영역 밖 카드 interactive 비활성화), 상단 바 depth=10(카드 depth 6 / 서브탭 depth 8보다 상위), shutdown 핸들러로 리소스 정리. GameScene(Pause)과 CollectionScene 양쪽에서 진입 |
 | `js/scenes/StatsScene.js` | 통계 표시 (스크롤 가능 UI, killsByType/killsByTower/goldEarned/damageDealt, 게임 히스토리) |
 | `js/entities/Tower.js` | 타워 배치/공격/판매/사거리 표시/강화(+1~+10)/머지(tier, mergeId, applyMergeResult) |
 | `js/entities/Enemy.js` | 적 이동/피격/슬로우/화상/독/방어력 감소/밀치기/분열/HP바 |
@@ -335,6 +335,7 @@ npx cap open android  # 또는 npx cap open ios
 - AdMob 통합 Phase 4 (일일 제한 검증 + 통합 QA): Playwright 테스트 48개 (일일 제한 8 + 전면 광고 2 + Diamond 3 + 부활 4 + Gold 2배 3 + 클리어 2배 3 + 교차 기능 3 + Mock 3 + 비기능 4 + 시각적 5 + 엣지케이스 7 + 회귀 3) + 시각적 검증 9건, QA PASS -- **AdMob 통합 전체 완료**
 - 밸런스 전면 조정 (Balance Overhaul): Playwright 테스트 31개 (정상 27 + 예외 4, 29 PASS / 2 환경 제약 SKIP) + 정적 코드 분석, QA PASS (1차 FAIL 합성 실패 시 타워 투명화 버그 수정 후 PASS)
 - 체인 공격 감쇠 공식 변경 (삼각수 지수 감쇠): Playwright 테스트 28개 (정상 16 + 예외 7 + 브라우저 5) + 수학적 검증 + 정적 코드 분석, QA PASS
+- 합성도감 BACK 버튼 버그 수정: Playwright 테스트 27개 (정상 12 + 예외 8 + 시각적 3 + UI 안정성 3, 26 PASS / 1 환경 이슈 SKIP) + 시각적 검증 8건, QA PASS
 
 ## 시스템별 상세 문서
 
