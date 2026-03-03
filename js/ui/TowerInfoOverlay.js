@@ -228,7 +228,7 @@ export class TowerInfoOverlay {
 
     // ── game 모드 액션 버튼 (원래 타워 보기 중에만 표시) ──
     if (isSourceView && this._sourceTower) {
-      this._renderActionButtons(panelX, contentBottomY);
+      this._renderActionButtons(panelX, contentBottomY, panelY, panelH);
     }
   }
 
@@ -758,13 +758,16 @@ export class TowerInfoOverlay {
   // ── game 모드 액션 버튼 ──────────────────────────────────────
 
   /**
-   * 강화/판매 버튼을 패널 하단에 렌더링한다 (game 모드 전용).
-   * 드릴다운 중(원래 타워가 아닌 다른 타워를 보고 있을 때)에는 호출되지 않는다.
+   * 강화/판매 버튼을 패널에 렌더링한다 (game 모드 전용).
+   * 강화 버튼은 콘텐츠 직하단(buttonsTopY)에 배치되고,
+   * 판매 버튼은 패널 하단 NineSlice 프레임 근처에 고정 배치된다.
    * @param {number} panelX - 패널 중심 X
-   * @param {number} buttonsTopY - 버튼 영역 시작 Y 좌표
+   * @param {number} buttonsTopY - 강화 버튼 영역 시작 Y 좌표 (contentBottomY)
+   * @param {number} panelY - 패널 중심 Y 좌표
+   * @param {number} panelH - 패널 전체 높이 (px)
    * @private
    */
-  _renderActionButtons(panelX, buttonsTopY) {
+  _renderActionButtons(panelX, buttonsTopY, panelY, panelH) {
     const tower = this._sourceTower;
     if (!tower) return;
 
@@ -816,23 +819,26 @@ export class TowerInfoOverlay {
     }
 
     // ── 판매 버튼 (오버레이 전용 크기 유지: 200x32) ──
+    // 패널 하단 NineSlice 프레임 근처에 고정 배치
+    // panelBottom - NS_BOTTOM(44) - sellBtnH(32)/2 - 8(내부 여백)
     const sellBtnW = 200;
     const sellBtnH = 32;
+    const sellY = panelY + panelH / 2 - NS_BOTTOM - sellBtnH / 2 - 8;
     let sellBtn;
     if (this.scene.textures.exists('btn_medium_danger_normal')) {
-      sellBtn = this.scene.add.image(panelX, curY, 'btn_medium_danger_normal')
+      sellBtn = this.scene.add.image(panelX, sellY, 'btn_medium_danger_normal')
         .setInteractive({ useHandCursor: true });
       sellBtn.on('pointerdown', () => sellBtn.setTexture('btn_medium_danger_pressed'));
       sellBtn.on('pointerup', () => sellBtn.setTexture('btn_medium_danger_normal'));
       sellBtn.on('pointerout', () => sellBtn.setTexture('btn_medium_danger_normal'));
     } else {
-      sellBtn = this.scene.add.rectangle(panelX, curY, sellBtnW, sellBtnH, BTN_DANGER)
+      sellBtn = this.scene.add.rectangle(panelX, sellY, sellBtnW, sellBtnH, BTN_DANGER)
         .setStrokeStyle(1, 0x636e72)
         .setInteractive({ useHandCursor: true });
     }
     this._container.add(sellBtn);
 
-    const sellText = this.scene.add.text(panelX, curY, `Sell ${info.sellPrice}G`, {
+    const sellText = this.scene.add.text(panelX, sellY, `Sell ${info.sellPrice}G`, {
       fontSize: '12px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#ffffff', fontStyle: 'bold',
     }).setOrigin(0.5);
     this._container.add(sellText);

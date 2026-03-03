@@ -120,9 +120,9 @@ HUD, TowerPanel, TowerInfoOverlay(타워 정보 오버레이), 머지 프리뷰,
 
 ### game 모드 액션 버튼
 
-- **강화 버튼** (200x32, BTN_PRIMARY): `canEnhance && enhanceLevel < MAX_ENHANCE_LEVEL` 조건, 클릭 시 `onEnhance` 콜백
-- **판매 버튼** (200x32, BTN_DANGER): 항상 표시, 클릭 시 `onSell` 콜백 + 오버레이 닫기
-- **최대 강화 텍스트**: enhanceLevel >= MAX_ENHANCE_LEVEL 시 금색 "최대 강화" 텍스트
+- **강화 버튼** (200x32, BTN_PRIMARY): `canEnhance && enhanceLevel < MAX_ENHANCE_LEVEL` 조건, 콘텐츠 직하단(`buttonsTopY + 10`)에 배치, 클릭 시 `onEnhance` 콜백
+- **판매 버튼** (200x32, BTN_DANGER): 항상 표시, 패널 하단 NineSlice 프레임 근처에 고정 배치(`sellY = panelY + panelH / 2 - NS_BOTTOM - sellBtnH / 2 - 8`, panelY=320/panelH=630 기준 Y=567), 클릭 시 `onSell` 콜백 + 오버레이 닫기. 상위 조합 목록과의 오탭 방지 목적
+- **최대 강화 텍스트**: enhanceLevel >= MAX_ENHANCE_LEVEL 시 금색 "최대 강화" 텍스트 (콘텐츠 직하단 배치)
 - **드릴다운 중**: 강화/판매 버튼 숨김 (원래 타워가 아닌 다른 타워를 보고 있을 때)
 - **원래 타워 복귀**: 강화/판매 버튼 다시 표시
 

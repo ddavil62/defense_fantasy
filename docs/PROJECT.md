@@ -337,6 +337,7 @@ npx cap open android  # 또는 npx cap open ios
 - 체인 공격 감쇠 공식 변경 (삼각수 지수 감쇠): Playwright 테스트 28개 (정상 16 + 예외 7 + 브라우저 5) + 수학적 검증 + 정적 코드 분석, QA PASS
 - 합성도감 BACK 버튼 버그 수정: Playwright 테스트 27개 (정상 12 + 예외 8 + 시각적 3 + UI 안정성 3, 26 PASS / 1 환경 이슈 SKIP) + 시각적 검증 8건, QA PASS
 - 광고 로딩/표시 중 네비게이션 버튼 Race Condition 방지: Playwright 테스트 26개 (정상 12 + 예외 14) + 시각적 검증 4건, QA PASS
+- Sell 버튼 패널 하단 고정 배치: Playwright 테스트 23개 (정상 12 + 예외/엣지케이스 6 + 시각적 5) + 시각적 검증 5건, QA PASS
 
 ## 시스템별 상세 문서
 

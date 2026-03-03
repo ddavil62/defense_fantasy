@@ -4,6 +4,22 @@
 
 ---
 
+## 2026-03-03 -- Sell 버튼 패널 하단 고정 배치
+
+### 변경
+
+- **`js/ui/TowerInfoOverlay.js`** -- `_renderActionButtons()` 시그니처에 `panelY`, `panelH` 파라미터 추가(L770). Sell 버튼 Y 좌표를 콘텐츠 직하단 동적 배치(`curY`)에서 패널 하단 고정 배치(`sellY = panelY + panelH / 2 - NS_BOTTOM - sellBtnH / 2 - 8`, L826)로 변경. panelY=320, panelH=630 기준 sellY=567 고정. 강화 버튼/최대 강화 텍스트는 기존 위치(`buttonsTopY + 10`) 그대로 유지. `_render()` 호출부(L231)에서 `panelY`, `panelH`를 추가 전달. JSDoc(L761-768) 갱신
+
+### 참고
+
+- 스펙: `.claude/specs/2026-03-03-sell-button-reposition.md`
+- QA: `.claude/specs/2026-03-03-sell-button-reposition-qa.md`
+- Playwright 테스트 23건 전체 PASS + 시각적 검증 5건
+- 변경 목적: 상위 조합 텍스트 목록과 Sell 버튼이 근접하여 발생하던 오탭 문제 해소
+- sellBtnW(200), sellBtnH(32), BTN_DANGER 스타일, onSell 콜백 + forceClose 동작은 변경 없음
+
+---
+
 ## 2026-03-03 -- 광고 로딩/표시 중 네비게이션 버튼 Race Condition 방지
 
 ### 추가
