@@ -329,12 +329,14 @@ export class MapClearScene extends Phaser.Scene {
     }).setOrigin(0.5);
 
     // ── "보상 2배" 광고 버튼 (clearBoost 미적용 + 보상 있음 + 한도 미초과 시 표시) ──
-    if (!this.clearBoostActive && baseDiamond > 0 && !adLimitReached) {
-      this._createClearBoostButton(centerX, centerY + 58);
+    const hasAdButton = !this.clearBoostActive && baseDiamond > 0 && !adLimitReached;
+    if (hasAdButton) {
+      this._createClearBoostButton(centerX, centerY + 62);
     }
 
     // ── NEXT MAP 버튼 (대형 160x44로 표준화) ──
-    const nextY = centerY + 75;
+    // 광고 버튼이 있으면 아래로 밀어서 겹침 방지
+    const nextY = hasAdButton ? centerY + 98 : centerY + 75;
     const nextMapId = getNextMapId(this.mapData.id);
     const nextBg = this._createImageButton(
       centerX, nextY, 'btn_large_primary', 160, 44, BTN_PRIMARY, 0xffd700
