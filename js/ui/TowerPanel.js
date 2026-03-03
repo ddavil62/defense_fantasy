@@ -200,14 +200,23 @@ export class TowerPanel {
       }
       this.container.add(bg);
 
-      // 타워 아이콘 (잠금 시 자물쇠 표시)
-      const iconGraphics = this.scene.add.graphics();
+      // 타워 아이콘 (잠금 시 자물쇠, 일반 시 이미지 에셋, 폴백 시 도형)
+      let iconObj;
+      const textureKey = `tower_${type}`;
       if (isLocked) {
-        this._drawLockIcon(iconGraphics, x, y - 4);
+        // 잠금: Graphics 자물쇠 아이콘
+        iconObj = this.scene.add.graphics();
+        this._drawLockIcon(iconObj, x, y - 4);
+      } else if (this.scene.textures.exists(textureKey)) {
+        // 이미지 에셋 사용 (128px → 30px 축소)
+        iconObj = this.scene.add.image(x, y - 4, textureKey);
+        iconObj.setDisplaySize(30, 30);
       } else {
-        this._drawTowerIcon(iconGraphics, type, x, y - 4);
+        // 폴백: 기존 Graphics 도형
+        iconObj = this.scene.add.graphics();
+        this._drawTowerIcon(iconObj, type, x, y - 4);
       }
-      this.container.add(iconGraphics);
+      this.container.add(iconObj);
 
       // 배치 비용 텍스트 (잠금 시 '????G' 표시)
       const costStr = isLocked ? '????G' : `${cost}G`;
@@ -225,7 +234,7 @@ export class TowerPanel {
         type,
         bg,
         costText,
-        iconGraphics,
+        iconGraphics: iconObj,
         cost,
         isLocked,
       };
@@ -734,9 +743,11 @@ export class TowerPanel {
       if (btn.isLocked) continue;
       if (gold >= btn.cost) {
         btn.bg.setAlpha(1);
+        btn.iconGraphics.setAlpha(1);
         btn.costText.setColor(GOLD_TEXT_CSS);
       } else {
         btn.bg.setAlpha(0.5);
+        btn.iconGraphics.setAlpha(0.5);
         btn.costText.setColor('#ff4757');
       }
     }
