@@ -528,8 +528,8 @@ export class CollectionScene extends Phaser.Scene {
    * @private
    */
   _createUtilitySection() {
-    // 섹션 헤더
-    const headerY = 390;
+    // 섹션 헤더 (타워 그리드 하단 382px + 여유 28px)
+    const headerY = 410;
     const headerText = this.add.text(GAME_WIDTH / 2, headerY, t('collection.utility'), {
       fontSize: '13px',
       fontFamily: 'Galmuri11, Arial, sans-serif',
@@ -545,7 +545,7 @@ export class CollectionScene extends Phaser.Scene {
 
     // 유틸리티 카드 생성
     const utilStartX = 16;
-    const utilY = 410;
+    const utilY = 432;
     for (let i = 0; i < UTILITY_ORDER.length; i++) {
       const key = UTILITY_ORDER[i];
       const x = utilStartX + i * (UTIL_W + CARD_GAP);
