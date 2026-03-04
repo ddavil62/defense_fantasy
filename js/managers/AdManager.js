@@ -91,8 +91,8 @@ export class AdManager {
       this._admob = AdMob;
 
       await this._admob.initialize({
-        // GDPR/UMP는 이번 페이즈에서 미구현
-        initializeForTesting: true,
+        // 프로덕션 빌드에서는 실제 광고, 개발 중에는 테스트 광고
+        initializeForTesting: !import.meta.env.PROD,
       });
 
       this._initialized = true;
