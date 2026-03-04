@@ -74,7 +74,7 @@ export class MergeCodexScene extends Phaser.Scene {
     this.fromScene = data?.fromScene || 'CollectionScene';
 
     /** @type {number} 현재 활성 서브탭 티어 (1~5), 기본값 T2 */
-    this.codexTier = 2;
+    this.codexTier = 1;
 
     /** @type {number} 도감 스크롤 Y 오프셋 */
     this.codexScrollY = 0;
