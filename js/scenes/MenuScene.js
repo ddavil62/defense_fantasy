@@ -186,7 +186,7 @@ export class MenuScene extends Phaser.Scene {
     this.add.text(centerX, 492 + offsetY, t('menu.collection'), {
       fontSize: '15px',
       fontFamily: 'Galmuri11, Arial, sans-serif',
-      color: BTN_META_CSS,
+      color: '#ffffff',
       fontStyle: 'bold',
     }).setOrigin(0.5);
 
@@ -243,7 +243,7 @@ export class MenuScene extends Phaser.Scene {
         {
           fontSize: '13px',
           fontFamily: 'Galmuri11, Arial, sans-serif',
-          color: isMuted ? BTN_SELL_CSS : BTN_BACK_CSS,
+          color: '#ffffff',
           fontStyle: 'bold',
         }
       ).setOrigin(0.5);
@@ -252,7 +252,7 @@ export class MenuScene extends Phaser.Scene {
         sm.setMuted(!sm.muted);
         const m = sm.muted;
         muteLabel.setText(m ? '\u266A OFF' : '\u266A ON');
-        muteLabel.setColor(m ? BTN_SELL_CSS : BTN_BACK_CSS);
+        muteLabel.setColor('#ffffff');
         // 음소거 상태에 따라 텍스처 전환
         if (this.textures.exists('btn_small_disabled') && this.textures.exists('btn_small_back_normal')) {
           muteBg.setTexture(m ? 'btn_small_disabled' : 'btn_small_back_normal');
@@ -281,7 +281,7 @@ export class MenuScene extends Phaser.Scene {
       {
         fontSize: '13px',
         fontFamily: 'Galmuri11, Arial, sans-serif',
-        color: BTN_BACK_CSS,
+        color: '#ffffff',
         fontStyle: 'bold',
       }
     ).setOrigin(0.5);
@@ -343,7 +343,7 @@ export class MenuScene extends Phaser.Scene {
     const label = this.add.text(x, y, btnText, {
       fontSize: '11px',
       fontFamily: 'Galmuri11, Arial, sans-serif',
-      color: BTN_META_CSS,
+      color: '#ffffff',
       fontStyle: 'bold',
     }).setOrigin(0.5);
 
@@ -572,7 +572,7 @@ export class MenuScene extends Phaser.Scene {
     const priceLabel = this.add.text(x, y + 10, t('iap.removeAds.price'), {
       fontSize: '10px',
       fontFamily: 'Galmuri11, Arial, sans-serif',
-      color: BTN_DANGER_CSS,
+      color: '#ffcccc',
     }).setOrigin(0.5);
 
     btnBg.on('pointerdown', () => {
