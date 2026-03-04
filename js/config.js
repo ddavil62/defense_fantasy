@@ -1706,6 +1706,8 @@ export const ADMOB_REWARDED_REVIVE_ID = 'ca-app-pub-9149509805250873/8867948374'
 export const ADMOB_REWARDED_GOLD_BOOST_ID = 'ca-app-pub-9149509805250873/9354674749';
 /** @const {string} 보상형 광고 - 클리어 보상 2배 단위 ID (테스트용) */
 export const ADMOB_REWARDED_CLEAR_BOOST_ID = 'ca-app-pub-9149509805250873/4751086889';
+/** @const {string} 보상형 광고 - 타워 뽑기 단위 ID (플레이스홀더, AdMob 콘솔에서 발급 필요) */
+export const ADMOB_REWARDED_TOWER_ID = 'ca-app-pub-9149509805250873/XXXXXXXXXX';
 
 // ── 광고 일일 제한 ──────────────────────────────────────────────
 /** @const {number} Diamond 보상형 광고 일일 제한 횟수 */
@@ -1724,6 +1726,10 @@ export const AD_REVIVE_HP_RATIO = 0.5;
 export const AD_GOLD_BOOST_MULTIPLIER = 2;
 /** @const {number} 클리어 보상 2배 배율 */
 export const AD_CLEAR_BOOST_MULTIPLIER = 2;
+
+// ── IAP 상품 ID ────────────────────────────────────────────────
+/** @const {string} 광고제거 인앱 구매 상품 ID (Google Play 상품 등록 시 사용) */
+export const IAP_PRODUCT_REMOVE_ADS = 'remove_ads';
 
 // ── 게임 속도 설정 ──────────────────────────────────────────────
 export const SPEED_NORMAL = 1.0;
@@ -2017,7 +2023,7 @@ function createDefaultStats() {
 }
 
 /** @const {number} 현재 세이브 데이터 스키마 버전 */
-export const SAVE_DATA_VERSION = 6;
+export const SAVE_DATA_VERSION = 7;
 
 /**
  * 세이브 데이터를 최신 스키마로 마이그레이션한다.
@@ -2045,6 +2051,7 @@ export function migrateSaveData(saveData) {
       worldProgress: {},
       endlessUnlocked: false,
       campaignStats: { totalStars: 0, mapsCleared: 0, worldsCleared: 0 },
+      adFree: false,
     };
   }
 
@@ -2136,6 +2143,12 @@ export function migrateSaveData(saveData) {
     saveData.saveDataVersion = 6;
   }
 
+  // ── v6 → v7 마이그레이션: 광고제거 인앱 구매 상태 필드 추가 ──
+  if (saveData.saveDataVersion < 7) {
+    if (saveData.adFree === undefined) saveData.adFree = false;
+    saveData.saveDataVersion = 7;
+  }
+
   // ── Ensure all v2 fields exist ──
   if (saveData.diamond === undefined) saveData.diamond = 0;
   if (saveData.totalDiamondEarned === undefined) saveData.totalDiamondEarned = 0;
@@ -2159,6 +2172,9 @@ export function migrateSaveData(saveData) {
   if (!saveData.worldProgress) saveData.worldProgress = {};
   if (saveData.endlessUnlocked === undefined) saveData.endlessUnlocked = false;
   if (!saveData.campaignStats) saveData.campaignStats = { totalStars: 0, mapsCleared: 0, worldsCleared: 0 };
+
+  // ── Ensure v7 fields exist ──
+  if (saveData.adFree === undefined) saveData.adFree = false;
 
   return saveData;
 }

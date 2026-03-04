@@ -5,13 +5,15 @@
  */
 
 import {
-  GAME_WIDTH, PANEL_Y, PANEL_HEIGHT, COLORS, VISUALS,
+  GAME_WIDTH, GAME_HEIGHT, PANEL_Y, PANEL_HEIGHT, COLORS, VISUALS,
   TOWER_STATS, TOWER_SHAPE_SIZE, GOLD_TEXT_CSS,
   SPEED_NORMAL, SPEED_FAST, SPEED_TURBO, LONG_PRESS_MS,
-  BTN_PRIMARY, BTN_DANGER, BTN_SELL,
-  isMergeable, getMergeResult, MERGE_RECIPES, pixelToGrid, GRID_COLS, GRID_ROWS, HUD_HEIGHT,
+  BTN_PRIMARY, BTN_DANGER, BTN_SELL, BTN_META,
+  isMergeable, getMergeResult, MERGE_RECIPES, MERGED_TOWER_STATS,
+  pixelToGrid, GRID_COLS, GRID_ROWS, HUD_HEIGHT,
   MERGE_COST,
   calcDrawCost,
+  ADMOB_REWARDED_TOWER_ID,
 } from '../config.js';
 import { t } from '../i18n.js';
 import { TowerInfoOverlay } from './TowerInfoOverlay.js';
@@ -78,6 +80,25 @@ export class TowerPanel {
 
     /** @type {string|null} 뽑기로 선택된 타워 타입 (배치 성공 전까지 보유) */
     this._pendingDrawType = null;
+
+    // ── 광고 보상 타워 뽑기 상태 ──
+    /** @type {Phaser.GameObjects.Image|Phaser.GameObjects.Rectangle|null} 광고보기 버튼 배경 */
+    this._adDrawButton = null;
+
+    /** @type {Phaser.GameObjects.Text|null} 광고보기 라벨 텍스트 */
+    this._adDrawLabelText = null;
+
+    /** @type {Phaser.GameObjects.Text|null} 광고보기 서브라벨 텍스트 */
+    this._adDrawSublabelText = null;
+
+    /** @type {Phaser.GameObjects.Container|null} 광고 보상 타워 선택 모달 컨테이너 */
+    this._adModalContainer = null;
+
+    /** @type {object|null} 광고 보상으로 선택된 타워 정보 { type, tier, mergeId?, mergeData? } */
+    this._pendingAdTower = null;
+
+    /** @type {Phaser.GameObjects.Text|null} 광고제거 유도 텍스트 ("광고 없이 뽑기") */
+    this._adFreeHintText = null;
 
     /** @type {TowerInfoOverlay} 타워 상세 정보 오버레이 */
     this.towerInfoOverlay = new TowerInfoOverlay(scene, {
@@ -150,6 +171,9 @@ export class TowerPanel {
     // 뽑기 버튼 (기존 2행 5열 타워 버튼 대체)
     this._createDrawButton();
 
+    // 광고 보상 타워 뽑기 버튼
+    this._createAdDrawButton();
+
     // 판매 버튼
     this._createSellButton();
 
@@ -160,12 +184,12 @@ export class TowerPanel {
   // ── 뽑기 버튼 ────────────────────────────────────────────────
 
   /**
-   * 뽑기 버튼을 패널 중앙에 생성한다.
+   * 뽑기 버튼을 패널 좌측에 생성한다.
    * 기존 2행 5열 타워 버튼을 단일 뽑기 버튼으로 대체한다.
    * @private
    */
   _createDrawButton() {
-    const x = GAME_WIDTH / 2 - 40;
+    const x = 80;
     const y = PANEL_Y + 50;
     const btnW = 120;
     const btnH = 44;
@@ -279,6 +303,428 @@ export class TowerPanel {
    */
   cancelDraw() {
     this._pendingDrawType = null;
+    this._pendingAdTower = null;
+  }
+
+  // ── 광고 보상 타워 뽑기 ──────────────────────────────────────
+
+  /**
+   * "광고보기" 버튼을 뽑기 버튼 오른쪽에 생성한다.
+   * 광고 시청 후 T1(90%)/T2(10%) 확률로 타워 3개를 모달로 제시한다.
+   * @private
+   */
+  _createAdDrawButton() {
+    const x = 240;
+    const y = PANEL_Y + 50;
+    const btnW = 120;
+    const btnH = 44;
+
+    // adFree 상태 확인
+    const adManager = this.scene.registry.get('adManager');
+    const isAdFree = adManager ? adManager.isAdFree() : false;
+
+    // 광고보기 버튼 배경 (이미지 또는 사각형 폴백)
+    if (this.scene.textures.exists('slot_action_normal')) {
+      this._adDrawButton = this.scene.add.image(x, y, 'slot_action_normal')
+        .setDisplaySize(btnW, btnH)
+        .setInteractive({ useHandCursor: true });
+    } else {
+      this._adDrawButton = this.scene.add.rectangle(x, y, btnW, btnH, 0x1a1a2e)
+        .setStrokeStyle(2, BTN_META)
+        .setInteractive({ useHandCursor: true });
+    }
+    this.container.add(this._adDrawButton);
+
+    // 광고보기 라벨 텍스트 (상단) — adFree이면 "무료뽑기"
+    const labelKey = isAdFree ? 'draw.ad.button.adFree' : 'draw.ad.button';
+    this._adDrawLabelText = this.scene.add.text(x, y - 8, t(labelKey), {
+      fontSize: '14px',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
+      color: '#ffffff',
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+    this.container.add(this._adDrawLabelText);
+
+    // 광고보기 서브라벨 텍스트 (하단, 연보라)
+    this._adDrawSublabelText = this.scene.add.text(x, y + 10, t('draw.ad.sublabel'), {
+      fontSize: '11px',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
+      color: '#9b59b6',
+    }).setOrigin(0.5);
+    this.container.add(this._adDrawSublabelText);
+
+    // 포인터 이벤트
+    this._adDrawButton.on('pointerdown', () => {
+      this._onAdDrawButtonClick();
+    });
+
+    // "광고 없이 뽑기" 유도 텍스트 (adFree 미구매 시에만 표시)
+    if (!isAdFree) {
+      this._adFreeHintText = this.scene.add.text(x, PANEL_Y + 74, t('iap.removeAds.hint'), {
+        fontSize: '8px',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
+        color: '#e74c3c',
+        fontStyle: 'bold',
+      }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+      this.container.add(this._adFreeHintText);
+
+      // 클릭 시 광고제거 구매 진행 (MenuScene으로 안내)
+      this._adFreeHintText.on('pointerdown', () => {
+        // 인게임에서는 직접 구매 다이얼로그를 띄우지 않고, 시각적 피드백만 제공
+        // 다음 메뉴 방문 시 구매 버튼을 찾도록 깜빡임 효과로 유도
+        this.scene.tweens.add({
+          targets: this._adFreeHintText,
+          alpha: 0.3,
+          duration: 200,
+          yoyo: true,
+          repeat: 2,
+        });
+      });
+    }
+  }
+
+  /**
+   * 광고보기 버튼 클릭 핸들러.
+   * AdManager가 busy 상태이면 무시하고, 아니면 보상형 광고를 표시한다.
+   * 광고 시청 완료 시 타워 선택 모달을 열고, 실패 시 에러 텍스트를 표시한다.
+   * @private
+   */
+  async _onAdDrawButtonClick() {
+    const adManager = this.scene.registry.get('adManager');
+    if (!adManager) return;
+
+    // 광고 진행 중이면 무시
+    if (adManager.isBusy) return;
+
+    try {
+      const result = await adManager.showRewarded(ADMOB_REWARDED_TOWER_ID);
+      // 씬이 파괴된 경우 안전하게 종료
+      if (!this.scene || !this.scene.scene.isActive()) return;
+
+      if (result && result.rewarded) {
+        // 광고 시청 성공: 타워 3개를 뽑아 모달 표시
+        const towers = this._pickAdRewardTowers();
+        this._showAdRewardModal(towers);
+      } else {
+        // 광고 실패/취소: 에러 텍스트 표시
+        this._showAdFailedToast();
+      }
+    } catch (e) {
+      // 예외 발생 시 에러 토스트
+      if (this.scene && this.scene.scene.isActive()) {
+        this._showAdFailedToast();
+      }
+    }
+  }
+
+  /**
+   * 광고 실패 시 화면 상단에 에러 토스트를 표시한다.
+   * 1.5초간 위로 떠오르며 페이드아웃된다.
+   * @private
+   */
+  _showAdFailedToast() {
+    const msg = t('draw.ad.failed');
+    const toastText = this.scene.add.text(
+      GAME_WIDTH / 2, PANEL_Y - 20,
+      msg,
+      {
+        fontSize: '14px',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
+        fontStyle: 'bold',
+        color: '#ff4757',
+        stroke: '#000000',
+        strokeThickness: 3,
+      }
+    ).setOrigin(0.5).setDepth(70);
+
+    this.scene.tweens.add({
+      targets: toastText,
+      y: toastText.y - 40,
+      alpha: 0,
+      duration: 1500,
+      onComplete: () => { toastText.destroy(); },
+    });
+  }
+
+  /**
+   * 광고 보상 타워 3개를 확률 기반으로 뽑는다.
+   * 각 슬롯 독립적으로 T1(90%) / T2(10%) 확률을 적용한다.
+   * T1은 잠금 해제된 풀에서, T2는 전체 T2 풀에서 균등 추출한다.
+   * @returns {Array<{ type: string, tier: number, color: number, displayName: string, mergeData?: object }>}
+   * @private
+   */
+  _pickAdRewardTowers() {
+    // T1 풀: 해금된 기본 타워
+    const t1Pool = Object.keys(TOWER_STATS).filter(type => {
+      const stats = TOWER_STATS[type];
+      if (stats.tier && stats.tier > 1) return false;
+      if (stats.locked && !this.unlockedTowers.includes(type)) return false;
+      return true;
+    });
+
+    // T2 풀: MERGE_RECIPES에서 tier === 2인 전체 항목 (중복 id 제거)
+    const t2Set = new Set();
+    const t2Pool = [];
+    for (const [, recipe] of Object.entries(MERGE_RECIPES)) {
+      if (recipe.tier === 2 && !t2Set.has(recipe.id)) {
+        t2Set.add(recipe.id);
+        t2Pool.push(recipe);
+      }
+    }
+
+    return Array.from({ length: 3 }, () => {
+      const roll = Math.random();
+      if (roll < 0.10 && t2Pool.length > 0) {
+        // 10% 확률로 T2 균등 랜덤
+        const recipe = t2Pool[Math.floor(Math.random() * t2Pool.length)];
+        return {
+          type: recipe.id,
+          tier: 2,
+          color: recipe.color,
+          displayName: t(`tower.${recipe.id}.name`) || recipe.displayName,
+          mergeData: recipe,
+        };
+      } else if (t1Pool.length > 0) {
+        // 90% 확률로 T1 균등 랜덤
+        const type = t1Pool[Math.floor(Math.random() * t1Pool.length)];
+        return {
+          type,
+          tier: 1,
+          color: TOWER_STATS[type].color,
+          displayName: t(`tower.${type}.name`),
+          mergeData: null,
+        };
+      } else if (t2Pool.length > 0) {
+        // T1 풀이 비어있는 방어 코드: T2만 사용
+        const recipe = t2Pool[Math.floor(Math.random() * t2Pool.length)];
+        return {
+          type: recipe.id,
+          tier: 2,
+          color: recipe.color,
+          displayName: t(`tower.${recipe.id}.name`) || recipe.displayName,
+          mergeData: recipe,
+        };
+      }
+      // 양쪽 풀 모두 비어있는 극단적 케이스 (발생 불가)
+      return null;
+    }).filter(Boolean);
+  }
+
+  /**
+   * 광고 보상 타워 선택 모달을 표시한다.
+   * 어두운 오버레이 위에 타워 카드 3개와 취소 버튼을 렌더링한다.
+   * @param {Array<{ type: string, tier: number, color: number, displayName: string, mergeData?: object }>} towers - 선택 가능한 타워 3개
+   * @private
+   */
+  _showAdRewardModal(towers) {
+    // 이미 모달이 열려있으면 닫기
+    this._hideAdRewardModal();
+
+    const container = this.scene.add.container(0, 0).setDepth(61);
+    this._adModalContainer = container;
+
+    // 어두운 오버레이 배경
+    const overlay = this.scene.add.rectangle(
+      GAME_WIDTH / 2, GAME_HEIGHT / 2,
+      GAME_WIDTH, GAME_HEIGHT,
+      0x000000
+    ).setAlpha(0.6).setInteractive().setDepth(60);
+    // 오버레이 클릭 시 아무 동작 안 함 (모달 뒤 입력 차단)
+    container.add(overlay);
+
+    // 타이틀 텍스트
+    const titleY = GAME_HEIGHT / 2 - 110;
+    const titleText = this.scene.add.text(GAME_WIDTH / 2, titleY, t('draw.ad.modal.title'), {
+      fontSize: '16px',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
+      color: '#ffffff',
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+    container.add(titleText);
+
+    // 카드 위치 계산: 3개 카드, 너비 90px, 간격 10px
+    const cardW = 90;
+    const cardH = 130;
+    const cardGap = 10;
+    const totalW = 3 * cardW + 2 * cardGap; // 290px
+    const startX = (GAME_WIDTH - totalW) / 2; // 35
+    const cardCenterY = GAME_HEIGHT / 2;
+    const cardCenters = [
+      startX + cardW / 2,          // 80
+      startX + cardW + cardGap + cardW / 2,    // 180
+      startX + 2 * (cardW + cardGap) + cardW / 2, // 280
+    ];
+
+    // 카드 렌더링
+    for (let i = 0; i < towers.length; i++) {
+      const towerData = towers[i];
+      const cx = cardCenters[i];
+      const cy = cardCenterY;
+      const isT2 = towerData.tier >= 2;
+
+      // 카드 배경
+      const borderColor = isT2 ? 0xffd700 : towerData.color;
+      const cardBg = this.scene.add.rectangle(cx, cy, cardW, cardH, 0x0a0e1a, 0.95)
+        .setStrokeStyle(2, borderColor);
+      container.add(cardBg);
+
+      // T2 강조: 상단 별 표시
+      if (isT2) {
+        const starText = this.scene.add.text(cx, cy - cardH / 2 + 12, '\u2605', {
+          fontSize: '16px',
+          color: '#ffd700',
+        }).setOrigin(0.5);
+        container.add(starText);
+      }
+
+      // 타워 아이콘 (색상 원으로 미니 렌더)
+      const iconY = cy - 28;
+      const iconTexKey = `tower_${towerData.type}`;
+      if (this.scene.textures.exists(iconTexKey)) {
+        const iconImg = this.scene.add.image(cx, iconY, iconTexKey)
+          .setDisplaySize(36, 36);
+        container.add(iconImg);
+      } else {
+        const iconGfx = this.scene.add.graphics();
+        iconGfx.fillStyle(towerData.color, 1);
+        iconGfx.fillCircle(cx, iconY, 14);
+        container.add(iconGfx);
+      }
+
+      // 타워 이름
+      const colorCSS = '#' + towerData.color.toString(16).padStart(6, '0');
+      const nameText = this.scene.add.text(cx, cy + 8, towerData.displayName, {
+        fontSize: '12px',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
+        color: '#ffffff',
+        fontStyle: 'bold',
+        wordWrap: { width: cardW - 8 },
+        align: 'center',
+      }).setOrigin(0.5);
+      container.add(nameText);
+
+      // 티어 뱃지
+      const badgeLabel = isT2 ? t('draw.ad.badge.t2') : t('draw.ad.badge.t1');
+      const badgeColor = isT2 ? '#ffd700' : '#aaaaaa';
+      const badgeText = this.scene.add.text(cx, cy + 26, badgeLabel, {
+        fontSize: '10px',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
+        color: badgeColor,
+      }).setOrigin(0.5);
+      container.add(badgeText);
+
+      // "선택" 버튼
+      const selectBtnY = cy + cardH / 2 - 16;
+      const selectBg = this.scene.add.rectangle(cx, selectBtnY, 60, 22, BTN_PRIMARY)
+        .setInteractive({ useHandCursor: true });
+      container.add(selectBg);
+
+      const selectText = this.scene.add.text(cx, selectBtnY, t('draw.ad.modal.select'), {
+        fontSize: '11px',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
+        color: '#ffffff',
+        fontStyle: 'bold',
+      }).setOrigin(0.5);
+      container.add(selectText);
+
+      // 선택 버튼 클릭 핸들러
+      selectBg.on('pointerdown', () => {
+        this._onAdTowerSelected(towerData);
+      });
+    }
+
+    // 취소 버튼
+    const cancelY = cardCenterY + cardH / 2 + 30;
+    const cancelText = this.scene.add.text(GAME_WIDTH / 2, cancelY, t('draw.ad.modal.cancel'), {
+      fontSize: '13px',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
+      color: '#ff4757',
+      fontStyle: 'bold',
+    }).setOrigin(0.5).setInteractive({ useHandCursor: true });
+    container.add(cancelText);
+
+    cancelText.on('pointerdown', () => {
+      this._hideAdRewardModal();
+    });
+  }
+
+  /**
+   * 광고 보상 모달에서 타워를 선택했을 때 호출한다.
+   * 모달을 닫고 선택된 타워를 배치 모드로 진입시킨다.
+   * T1 타워는 기존 onTowerSelect 콜백을 사용하고,
+   * T2 타워는 _pendingAdTower에 mergeData를 저장하여 GameScene에서 처리한다.
+   * @param {object} towerData - 선택된 타워 데이터 { type, tier, mergeData, ... }
+   * @private
+   */
+  _onAdTowerSelected(towerData) {
+    this._hideAdRewardModal();
+
+    this.selectedTower = null;
+    this._hideInfo();
+
+    if (towerData.tier >= 2 && towerData.mergeData) {
+      // T2 합성 타워: mergeData를 포함하여 pendingAdTower에 저장
+      // 배치 시 GameScene이 base 타워를 생성한 후 applyMergeResult 적용
+      this._pendingAdTower = {
+        type: towerData.type,
+        tier: towerData.tier,
+        mergeData: towerData.mergeData,
+      };
+      // T2 타워의 경우 레시피 키에서 첫 번째 재료 타입을 base로 사용
+      const baseType = this._getBaseTypeForMerge(towerData.mergeData.id);
+      this._pendingDrawType = baseType;
+      this.selectedTowerType = baseType;
+
+      if (this.callbacks.onTowerSelect) {
+        this.callbacks.onTowerSelect(baseType);
+      }
+    } else {
+      // T1 기본 타워: 기존 뽑기와 동일하게 처리 (골드 무료)
+      this._pendingAdTower = {
+        type: towerData.type,
+        tier: 1,
+        mergeData: null,
+      };
+      this._pendingDrawType = towerData.type;
+      this.selectedTowerType = towerData.type;
+
+      if (this.callbacks.onTowerSelect) {
+        this.callbacks.onTowerSelect(towerData.type);
+      }
+    }
+  }
+
+  /**
+   * T2 합성 타워 ID로부터 기본 재료 타워 타입을 추출한다.
+   * MERGE_RECIPES에서 해당 id의 레시피를 찾아 첫 번째 재료를 반환한다.
+   * @param {string} mergeId - 합성 결과 ID (e.g. 'rapid_archer')
+   * @returns {string} 기본 타워 타입 키 (e.g. 'archer')
+   * @private
+   */
+  _getBaseTypeForMerge(mergeId) {
+    for (const [key, recipe] of Object.entries(MERGE_RECIPES)) {
+      if (recipe.id === mergeId) {
+        // 레시피 키 형식: 'typeA+typeB'
+        return key.split('+')[0];
+      }
+    }
+    // 폴백: 첫 번째 T1 타워
+    const firstT1 = Object.keys(TOWER_STATS).find(type => {
+      const stats = TOWER_STATS[type];
+      return !stats.tier || stats.tier === 1;
+    });
+    return firstT1 || 'archer';
+  }
+
+  /**
+   * 광고 보상 타워 선택 모달을 파괴하고 숨긴다.
+   * @private
+   */
+  _hideAdRewardModal() {
+    if (this._adModalContainer) {
+      this._adModalContainer.destroy();
+      this._adModalContainer = null;
+    }
   }
 
   /**
@@ -1142,6 +1588,7 @@ export class TowerPanel {
    */
   destroy() {
     this._hideDescription();
+    this._hideAdRewardModal();
     this._cancelLongPress();
     this._hideInfo();
     this.towerInfoOverlay.destroy();

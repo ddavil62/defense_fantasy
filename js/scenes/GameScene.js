@@ -441,9 +441,12 @@ export class GameScene extends Phaser.Scene {
     this._deselectAllTowers();
     this.mapManager.showBuildableHighlights();
 
-    // 뽑기로 선택된 타워인 경우 결과 플로팅 텍스트 표시
+    // 뽑기 또는 광고 보상으로 선택된 타워인 경우 결과 플로팅 텍스트 표시
     if (this.towerPanel._pendingDrawType === type) {
-      const towerName = t(`tower.${type}.name`);
+      // 광고 보상 T2 타워인 경우 mergeData의 실제 이름 사용
+      const adTower = this.towerPanel._pendingAdTower;
+      const displayType = (adTower && adTower.mergeData) ? adTower.type : type;
+      const towerName = t(`tower.${displayType}.name`);
       const msg = t('draw.result').replace('{name}', towerName);
       this._showFloatingDrawResult(msg, type);
     }
@@ -561,29 +564,55 @@ export class GameScene extends Phaser.Scene {
       return;
     }
 
+    // 광고 보상 타워 배치인지 판별 (골드 무료)
+    const isAdTower = this.towerPanel._pendingAdTower !== null
+      && this.towerPanel._pendingDrawType === type;
     // 뽑기 경유 배치인지 판별하여 비용 분기
-    const isPendingDraw = this.towerPanel._pendingDrawType === type;
-    const cost = isPendingDraw
-      ? calcDrawCost(this.towerPanel.drawCount)
-      : TOWER_STATS[type].levels[1].cost;
+    const isPendingDraw = !isAdTower && this.towerPanel._pendingDrawType === type;
+    const cost = isAdTower
+      ? 0
+      : isPendingDraw
+        ? calcDrawCost(this.towerPanel.drawCount)
+        : TOWER_STATS[type].levels[1].cost;
 
-    if (!this.goldManager.canAfford(cost)) {
+    if (!isAdTower && !this.goldManager.canAfford(cost)) {
       this.mapManager.showInvalidPlacement(col, row);
       return;
     }
 
-    this.goldManager.spend(cost);
-    this.gameStats.goldSpent += cost;
+    if (cost > 0) {
+      this.goldManager.spend(cost);
+      this.gameStats.goldSpent += cost;
+    }
+
     const tower = new Tower(this, type, col, row);
-    // 메타 업그레이드(영구 강화)를 새 타워에 적용
-    this._applyMetaUpgradesToTower(tower);
+
+    // 광고 보상 T2 타워: base 타워 생성 후 합성 결과 적용
+    if (isAdTower && this.towerPanel._pendingAdTower.mergeData) {
+      tower.totalInvested = 0; // 무료 배치이므로 투자 골드 0
+      tower.applyMergeResult(this.towerPanel._pendingAdTower.mergeData);
+      this._applyMetaUpgradesToTower(tower);
+    } else {
+      // 메타 업그레이드(영구 강화)를 새 타워에 적용
+      this._applyMetaUpgradesToTower(tower);
+      if (isAdTower) {
+        tower.totalInvested = 0; // 광고 보상 T1도 무료
+      }
+    }
+
     this.towers.push(tower);
     this.mapManager.placeTower(col, row, tower);
     this.gameStats.towersPlaced++;
 
-    // 뽑기 배치 성공 시 횟수 증가
+    // 뽑기 배치 성공 시 횟수 증가 (광고 보상은 drawCount에 영향 없음)
     if (isPendingDraw) {
       this.towerPanel.incrementDrawCount();
+    }
+
+    // 광고 보상 배치 완료 시 대기 상태 초기화
+    if (isAdTower) {
+      this.towerPanel._pendingAdTower = null;
+      this.towerPanel._pendingDrawType = null;
     }
 
     this.towerPanel.clearSelection();
