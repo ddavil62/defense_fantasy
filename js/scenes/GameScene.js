@@ -2512,12 +2512,13 @@ export class GameScene extends Phaser.Scene {
 
   /**
    * HP 회복 버튼의 표시를 갱신한다 (비용, 구매 가능 여부, HP 만충전 상태).
+   * 초회: 다이아 1개 비용 표시, 2회차~: 골드 비용 표시.
    * @private
    */
   _updateHpRecoverButton() {
     if (!this.hpRecoverBg) return;
-    const cost = calcHpRecoverCost(this.hpRecoverUseCount);
     const isFull = this.baseHP >= this.maxBaseHP;
+    const isFirstUse = this.hpRecoverUseCount === 0;
 
     if (isFull) {
       // Image 객체에는 setFillStyle이 없으므로 setTint로 대체
@@ -2529,17 +2530,29 @@ export class GameScene extends Phaser.Scene {
       this.hpRecoverBg.setAlpha(0.4);
       this.hpRecoverCostText.setText(t('ui.hpRecoverFull'));
       this.hpRecoverCostText.setColor('#636e72');
+    } else if (isFirstUse) {
+      // 초회: 다이아 1개 비용
+      const saveData = this.registry.get('saveData');
+      const diamond = saveData?.diamond || 0;
+      const canAfford = diamond >= 1;
+      if (this.hpRecoverBg instanceof Phaser.GameObjects.Rectangle) {
+        this.hpRecoverBg.setFillStyle(canAfford ? BTN_META : BTN_SELL);
+      } else {
+        if (canAfford) { this.hpRecoverBg.clearTint(); }
+        else { this.hpRecoverBg.setTint(0x888888); }
+      }
+      this.hpRecoverBg.setAlpha(canAfford ? 1 : 0.5);
+      this.hpRecoverCostText.setText('\u25C61');
+      this.hpRecoverCostText.setColor(canAfford ? '#9b59b6' : '#ff4757');
     } else {
+      // 2회차~: 골드 비용
+      const cost = calcHpRecoverCost(this.hpRecoverUseCount - 1);
       const canAfford = this.goldManager.canAfford(cost);
       if (this.hpRecoverBg instanceof Phaser.GameObjects.Rectangle) {
         this.hpRecoverBg.setFillStyle(canAfford ? BTN_META : BTN_SELL);
       } else {
-        // Image: 구매 가능하면 원래 색, 불가하면 어둡게
-        if (canAfford) {
-          this.hpRecoverBg.clearTint();
-        } else {
-          this.hpRecoverBg.setTint(0x888888);
-        }
+        if (canAfford) { this.hpRecoverBg.clearTint(); }
+        else { this.hpRecoverBg.setTint(0x888888); }
       }
       this.hpRecoverBg.setAlpha(canAfford ? 1 : 0.5);
       this.hpRecoverCostText.setText(`${cost}G`);
@@ -2548,23 +2561,40 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
-   * HP 회복 버튼 클릭 처리. 골드를 소모하여 기지 HP를 일정량 회복한다.
-   * 사용 횟수에 따라 비용이 점진적으로 증가한다.
+   * HP 회복 버튼 클릭 처리.
+   * 초회: 다이아몬드 1개를 소모하여 HP 5 회복.
+   * 2회차~: 골드를 소모하여 HP 1 회복 (사용 횟수에 따라 비용 증가).
    * @private
    */
   _onHpRecover() {
     if (this.isGameOver || this.isPaused) return;
     if (this.baseHP >= this.maxBaseHP) return;
 
-    const cost = calcHpRecoverCost(this.hpRecoverUseCount);
-    if (!this.goldManager.canAfford(cost)) return;
+    const isFirstUse = this.hpRecoverUseCount === 0;
 
-    this.goldManager.spend(cost);
-    this.gameStats.goldSpent += cost;
-    this.hpRecoverUseCount++;
+    if (isFirstUse) {
+      // 초회: 다이아몬드 1개 소모, HP +5
+      const saveData = this.registry.get('saveData');
+      const diamond = saveData?.diamond || 0;
+      if (diamond < 1) return;
 
-    // HP 회복 (최대 HP 초과 방지)
-    this.baseHP = Math.min(this.baseHP + HP_RECOVER_AMOUNT, this.maxBaseHP);
+      saveData.diamond -= 1;
+      this.registry.set('saveData', saveData);
+      try { localStorage.setItem(SAVE_KEY, JSON.stringify(saveData)); } catch (_) { /* ignore */ }
+
+      this.hpRecoverUseCount++;
+      this.baseHP = Math.min(this.baseHP + 5, this.maxBaseHP);
+    } else {
+      // 2회차~: 골드 소모, HP +1
+      const cost = calcHpRecoverCost(this.hpRecoverUseCount - 1);
+      if (!this.goldManager.canAfford(cost)) return;
+
+      this.goldManager.spend(cost);
+      this.gameStats.goldSpent += cost;
+      this.hpRecoverUseCount++;
+
+      this.baseHP = Math.min(this.baseHP + 1, this.maxBaseHP);
+    }
 
     // 초록색 플래시로 시각 피드백
     this._playAbilityFlash(0x00b894);
