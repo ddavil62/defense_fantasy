@@ -1406,7 +1406,7 @@ export function isUsedAsMergeIngredient(id) {
  */
 export const ENEMY_STATS = {
   normal: {
-    hp: 36,
+    hp: 39,
     speed: 60,
     gold: 10,
     damage: 1,
@@ -1416,7 +1416,7 @@ export const ENEMY_STATS = {
     spriteBase: 'goblin',
   },
   fast: {
-    hp: 24,
+    hp: 26,
     speed: 120,
     gold: 6,
     damage: 1,
@@ -1427,7 +1427,7 @@ export const ENEMY_STATS = {
     spriteBase: 'warg',
   },
   tank: {
-    hp: 144,
+    hp: 157,
     speed: 35,
     gold: 30,
     damage: 3,
@@ -1437,7 +1437,7 @@ export const ENEMY_STATS = {
     spriteBase: 'ogre',
   },
   boss: {
-    hp: 600,
+    hp: 656,
     speed: 30,
     gold: 200,
     damage: 10,
@@ -1448,7 +1448,7 @@ export const ENEMY_STATS = {
     spriteBase: 'demon_lord',
   },
   swarm: {
-    hp: 18,
+    hp: 20,
     speed: 90,
     gold: 4,
     damage: 1,
@@ -1458,7 +1458,7 @@ export const ENEMY_STATS = {
     spriteBase: 'mini_slime',
   },
   splitter: {
-    hp: 96,
+    hp: 105,
     speed: 50,
     gold: 24,
     damage: 2,
@@ -1469,7 +1469,7 @@ export const ENEMY_STATS = {
     spriteBase: 'slime',
   },
   armored: {
-    hp: 120,
+    hp: 131,
     speed: 45,
     gold: 40,
     damage: 2,
@@ -1480,7 +1480,7 @@ export const ENEMY_STATS = {
     spriteBase: 'dark_knight',
   },
   boss_armored: {
-    hp: 1800,
+    hp: 1967,
     speed: 25,
     gold: 300,
     damage: 15,
