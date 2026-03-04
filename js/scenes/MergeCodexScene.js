@@ -38,10 +38,8 @@ const PROGRESS_Y = 82;
 const CODEX_GRID_Y = 104;
 /** @const {number} 도감 카드 너비 */
 const CODEX_CARD_W = 62;
-/** @const {number} 도감 카드 높이 — 힌트 텍스트 공간 확보를 위해 확장 */
-const CODEX_CARD_H = 74;
-/** @const {number} 힌트 포함 카드 높이 (T2+ 미발견 카드) */
-const CODEX_CARD_H_HINT = 88;
+/** @const {number} 도감 카드 높이 — 발견/미발견 모두 동일 높이 적용 */
+const CODEX_CARD_H = 88;
 /** @const {number} 도감 그리드 열 수 */
 const CODEX_COLS = 5;
 /** @const {number} 도감 카드 간 간격 */
@@ -401,42 +399,31 @@ export class MergeCodexScene extends Phaser.Scene {
     // 카드 bg 참조 배열 초기화 (스크롤 시 interactive 토글에 사용)
     this._codexCardBgs = [];
 
-    // 카드 생성 — 힌트 유무에 따라 가변 높이를 적용하므로 Y 누산 방식 사용
+    // 카드 생성 — 모든 카드 동일 높이 적용으로 균일 그리드 레이아웃 사용
     let currentRow = 0;
     let currentCol = 0;
-    let yOffset = CODEX_GRID_Y;
-
-    // 각 행의 최대 카드 높이를 추적하여 다음 행 시작 위치 결정
-    let rowMaxH = 0;
 
     for (let i = 0; i < tierData.length; i++) {
       const entry = tierData[i];
-      const hasHint = !entry.discovered && entry.recipeKey && entry.tier >= 2;
-      const cardH = hasHint ? CODEX_CARD_H_HINT : CODEX_CARD_H;
 
       const x = CODEX_GRID_X + currentCol * (CODEX_CARD_W + CODEX_CARD_GAP);
-      const y = yOffset;
+      const y = CODEX_GRID_Y + currentRow * (CODEX_CARD_H + CODEX_CARD_GAP);
 
-      this._createCodexCard(entry, x, y, cardH);
+      this._createCodexCard(entry, x, y, CODEX_CARD_H);
 
-      rowMaxH = Math.max(rowMaxH, cardH);
       currentCol++;
 
       if (currentCol >= CODEX_COLS) {
         currentCol = 0;
         currentRow++;
-        yOffset += rowMaxH + CODEX_CARD_GAP;
-        rowMaxH = 0;
       }
     }
 
-    // 마지막 불완전 행의 높이 반영
-    if (currentCol > 0) {
-      yOffset += rowMaxH + CODEX_CARD_GAP;
-    }
+    // 마지막 불완전 행 포함 총 행 수 계산
+    const totalRows = currentCol > 0 ? currentRow + 1 : currentRow;
 
     // 총 콘텐츠 높이 계산으로 최대 스크롤값 결정
-    const totalContentH = yOffset - CODEX_GRID_Y;
+    const totalContentH = totalRows * (CODEX_CARD_H + CODEX_CARD_GAP) - CODEX_CARD_GAP;
     this._codexMaxScroll = Math.max(0, totalContentH - scrollAreaH + 10);
 
     // 초기 스크롤 오프셋 적용
@@ -453,7 +440,7 @@ export class MergeCodexScene extends Phaser.Scene {
    * @param {object} entry - 티어 데이터 항목 { id, displayName, color, attackType, recipeKey, tier, discovered }
    * @param {number} x - 카드 좌상단 X 좌표
    * @param {number} y - 카드 좌상단 Y 좌표
-   * @param {number} cardH - 카드 높이 (힌트 유무에 따라 가변)
+   * @param {number} cardH - 카드 높이 (CODEX_CARD_H 고정)
    * @private
    */
   _createCodexCard(entry, x, y, cardH) {
