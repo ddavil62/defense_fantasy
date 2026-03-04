@@ -10,7 +10,7 @@
 import {
   GAME_WIDTH, GAME_HEIGHT, COLORS,
   BTN_PRIMARY, BTN_META, BTN_BACK, BTN_SELL, BTN_DANGER,
-  BTN_META_CSS, BTN_BACK_CSS, BTN_SELL_CSS,
+  BTN_META_CSS, BTN_BACK_CSS, BTN_SELL_CSS, BTN_DANGER_CSS,
   AD_REWARD_DIAMOND, AD_LIMIT_DIAMOND, ADMOB_REWARDED_DIAMOND_ID, SAVE_KEY,
 } from '../config.js';
 import { CLASSIC_MAP } from '../data/maps.js';
@@ -223,6 +223,9 @@ export class MenuScene extends Phaser.Scene {
       });
     });
 
+    // ── 광고제거 구매 버튼 (STATISTICS 아래, 음소거/언어 위) ──
+    this._createRemoveAdsButton(centerX, 590 + offsetY);
+
     // ── 음소거 토글 버튼 (소형 80x26, 좌측 배치) ──
     /** @type {import('../managers/SoundManager.js').SoundManager|null} */
     const sm = this.registry.get('soundManager');
@@ -230,12 +233,12 @@ export class MenuScene extends Phaser.Scene {
       const isMuted = sm.muted;
       const muteTexKey = isMuted ? 'btn_small_disabled' : 'btn_small_back_normal';
       const muteBg = this._createImageButton(
-        centerX - 48, 596 + offsetY, isMuted ? 'btn_small_disabled' : 'btn_small_back',
+        centerX - 48, 630 + offsetY, isMuted ? 'btn_small_disabled' : 'btn_small_back',
         80, 26, isMuted ? BTN_SELL : BTN_BACK, isMuted ? 0x636e72 : 0x1a9c7e,
         false
       );
 
-      const muteLabel = this.add.text(centerX - 48, 596 + offsetY,
+      const muteLabel = this.add.text(centerX - 48, 630 + offsetY,
         isMuted ? '\u266A OFF' : '\u266A ON',
         {
           fontSize: '13px',
@@ -268,12 +271,12 @@ export class MenuScene extends Phaser.Scene {
     /** @type {Object<string, string>} 로케일별 버튼 레이블 */
     const localeLabels = { ko: '한국어', en: 'English' };
     const langBg = this._createImageButton(
-      centerX + 48, 596 + offsetY, 'btn_small_back',
+      centerX + 48, 630 + offsetY, 'btn_small_back',
       80, 26, BTN_BACK, 0x1a9c7e,
       false
     );
 
-    this.add.text(centerX + 48, 596 + offsetY,
+    this.add.text(centerX + 48, 630 + offsetY,
       localeLabels[curLocale] || curLocale,
       {
         fontSize: '13px',
@@ -306,13 +309,17 @@ export class MenuScene extends Phaser.Scene {
   _createDiamondAdButton(x, y) {
     /** @type {import('../managers/AdManager.js').AdManager|null} */
     const adManager = this.registry.get('adManager');
+    const isAdFree = adManager ? adManager.isAdFree() : false;
     const remaining = adManager ? adManager.getRemainingAdCount('diamond') : 0;
     const isLimitReached = adManager ? adManager.isAdLimitReached('diamond') : true;
+
+    // adFree 상태면 무제한 표시
+    const countDisplay = isAdFree ? '\u221E' : `${remaining}/${AD_LIMIT_DIAMOND}`;
 
     // 버튼 텍스트: "Diamond 받기 (N/5)" 또는 "오늘 한도 초과"
     const btnText = isLimitReached
       ? t('ui.ad.limitReached')
-      : `${t('ui.ad.diamond')} (${remaining}/${AD_LIMIT_DIAMOND})`;
+      : `${t('ui.ad.diamond')} (${countDisplay})`;
 
     if (isLimitReached) {
       // 비활성 상태: 회색 소형 버튼
@@ -390,6 +397,8 @@ export class MenuScene extends Phaser.Scene {
 
         // 잔여 횟수 갱신 또는 비활성화
         const newRemaining = adManager.getRemainingAdCount('diamond');
+        const newAdFree = adManager.isAdFree();
+        const newCountDisplay = newAdFree ? '\u221E' : `${newRemaining}/${AD_LIMIT_DIAMOND}`;
         if (adManager.isAdLimitReached('diamond')) {
           label.setText(t('ui.ad.limitReached'));
           label.setColor('#636e72');
@@ -403,13 +412,15 @@ export class MenuScene extends Phaser.Scene {
             btnBg.setTint(0x636e72);
           }
         } else {
-          label.setText(`${t('ui.ad.diamond')} (${newRemaining}/${AD_LIMIT_DIAMOND})`);
+          label.setText(`${t('ui.ad.diamond')} (${newCountDisplay})`);
           isProcessing = false;
         }
       } else {
         // 광고 실패: 안내 메시지 표시, 버튼 재활성화
         const curRemaining = adManager.getRemainingAdCount('diamond');
-        label.setText(`${t('ui.ad.diamond')} (${curRemaining}/${AD_LIMIT_DIAMOND})`);
+        const curAdFree = adManager.isAdFree();
+        const curCountDisplay = curAdFree ? '\u221E' : `${curRemaining}/${AD_LIMIT_DIAMOND}`;
+        label.setText(`${t('ui.ad.diamond')} (${curCountDisplay})`);
         failText = this.add.text(x, y + 16, t('ui.ad.failed'), {
           fontSize: '10px',
           fontFamily: 'Galmuri11, Arial, sans-serif',
@@ -507,6 +518,240 @@ export class MenuScene extends Phaser.Scene {
     dialogContainer.add(noBg);
 
     const noText = this.add.text(centerX + 58, btnY, t('ui.exitConfirmNo'), {
+      fontSize: '14px',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
+      color: '#ffffff',
+      fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(101);
+    dialogContainer.add(noText);
+
+    noBg.on('pointerdown', closeDialog);
+  }
+
+  // ── 광고제거 구매 버튼 ──────────────────────────────────────
+
+  /**
+   * "광고 제거" 인앱 구매 버튼을 생성한다.
+   * 구매 완료 시 비활성 상태 + "구매완료" 텍스트를 표시한다.
+   * @param {number} x - 버튼 중심 X
+   * @param {number} y - 버튼 중심 Y
+   * @private
+   */
+  _createRemoveAdsButton(x, y) {
+    const saveData = this.registry.get('saveData');
+    const isPurchased = saveData?.adFree === true;
+
+    if (isPurchased) {
+      // 구매 완료 상태: 비활성 버튼 + "구매완료" 텍스트
+      this._createImageButton(
+        x, y, 'btn_medium_disabled', 160, 34, BTN_SELL, 0x636e72, true
+      );
+
+      this.add.text(x, y, t('iap.removeAds.purchased'), {
+        fontSize: '13px',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
+        color: '#636e72',
+      }).setOrigin(0.5);
+      return;
+    }
+
+    // 활성 상태: 위험 레드 버튼
+    const btnBg = this._createImageButton(
+      x, y, 'btn_medium_danger', 160, 34, BTN_DANGER, 0xc0392b
+    );
+
+    /** @type {Phaser.GameObjects.Text} 버튼 메인 라벨 */
+    const mainLabel = this.add.text(x, y - 5, t('iap.removeAds'), {
+      fontSize: '13px',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
+      color: '#ffffff',
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+
+    /** @type {Phaser.GameObjects.Text} 가격 서브라벨 */
+    const priceLabel = this.add.text(x, y + 10, t('iap.removeAds.price'), {
+      fontSize: '10px',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
+      color: BTN_DANGER_CSS,
+    }).setOrigin(0.5);
+
+    btnBg.on('pointerdown', () => {
+      this._openPurchaseDialog(btnBg, mainLabel, priceLabel);
+    });
+  }
+
+  // ── 광고제거 구매 확인 다이얼로그 ──────────────────────────────
+
+  /**
+   * 광고제거 구매 확인 다이얼로그를 표시한다.
+   * _openExitDialog 패턴을 재사용한다.
+   * @param {Phaser.GameObjects.Image|Phaser.GameObjects.Rectangle} btnBg - 원본 버튼 배경
+   * @param {Phaser.GameObjects.Text} mainLabel - 원본 메인 라벨
+   * @param {Phaser.GameObjects.Text} priceLabel - 원본 가격 라벨
+   * @private
+   */
+  _openPurchaseDialog(btnBg, mainLabel, priceLabel) {
+    if (window.__isPurchaseDialogOpen) return;
+    window.__isPurchaseDialogOpen = true;
+
+    const centerX = GAME_WIDTH / 2;
+    const centerY = GAME_HEIGHT / 2;
+
+    // 다이얼로그 요소를 관리할 컨테이너
+    const dialogContainer = this.add.container(0, 0).setDepth(100);
+
+    /**
+     * 다이얼로그를 닫고 플래그를 해제하는 헬퍼.
+     */
+    const closeDialog = () => {
+      window.__isPurchaseDialogOpen = false;
+      dialogContainer.destroy();
+    };
+
+    // ── 반투명 오버레이 (뒤 요소 클릭 차단 + 외부 탭 시 닫기) ──
+    const overlay = this.add.rectangle(centerX, centerY, GAME_WIDTH, GAME_HEIGHT, 0x000000, 0.7)
+      .setInteractive();
+    overlay.on('pointerdown', closeDialog);
+    dialogContainer.add(overlay);
+
+    // ── 다이얼로그 패널 (다크 배경 + 골드 테두리) ──
+    const panelW = 260;
+    const panelH = 180;
+    const panel = this.add.rectangle(centerX, centerY, panelW, panelH, 0x05050f)
+      .setStrokeStyle(2, 0xc0a030)
+      .setInteractive(); // 패널 클릭이 오버레이까지 전파되지 않도록 차단
+    dialogContainer.add(panel);
+
+    // ── 확인 텍스트 ──
+    const confirmText = this.add.text(centerX, centerY - 48, t('iap.removeAds.confirm'), {
+      fontSize: '16px',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
+      color: '#ffd700',
+      fontStyle: 'bold',
+      align: 'center',
+      wordWrap: { width: panelW - 32 },
+    }).setOrigin(0.5);
+    dialogContainer.add(confirmText);
+
+    // ── 설명 텍스트 ──
+    const descText = this.add.text(centerX, centerY - 12, t('iap.removeAds.confirmDesc'), {
+      fontSize: '12px',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
+      color: '#b2bec3',
+      align: 'center',
+      lineSpacing: 4,
+    }).setOrigin(0.5);
+    dialogContainer.add(descText);
+
+    // ── 구매하기 버튼 (위험 레드) ──
+    const btnW = 100;
+    const btnH = 34;
+    const btnY = centerY + 48;
+    const yesBg = this._createImageButton(
+      centerX - 58, btnY, 'btn_small_danger', btnW, btnH, BTN_DANGER, 0x636e72
+    );
+    yesBg.setDepth(101);
+    dialogContainer.add(yesBg);
+
+    const yesText = this.add.text(centerX - 58, btnY, t('iap.removeAds.confirmYes'), {
+      fontSize: '14px',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
+      color: '#ffffff',
+      fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(101);
+    dialogContainer.add(yesText);
+
+    yesBg.on('pointerdown', async () => {
+      // 버튼 비활성화 (중복 탭 방지)
+      yesBg.disableInteractive();
+      yesText.setText(t('ui.ad.loading'));
+
+      const iapManager = this.registry.get('iapManager');
+      if (!iapManager) {
+        closeDialog();
+        return;
+      }
+
+      const result = await iapManager.purchaseRemoveAds(this.registry);
+
+      // 씬 전환 후 콜백 진입 방지
+      if (!this.scene.isActive('MenuScene')) return;
+
+      if (result.success) {
+        closeDialog();
+
+        // 원본 버튼을 "구매완료" 상태로 변경
+        btnBg.disableInteractive();
+        if (typeof btnBg.setFillStyle === 'function') {
+          btnBg.setFillStyle(BTN_SELL);
+          btnBg.setStrokeStyle(2, 0x636e72);
+        } else if (typeof btnBg.setTint === 'function') {
+          btnBg.setTint(0x636e72);
+        }
+        mainLabel.setText(t('iap.removeAds.purchased'));
+        mainLabel.setColor('#636e72');
+        mainLabel.setStyle({ fontStyle: '' });
+        mainLabel.setY(mainLabel.y + 5); // 서브라벨 제거에 따른 Y 보정
+        priceLabel.setVisible(false);
+
+        // 성공 토스트 메시지
+        const successToast = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 60,
+          t('iap.removeAds.success'), {
+            fontSize: '16px',
+            fontFamily: 'Galmuri11, Arial, sans-serif',
+            color: '#ffd700',
+            fontStyle: 'bold',
+            stroke: '#000000',
+            strokeThickness: 3,
+          }).setOrigin(0.5).setDepth(110);
+
+        this.tweens.add({
+          targets: successToast,
+          y: successToast.y - 40,
+          alpha: 0,
+          duration: 2000,
+          delay: 500,
+          onComplete: () => { successToast.destroy(); },
+        });
+
+        // 다이아몬드 버튼 라벨을 무제한으로 갱신하기 위해 씬 재시작
+        this.time.delayedCall(800, () => {
+          if (this.scene.isActive('MenuScene')) {
+            this.scene.restart();
+          }
+        });
+      } else {
+        // 실패 시 다이얼로그 닫고 에러 메시지 표시
+        closeDialog();
+        const failToast = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 60,
+          t('iap.removeAds.failed'), {
+            fontSize: '14px',
+            fontFamily: 'Galmuri11, Arial, sans-serif',
+            color: '#e74c3c',
+            fontStyle: 'bold',
+            stroke: '#000000',
+            strokeThickness: 3,
+          }).setOrigin(0.5).setDepth(110);
+
+        this.tweens.add({
+          targets: failToast,
+          y: failToast.y - 40,
+          alpha: 0,
+          duration: 2000,
+          delay: 500,
+          onComplete: () => { failToast.destroy(); },
+        });
+      }
+    });
+
+    // ── 취소 버튼 (틸 백) ──
+    const noBg = this._createImageButton(
+      centerX + 58, btnY, 'btn_small_back', btnW, btnH, BTN_BACK, 0x1a9c7e
+    );
+    noBg.setDepth(101);
+    dialogContainer.add(noBg);
+
+    const noText = this.add.text(centerX + 58, btnY, t('iap.removeAds.confirmNo'), {
       fontSize: '14px',
       fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffffff',

@@ -358,12 +358,16 @@ export class GameOverScene extends Phaser.Scene {
    * @private
    */
   _createReviveButton(x, y) {
+    // adFree 상태 확인: 라벨 텍스트 결정
+    const adManager = this.registry.get('adManager');
+    const isAdFree = adManager ? adManager.isAdFree() : false;
+
     // 부활 버튼 (중형 160x36, 퍼플 메타 스타일)
     const reviveBg = this._createImageButton(
       x, y, 'btn_medium_meta', 160, 36, BTN_META, COLORS.DIAMOND
     );
 
-    const reviveLabel = this.add.text(x, y, t('ui.ad.revive'), {
+    const reviveLabel = this.add.text(x, y, isAdFree ? t('ui.ad.reviveFree') : t('ui.ad.revive'), {
       fontSize: '14px',
       fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffffff',
@@ -405,7 +409,7 @@ export class GameOverScene extends Phaser.Scene {
         this._doRevive();
       } else {
         // 광고 실패: 안내 메시지 표시, 버튼 재활성화
-        reviveLabel.setText(t('ui.ad.revive'));
+        reviveLabel.setText(isAdFree ? t('ui.ad.reviveFree') : t('ui.ad.revive'));
         failText = this.add.text(x, y + 22, t('ui.ad.failed'), {
           fontSize: '11px',
           fontFamily: 'Galmuri11, Arial, sans-serif',

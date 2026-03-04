@@ -6,6 +6,7 @@
 import { SAVE_KEY, migrateSaveData, MERGE_RECIPES } from '../config.js';
 import { SoundManager } from '../managers/SoundManager.js';
 import { AdManager } from '../managers/AdManager.js';
+import { IAPManager } from '../managers/IAPManager.js';
 
 /**
  * 게임 최초 진입 시 실행되는 부팅 씬.
@@ -135,6 +136,19 @@ export class BootScene extends Phaser.Scene {
       const adManager = new AdManager();
       await adManager.initialize();
       this.registry.set('adManager', adManager);
+    }
+
+    // IAPManager 초기화 (이미 존재하면 건너뜀)
+    if (!this.registry.get('iapManager')) {
+      const iapManager = new IAPManager();
+      await iapManager.initialize();
+      this.registry.set('iapManager', iapManager);
+    }
+
+    // adFree 상태를 AdManager에 동기화 (saveData는 상위 스코프에서 선언됨)
+    const adManager = this.registry.get('adManager');
+    if (saveData?.adFree && adManager) {
+      adManager.setAdFree(true);
     }
 
     // 커스텀 폰트(Galmuri)가 완전히 로드된 후 MenuScene으로 전환

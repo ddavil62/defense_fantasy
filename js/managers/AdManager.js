@@ -49,6 +49,9 @@ export class AdManager {
     /** @type {boolean} 초기화 완료 여부 */
     this._initialized = false;
 
+    /** @type {boolean} 광고제거(adFree) 상태 — true이면 광고 스킵 및 일일 제한 해제 */
+    this._isAdFree = false;
+
     /** @type {object} 일일 광고 카운터 데이터 */
     this._dailyLimits = this._loadDailyLimits();
 
@@ -102,6 +105,26 @@ export class AdManager {
     }
   }
 
+  // ── 광고제거(adFree) 설정 ────────────────────────────────────────
+
+  /**
+   * 광고제거(adFree) 상태를 설정한다.
+   * IAPManager에서 구매 성공 시 호출한다.
+   * @param {boolean} value - true이면 광고 스킵 + 일일 제한 해제
+   */
+  setAdFree(value) {
+    this._isAdFree = !!value;
+    console.log(`[AdManager] adFree 상태 변경: ${this._isAdFree}`);
+  }
+
+  /**
+   * 현재 광고제거(adFree) 상태를 반환한다.
+   * @returns {boolean} 광고제거 상태
+   */
+  isAdFree() {
+    return this._isAdFree;
+  }
+
   // ── 전면 광고 ──────────────────────────────────────────────────
 
   /**
@@ -146,6 +169,14 @@ export class AdManager {
   async showRewarded(adUnitId) {
     // 광고 표시 시작: 씬 전환 버튼 차단
     this.isBusy = true;
+
+    // 광고제거 구매 상태면 광고 스킵하고 즉시 보상
+    if (this._isAdFree) {
+      console.log('[AdManager] adFree: 광고 스킵, 즉시 보상');
+      this.isBusy = false;
+      return { rewarded: true };
+    }
+
     if (this.isMock) {
       console.log('[AdManager] Mock: 보상형 광고 스킵 (rewarded: true)');
       this.isBusy = false;
@@ -199,6 +230,7 @@ export class AdManager {
    * @returns {boolean} 제한 도달 시 true
    */
   isAdLimitReached(adType) {
+    if (this._isAdFree) return false; // 광고제거 시 무제한
     const limit = AD_LIMITS[adType];
     if (limit === undefined) return false;
     return this.getDailyAdCount(adType) >= limit;
@@ -210,6 +242,7 @@ export class AdManager {
    * @returns {number} 남은 횟수
    */
   getRemainingAdCount(adType) {
+    if (this._isAdFree) return 999; // 광고제거 시 무제한
     const limit = AD_LIMITS[adType];
     if (limit === undefined) return 0;
     return Math.max(0, limit - this.getDailyAdCount(adType));
