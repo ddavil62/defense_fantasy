@@ -14,6 +14,7 @@ import {
   MERGE_COST,
   calcDrawCost,
   ADMOB_REWARDED_TOWER_ID,
+  AD_DRAW_LIMIT_PER_GAME,
 } from '../config.js';
 import { t } from '../i18n.js';
 import { TowerInfoOverlay } from './TowerInfoOverlay.js';
@@ -96,6 +97,9 @@ export class TowerPanel {
 
     /** @type {object|null} 광고 보상으로 선택된 타워 정보 { type, tier, mergeId?, mergeData? } */
     this._pendingAdTower = null;
+
+    /** @type {number} 현재 판(게임)에서 광고 보상 뽑기를 사용한 횟수 */
+    this._adDrawUsedCount = 0;
 
     /** @type {Phaser.GameObjects.Text|null} 광고제거 유도 텍스트 ("광고 없이 뽑기") */
     this._adFreeHintText = null;
@@ -345,13 +349,20 @@ export class TowerPanel {
     }).setOrigin(0.5);
     this.container.add(this._adDrawLabelText);
 
-    // 광고보기 서브라벨 텍스트 (하단, 연보라)
-    this._adDrawSublabelText = this.scene.add.text(x, y + 10, t('draw.ad.sublabel'), {
-      fontSize: '11px',
+    // 광고보기 서브라벨 텍스트 (하단, 연보라) — 잔여 횟수 표시
+    const remaining = AD_DRAW_LIMIT_PER_GAME - this._adDrawUsedCount;
+    const sublabelStr = `${t('draw.ad.sublabel')} (${remaining}/${AD_DRAW_LIMIT_PER_GAME})`;
+    this._adDrawSublabelText = this.scene.add.text(x, y + 10, sublabelStr, {
+      fontSize: '10px',
       fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#9b59b6',
     }).setOrigin(0.5);
     this.container.add(this._adDrawSublabelText);
+
+    // 이미 판당 제한 소진 시 버튼 비활성화
+    if (remaining <= 0) {
+      this._disableAdDrawButton();
+    }
 
     // 포인터 이벤트
     this._adDrawButton.on('pointerdown', () => {
@@ -393,6 +404,9 @@ export class TowerPanel {
     const adManager = this.scene.registry.get('adManager');
     if (!adManager) return;
 
+    // 판당 제한 초과 시 무시
+    if (this._adDrawUsedCount >= AD_DRAW_LIMIT_PER_GAME) return;
+
     // 광고 진행 중이면 무시
     if (adManager.isBusy) return;
 
@@ -402,6 +416,10 @@ export class TowerPanel {
       if (!this.scene || !this.scene.scene.isActive()) return;
 
       if (result && result.rewarded) {
+        // 판당 카운터 증가 및 서브라벨 갱신
+        this._adDrawUsedCount++;
+        this._updateAdDrawSublabel();
+
         // 광고 시청 성공: 타워 3개를 뽑아 모달 표시
         const towers = this._pickAdRewardTowers();
         this._showAdRewardModal(towers);
@@ -724,6 +742,43 @@ export class TowerPanel {
     if (this._adModalContainer) {
       this._adModalContainer.destroy();
       this._adModalContainer = null;
+    }
+  }
+
+  /**
+   * 광고보기 버튼의 서브라벨을 잔여 횟수로 갱신한다.
+   * 제한 소진 시 버튼을 비활성화한다.
+   * @private
+   */
+  _updateAdDrawSublabel() {
+    const remaining = AD_DRAW_LIMIT_PER_GAME - this._adDrawUsedCount;
+    if (this._adDrawSublabelText) {
+      const sublabelStr = `${t('draw.ad.sublabel')} (${remaining}/${AD_DRAW_LIMIT_PER_GAME})`;
+      this._adDrawSublabelText.setText(sublabelStr);
+    }
+    if (remaining <= 0) {
+      this._disableAdDrawButton();
+    }
+  }
+
+  /**
+   * 광고보기 버튼을 비활성화한다 (판당 제한 소진 시).
+   * 버튼을 반투명하게 만들고 인터랙티브를 해제한다.
+   * @private
+   */
+  _disableAdDrawButton() {
+    if (this._adDrawButton) {
+      this._adDrawButton.disableInteractive();
+      this._adDrawButton.setAlpha(0.4);
+    }
+    if (this._adDrawLabelText) {
+      this._adDrawLabelText.setAlpha(0.4);
+    }
+    if (this._adDrawSublabelText) {
+      this._adDrawSublabelText.setAlpha(0.4);
+    }
+    if (this._adFreeHintText) {
+      this._adFreeHintText.setVisible(false);
     }
   }
 

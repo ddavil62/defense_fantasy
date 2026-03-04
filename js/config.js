@@ -1709,6 +1709,10 @@ export const ADMOB_REWARDED_CLEAR_BOOST_ID = 'ca-app-pub-9149509805250873/475108
 /** @const {string} 보상형 광고 - 타워 뽑기 단위 ID (플레이스홀더, AdMob 콘솔에서 발급 필요) */
 export const ADMOB_REWARDED_TOWER_ID = 'ca-app-pub-9149509805250873/XXXXXXXXXX';
 
+// ── 광고 판당 제한 ──────────────────────────────────────────────
+/** @const {number} 광고 보상 타워 뽑기 판당 제한 횟수 */
+export const AD_DRAW_LIMIT_PER_GAME = 3;
+
 // ── 광고 일일 제한 ──────────────────────────────────────────────
 /** @const {number} Diamond 보상형 광고 일일 제한 횟수 */
 export const AD_LIMIT_DIAMOND = 5;
