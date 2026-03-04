@@ -13,6 +13,10 @@ Gold (인게임 화폐) + Diamond (메타 화폐) + 메타 업그레이드 + 컬
 - **타워 뽑기 비용**: `DRAW_BASE_COST + DRAW_COST_INCREMENT * drawCount` = `80 + 20 * drawCount` (배치 확정 시에만 차감)
   - 0회차: 80G, 1회차: 100G, 5회차: 180G, 10회차: 280G, 20회차: 480G
   - 개별 타워 가격(`TOWER_STATS[type].levels[1].cost`)은 배치 시 사용되지 않음 (판매 환급 계산에는 여전히 사용)
+- **광고 보상 타워**: 광고 시청 후 T1(90%)/T2(10%) 타워 3개 중 1개를 무료 배치. 골드 소모 없음, drawCount 미증가, 횟수 제한 없음
+  - T1 타워: cost=0, `totalInvested=0`
+  - T2 타워: cost=0, `totalInvested=0`, base 타워 생성 후 `applyMergeResult()` 적용
+  - 판매 시 환급: 0G (`totalInvested * SELL_RATIO = 0`)
 - 판매 환급: 총 투자 비용의 50% (`SELL_RATIO = 0.5`)
 - 타워 배치 한도: 최대 30기 동시 배치 (`MAX_TOWER_COUNT = 30`)
 - 합성 골드 비용: T2=30G, T3=80G, T4=150G, T5=250G (`MERGE_COST`)

@@ -22,13 +22,53 @@ HUD, TowerPanel, TowerInfoOverlay(타워 정보 오버레이), 머지 프리뷰,
 
 ## TowerPanel (하단)
 
-- 단일 뽑기 버튼 (패널 중앙, `slot_action_normal` 배경)
+- 뽑기 버튼 (패널 좌측 X=80, `slot_action_normal` 배경)
   - 상단 텍스트: "뽑기" (`draw.button`)
   - 하단 텍스트: 현재 비용 (예: "80G", 금색 `GOLD_TEXT_CSS`)
   - 클릭: 해금된 T1 타워 중 균등 확률 랜덤 선택 -> 배치 모드 진입
   - 골드 부족 시: alpha 0.5, 비용 텍스트 빨간색(#ff4757), 클릭 무시
   - 롱프레스(400ms): 뽑기 풀 팝업 (해금 타워 목록 + 각 확률 표시)
+- 광고보기 버튼 (패널 우측 X=240, 뽑기 버튼과 동일 크기 120x44px)
+  - 배경: `slot_action_normal` 텍스처, 폴백 사각형(0x1a1a2e, BTN_META 테두리)
+  - 상단 텍스트: "광고보기" (`draw.ad.button`, 14px bold 흰색)
+  - 하단 텍스트: "타워 3선택" (`draw.ad.sublabel`, 11px 연보라 #9b59b6)
+  - 클릭: `AdManager.showRewarded(ADMOB_REWARDED_TOWER_ID)` -> 성공 시 타워 선택 모달 표시, 실패 시 에러 토스트
+  - `adManager.isBusy` 시 클릭 무시, `adManager` null 시 안전 리턴
+  - 횟수 제한 없음 (일일 카운터 미적용)
 - 판매 버튼: `icon_sell` 아이콘(20x20), 폴백 텍스트 'S'. 배속 버튼: `icon_speed_x1`/`x2`/`x3` 아이콘(20x20), 폴백 텍스트 'x1'/'x2'/'x3'. 기존 위치 유지
+
+### 광고 보상 타워 선택 모달
+
+광고 시청 완료 후 T1(90%)/T2(10%) 확률로 뽑힌 3개 타워를 모달로 표시한다. 플레이어가 1개를 선택하면 골드 소모 없이 배치 모드에 진입한다.
+
+#### 모달 구조
+- 전체 화면 어두운 오버레이 (0x000000, alpha 0.6)
+- 컨테이너 depth 61
+- 타이틀: "광고 보상: 타워 선택" (`draw.ad.modal.title`, 16px bold)
+- 카드 3개 수평 배치 (90x130px, 간격 10px, 전체 290px)
+- 카드 중심 X: 80, 180, 280 / Y: GAME_HEIGHT/2 (320)
+- 취소 버튼: "취소" (`draw.ad.modal.cancel`, 빨간색 #ff4757)
+
+#### 타워 카드 구성
+- 배경: 0x0a0e1a (alpha 0.95), 타워 color 테두리 (T2: 금색 0xffd700)
+- T2 강조: 상단 금색 별(★) 표시
+- 타워 아이콘: `tower_{type}` 텍스처 36x36px, 없으면 색상 원(r=14) 폴백
+- 이름: 12px bold, wordWrap 82px
+- 티어 뱃지: T1 회색(#aaaaaa) / T2 금색(#ffd700), "T2 ★"
+- "선택" 버튼: 60x22px, BTN_PRIMARY 배경
+
+#### 타워 확률 로직 (`_pickAdRewardTowers`)
+- 3개 독립 추출 (중복 허용)
+- 각 슬롯: `Math.random() < 0.10` -> T2, 그 외 -> T1
+- T1 풀: `TOWER_STATS` 중 tier 없거나 1, 잠금 해제 적용
+- T2 풀: `MERGE_RECIPES` 중 `tier === 2` 전체 (잠금 해제 무관, 중복 id 제거)
+- T1 풀 비어있으면 T2만 사용 (방어 코드)
+
+#### 선택 후 배치 흐름
+- T1: `_pendingAdTower = { type, tier: 1, mergeData: null }`, `onTowerSelect(type)` 호출
+- T2: `MERGE_RECIPES`에서 레시피 키의 첫 번째 재료(base type) 추출 -> `_pendingAdTower = { type, tier: 2, mergeData }`, `onTowerSelect(baseType)` 호출
+- GameScene `_attemptPlaceTower`: `_pendingAdTower` 감지 시 cost=0, T2면 `tower.applyMergeResult(mergeData)` + `totalInvested=0`
+- 배치 완료 시 `_pendingAdTower = null` 초기화, `drawCount` 미증가
 - 타워 미선택 시: 뽑기 버튼만 표시
 - Lv.1 타워 선택 시: A/B Lv.2 업그레이드 2줄 분기 버튼
 - Lv.2 타워 선택 시: A/B Lv.3 업그레이드 2줄 분기 버튼

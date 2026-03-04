@@ -4,6 +4,63 @@
 
 ---
 
+## 2026-03-04 -- 광고제거 인앱 구매 (Remove Ads IAP)
+
+### 추가
+
+- **`js/managers/IAPManager.js`** -- 신규 클래스. Mock/Native 이중 구현 (AdManager 패턴 동일). `purchaseRemoveAds(registry)` 구매 실행, `restorePurchases(registry)` 구매 복원, `isAdFree(registry)` 상태 확인. `_applyAdFree(registry)` 내부 헬퍼로 saveData 갱신 + localStorage 저장 + AdManager.setAdFree() 동기화. Phaser registry에 `'iapManager'` 키로 등록
+- **`js/config.js`** -- `IAP_PRODUCT_REMOVE_ADS = 'remove_ads'` 상수 추가. SAVE_DATA_VERSION 6 -> 7. v6 -> v7 마이그레이션: `adFree: false` 필드 추가. 신규 세이브 기본값에 `adFree: false` 포함
+- **`js/i18n.js`** -- ko/en 각 13개 신규 키 추가: `iap.removeAds`, `iap.removeAds.price`, `iap.removeAds.purchased`, `iap.removeAds.hint`, `iap.removeAds.confirm`, `iap.removeAds.confirmDesc`, `iap.removeAds.confirmYes`, `iap.removeAds.confirmNo`, `iap.removeAds.success`, `iap.removeAds.failed`, `iap.removeAds.restored`, `draw.ad.button.adFree`, `ui.ad.reviveFree`
+- **`js/scenes/MenuScene.js`** -- 광고제거 구매 버튼 (`_createRemoveAdsButton`, Y=590+offsetY, 160x34px, BTN_DANGER 스타일). 클릭 시 확인 다이얼로그 (오버레이 + 패널 + 구매하기/취소 버튼, `window.__isPurchaseDialogOpen` 플래그). 구매 완료 시 "구매완료" 비활성 표시. Diamond 받기 버튼 adFree 대응: 잔여 횟수를 `∞` 표시, 일일 제한 해제
+- **`js/ui/TowerPanel.js`** -- 광고보기 버튼 라벨 adFree 대응: "무료뽑기" (`draw.ad.button.adFree`). "광고 없이 뽑기" 유도 텍스트 (Y=PANEL_Y+74, 8px 빨간색 #e74c3c, adFree 미구매 시에만 표시, 클릭 시 깜빡임 효과)
+- **`js/scenes/GameOverScene.js`** -- 부활 버튼 라벨 adFree 대응: "무료 부활" (`ui.ad.reviveFree`)
+
+### 변경
+
+- **`js/managers/AdManager.js`** -- `_isAdFree` 필드 추가 (기본 false). `setAdFree(value)` 메서드: IAPManager에서 호출. `isAdFree()` 메서드: 현재 상태 반환. `showRewarded()`: adFree이면 광고 스킵, 즉시 `{rewarded: true}` 반환. `isAdLimitReached()`: adFree이면 항상 false 반환. `getRemainingAdCount()`: adFree이면 999 반환
+- **`js/scenes/BootScene.js`** -- IAPManager import/초기화/registry 등록 추가 (AdManager 다음 순서). 부트 시 `saveData.adFree` 상태를 `adManager.setAdFree(true)` 로 동기화
+- **`js/scenes/MenuScene.js`** -- 음소거/언어 버튼 Y좌표: `596+offsetY` -> `630+offsetY` (광고제거 버튼 삽입에 따른 하단 이동)
+
+### 참고
+
+- 스펙: `.claude/specs/2026-03-04-ad-remove-iap.md`
+- 리포트: `.claude/specs/2026-03-04-ad-remove-iap-report.md`
+- QA: `.claude/specs/2026-03-04-ad-remove-iap-qa.md`
+- Playwright 테스트 44건 전체 PASS (정상 22 + 예외 8 + 레이아웃 14)
+- 1차 QA FAIL: STATISTICS 버튼과 광고제거 버튼 25px 겹침 -> 2차 QA에서 Y좌표 수정 후 PASS
+- LevelSelectScene/MapClearScene의 adFree 라벨 변경 미구현 (LOW, 해당 씬은 원래 잔여 횟수를 라벨에 표시하지 않는 구조이므로 실질적 영향 없음)
+- TowerPanel 유도 텍스트는 인게임 안전성을 위해 구매 다이얼로그 대신 깜빡임 효과만 제공
+- 실제 Google Play Billing 연동은 스펙 범위 외 (Mock 모드 인터페이스만 구현)
+- 가격(₩1,100 / $0.99)은 플레이스홀더, 실제 스토어 연동 시 변경 예정
+
+---
+
+## 2026-03-04 -- 광고 보상 타워 뽑기
+
+### 추가
+
+- **`js/config.js`** -- `ADMOB_REWARDED_TOWER_ID` 상수 추가 (플레이스홀더 값 `ca-app-pub-9149509805250873/XXXXXXXXXX`, 실제 배포 전 교체 필요)
+- **`js/i18n.js`** -- ko/en 각 8개 신규 i18n 키 추가 (`draw.ad.button`, `draw.ad.sublabel`, `draw.ad.modal.title`, `draw.ad.modal.select`, `draw.ad.modal.cancel`, `draw.ad.failed`, `draw.ad.badge.t1`, `draw.ad.badge.t2`)
+- **`js/ui/TowerPanel.js`** -- 광고보기 버튼 생성 (`_createAdDrawButton`, X=240, Y=PANEL_Y+50, 120x44px), 광고 클릭 핸들러 (`_onAdDrawButtonClick`), 타워 확률 뽑기 (`_pickAdRewardTowers`, T1 90%/T2 10%), 타워 선택 모달 (`_showAdRewardModal`, depth 61, 카드 3개 90x130px), 타워 선택 처리 (`_onAdTowerSelected`, T1 직접/T2 applyMergeResult 경유), 모달 정리 (`_hideAdRewardModal`), 합성 base 타워 추출 (`_getBaseTypeForMerge`). `destroy()`에 `_hideAdRewardModal()` 호출 추가. `ADMOB_REWARDED_TOWER_ID` import 추가
+- **`js/scenes/GameScene.js`** -- `_attemptPlaceTower`에 `_pendingAdTower` 감지 로직 추가: 광고 보상 타워 배치 시 cost=0, T2 타워는 `applyMergeResult(mergeData)` 적용 + `totalInvested=0` 설정. `_onTowerTypeSelect`에 T2 타워 이름 표시 대응
+
+### 변경
+
+- **`js/ui/TowerPanel.js`** -- 뽑기 버튼 X 좌표를 140(GAME_WIDTH/2-40)에서 80으로 좌측 이동. `_create()`에 `_createAdDrawButton()` 호출 추가
+
+### 참고
+
+- 스펙: `.claude/specs/2026-03-04-ad-reward-tower.md`
+- 리포트: `.claude/specs/2026-03-04-ad-reward-tower-report.md`
+- QA: `.claude/specs/2026-03-04-ad-reward-tower-qa.md`
+- Playwright 테스트 28건 전체 PASS (정상 17 + 예외 7 + 시각적 3 + 안정성 1)
+- 광고 보상 타워는 일일 횟수 제한 없음 (`isAdLimitReached()` / `incrementDailyAdCount()` 미호출)
+- 광고 보상으로 획득한 T2 타워는 도감(CollectionScene) 발견 기록에 반영되지 않음 (스펙 범위 외)
+- T2 타워의 `totalInvested=0`으로 판매가 0G (의도된 동작)
+- `ADMOB_REWARDED_TOWER_ID`는 플레이스홀더이므로 실제 배포 전 AdMob 콘솔에서 발급한 ID로 교체 필요
+
+---
+
 ## 2026-03-04 -- 타워 수집 시스템 (도감 발견 메커니즘)
 
 ### 추가
