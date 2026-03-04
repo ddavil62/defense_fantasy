@@ -18,7 +18,7 @@ import {
   getMetaInitialGold, getMetaWaveBonusMultiplier,
   calcHpRecoverCost, HP_RECOVER_AMOUNT,
   CONSUMABLE_ABILITIES,
-  getMergeResult, MERGE_RECIPES, SAVE_KEY,
+  getMergeResult, MERGE_RECIPES, MERGED_TOWER_STATS, SAVE_KEY,
   BTN_SELL, BTN_META, BTN_DANGER, BTN_PRIMARY, BTN_BACK,
   getEnemySpriteKey,
   AD_REVIVE_HP_RATIO,
@@ -164,6 +164,9 @@ export class GameScene extends Phaser.Scene {
       goldRain: { useCount: 0, cooldownTimer: 0, active: false, remainingDuration: 0 },
       lightning: { useCount: 0, cooldownTimer: 0, active: false, remainingDuration: 0 },
     };
+
+    /** @type {Phaser.GameObjects.Container|null} 신규 발견 축하 팝업 컨테이너 */
+    this._discoveryPopup = null;
   }
 
   /**
@@ -641,21 +644,166 @@ export class GameScene extends Phaser.Scene {
   /**
    * 머지 발견을 세이브 데이터에 기록한다.
    * 이미 발견된 머지 ID는 중복 추가하지 않으며, localStorage에 즉시 저장한다.
+   * 신규 발견 시 축하 팝업을 표시하고 newDiscoveries에도 추가한다.
    * @param {string} mergeId - 발견된 머지 결과 ID
+   * @returns {boolean} 신규 발견이면 true, 이미 발견이면 false
    * @private
    */
   _registerMergeDiscovery(mergeId) {
     const saveData = this.registry.get('saveData');
-    if (!saveData) return;
+    if (!saveData) return false;
     if (!saveData.discoveredMerges) saveData.discoveredMerges = [];
     if (!saveData.discoveredMerges.includes(mergeId)) {
       saveData.discoveredMerges.push(mergeId);
+      if (!saveData.newDiscoveries) saveData.newDiscoveries = [];
+      saveData.newDiscoveries.push(mergeId);
       try {
         localStorage.setItem(SAVE_KEY, JSON.stringify(saveData));
       } catch (e) {
         // localStorage 쓰기 실패 무시 (용량 초과 등)
       }
+
+      // 신규 발견 축하 팝업 표시
+      this._showDiscoveryPopup(mergeId);
+      return true;
     }
+    return false;
+  }
+
+  /**
+   * 신규 합성 발견 시 축하 오버레이 팝업을 표시한다.
+   * 반투명 배경 위에 타워 아이콘, 이름, 티어, "확인" 버튼을 표시한다.
+   * 게임은 일시정지하지 않으며, 확인 버튼 또는 배경 클릭 시 닫힌다.
+   * @param {string} mergeId - 발견된 합성 타워 ID
+   * @private
+   */
+  _showDiscoveryPopup(mergeId) {
+    // 이미 팝업이 열려 있으면 무시
+    if (this._discoveryPopup) return;
+
+    // 레시피와 스탯 정보 찾기
+    let recipe = null;
+    for (const [, r] of Object.entries(MERGE_RECIPES)) {
+      if (r.id === mergeId) { recipe = r; break; }
+    }
+    if (!recipe) return;
+
+    const mergedStats = MERGED_TOWER_STATS[mergeId];
+
+    const container = this.add.container(0, 0).setDepth(95);
+    this._discoveryPopup = container;
+
+    // 반투명 배경
+    const backdrop = this.add.rectangle(
+      GAME_WIDTH / 2, GAME_HEIGHT / 2,
+      GAME_WIDTH, GAME_HEIGHT, 0x000000
+    ).setAlpha(0.6).setInteractive();
+    container.add(backdrop);
+
+    // 중앙 패널
+    const panelW = 280;
+    const panelH = 320;
+    const panelX = GAME_WIDTH / 2;
+    const panelY = GAME_HEIGHT / 2;
+    const panelBg = this.add.rectangle(panelX, panelY, panelW, panelH, 0x1a1040)
+      .setStrokeStyle(2, 0xffd700)
+      .setInteractive(); // 패널 내부 클릭이 배경으로 전파되지 않도록
+    container.add(panelBg);
+
+    // 상단 타이틀
+    const titleText = this.add.text(panelX, panelY - panelH / 2 + 30, t('discovery.new'), {
+      fontSize: '16px',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
+      color: '#ffd700',
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+    container.add(titleText);
+
+    // 타워 아이콘 (큰 사이즈)
+    const iconY = panelY - 30;
+    const iconTexKey = `tower_${mergeId}`;
+    if (this.textures.exists(iconTexKey)) {
+      const iconImg = this.add.image(panelX, iconY, iconTexKey)
+        .setDisplaySize(80, 80);
+      container.add(iconImg);
+    } else {
+      const circleG = this.add.graphics();
+      circleG.fillStyle(recipe.color, 1);
+      circleG.fillCircle(panelX, iconY, 36);
+      circleG.lineStyle(3, 0xffd700, 1);
+      circleG.strokeCircle(panelX, iconY, 36);
+      container.add(circleG);
+    }
+
+    // 타워 이름
+    const nameText = this.add.text(panelX, iconY + 52, recipe.displayName, {
+      fontSize: '16px',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
+      color: '#ffffff',
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+    container.add(nameText);
+
+    // 티어 배지
+    const tierText = this.add.text(panelX, iconY + 74, `T${recipe.tier}`, {
+      fontSize: '12px',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
+      color: '#ffd700',
+    }).setOrigin(0.5);
+    container.add(tierText);
+
+    // 공격 유형 배지
+    if (mergedStats) {
+      const atkTypeMap = {
+        'single': 'Single', 'splash': 'Splash', 'aoe_instant': 'AoE',
+        'chain': 'Chain', 'piercing_beam': 'Beam', 'dot_single': 'DoT',
+      };
+      const badgeStr = atkTypeMap[mergedStats.attackType] || mergedStats.attackType;
+      const badgeText = this.add.text(panelX, iconY + 90, badgeStr, {
+        fontSize: '10px',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
+        color: '#81ecec',
+        backgroundColor: '#0d1117',
+        padding: { x: 4, y: 2 },
+      }).setOrigin(0.5);
+      container.add(badgeText);
+    }
+
+    // 확인 버튼
+    const btnY = panelY + panelH / 2 - 40;
+    const btnBg = this.add.rectangle(panelX, btnY, 120, 36, BTN_PRIMARY)
+      .setStrokeStyle(1, 0xffd700)
+      .setInteractive({ useHandCursor: true });
+    container.add(btnBg);
+
+    const btnText = this.add.text(panelX, btnY, t('discovery.confirm'), {
+      fontSize: '14px',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
+      color: '#ffffff',
+      fontStyle: 'bold',
+    }).setOrigin(0.5);
+    container.add(btnText);
+
+    // 닫기 처리
+    const closePopup = () => {
+      if (this._discoveryPopup) {
+        this._discoveryPopup.destroy();
+        this._discoveryPopup = null;
+      }
+    };
+
+    btnBg.on('pointerdown', closePopup);
+    backdrop.on('pointerdown', closePopup);
+
+    // 스케일 애니메이션 (0.8 -> 1.0)
+    container.setScale(0.8);
+    this.tweens.add({
+      targets: container,
+      scaleX: 1,
+      scaleY: 1,
+      duration: 200,
+      ease: 'Back.easeOut',
+    });
   }
 
   /**

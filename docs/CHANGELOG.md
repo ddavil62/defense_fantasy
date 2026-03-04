@@ -4,6 +4,31 @@
 
 ---
 
+## 2026-03-04 -- 타워 수집 시스템 (도감 발견 메커니즘)
+
+### 추가
+
+- **`js/config.js`** -- SAVE_DATA_VERSION 5 -> 6. v5 -> v6 마이그레이션 추가: discoveredMerges 미존재 시 빈 배열 초기화, 기존 유저 T2 전체 발견 처리(tier === 2인 MERGE_RECIPES 전부 discoveredMerges에 추가), newDiscoveries 빈 배열 추가. 신규 세이브 기본값에 newDiscoveries: [] 추가. ensure 섹션에 newDiscoveries 보장
+- **`js/scenes/MergeCodexScene.js`** -- 전체 재작성. `_isTowerDiscovered()` 유틸리티 메서드 추가 (T1은 항상 true, T2+는 saveData.discoveredMerges 포함 여부). 발견/미발견 카드 분기 렌더링: 발견 시 컬러 카드, 미발견 시 실루엣(0x222222 + "?"). T3+ 재료 양쪽 미발견 시 카드 자체 숨김. 재료 발견 상태별 힌트 텍스트("재료A + ???" 등). 진행률 `T{n}: {discovered}/{total}` 형식으로 변경(i18n 키 `codex.progressDiscovery`). 미발견 카드 클릭 시 토스트 표시. 신규 발견 빨간 점(카드 우상단, 반지름 5px). 카드 클릭 시 `_clearNewDiscovery()`로 newDiscoveries에서 제거 + 빨간 점 제거 + 세이브
+- **`js/scenes/GameScene.js`** -- `_registerMergeDiscovery()` 수정: 신규 발견 시 newDiscoveries에도 추가, boolean 반환, `_showDiscoveryPopup()` 호출. `_showDiscoveryPopup()` 신규 메서드: 반투명 배경(alpha 0.6) + 중앙 패널(280x320px) + 타워 아이콘/이름/티어/공격유형 배지 + 확인 버튼 + 스케일 애니메이션(0.8->1.0, 200ms Back.easeOut). 확인 또는 배경 클릭 시 닫힘. 게임 일시정지 없음
+- **`js/scenes/CollectionScene.js`** -- 합성 도감 탭 버튼에 `saveData.newDiscoveries.length > 0` 시 빨간 점(반지름 5px) 표시
+- **`js/ui/TowerInfoOverlay.js`** -- `_isTowerDiscovered()` 메서드 추가(localStorage에서 파싱). 상위 조합 섹션(`_renderUsedInSection`)에서 미발견 결과 타워를 "T{n} ???" 로 표시 + 드릴다운 차단. 재료 노드(`_renderMaterialNode`)에서 미발견 재료를 실루엣(0x222222 + "?") + ??? 표시 + 드릴다운 차단
+- **`js/i18n.js`** -- 도감 발견 시스템 i18n 키 7개 추가 (ko/en 양쪽): `discovery.new`, `discovery.confirm`, `discovery.undiscovered`, `discovery.undiscoveredToast`, `discovery.hintUnknown`, `codex.discovered`, `codex.progressDiscovery`
+
+### 변경
+
+- **`js/scenes/MergeCodexScene.js`** -- 기존 진행률 텍스트 `codex.progress`("T{n}: {total}종")를 `codex.progressDiscovery`("T{n}: {discovered}/{total}")로 변경. 카드 전부 공개 방식에서 발견 여부 기반 분기 표시로 변경
+
+### 참고
+
+- 스펙: `.claude/specs/2026-03-04-tower-collection-discovery.md`
+- 리포트: `.claude/specs/2026-03-04-tower-collection-discovery-report.md`
+- QA: `.claude/specs/2026-03-04-tower-collection-discovery-qa.md`
+- 코드 리뷰 6개 파일 전체 PASS, vite build PASS (4.30s)
+- TowerInfoOverlay._isTowerDiscovered에서 매번 localStorage 파싱하지만 호출 빈도가 낮아 성능 영향 미미
+
+---
+
 ## 2026-03-03 -- 언어 전환 버튼 (Lang Toggle)
 
 ### 추가

@@ -225,6 +225,15 @@ export class CollectionScene extends Phaser.Scene {
     }).setOrigin(0.5);
     this._tabBarContainer.add(codexText);
 
+    // 합성 도감 탭에 신규 발견 빨간 점 표시
+    const newDiscoveries = this.saveData.newDiscoveries || [];
+    if (newDiscoveries.length > 0) {
+      const redDot = this.add.graphics();
+      redDot.fillStyle(0xff0000, 1);
+      redDot.fillCircle(rightX + TAB_W / 2 - 8, tabCenterY - TAB_H / 2 + 8, 5);
+      this._tabBarContainer.add(redDot);
+    }
+
     codexBg.setInteractive({ useHandCursor: true });
     codexBg.on('pointerdown', () => {
       // 합성 도감은 별도 씬(MergeCodexScene)으로 전환

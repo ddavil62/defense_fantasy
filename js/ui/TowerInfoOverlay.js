@@ -9,7 +9,7 @@ import {
   GAME_WIDTH, GAME_HEIGHT, COLORS, CELL_SIZE,
   TOWER_STATS, MERGE_RECIPES, MERGED_TOWER_STATS,
   ATTACK_TYPE_COLORS_CSS, BTN_PRIMARY, BTN_DANGER,
-  MAX_ENHANCE_LEVEL,
+  MAX_ENHANCE_LEVEL, SAVE_KEY,
 } from '../config.js';
 import { t } from '../i18n.js';
 
@@ -531,8 +531,9 @@ export class TowerInfoOverlay {
   }
 
   /**
-   * 재료 노드 하나를 렌더링한다 (색상 원 + 이름 + 티어 배지).
-   * 클릭 시 해당 재료 타워의 상세 정보로 드릴다운한다.
+   * 재료 노드 하나를 렌더링한다.
+   * 발견된 재료는 색상 원 + 이름 + 티어 배지로, 미발견 재료는 실루엣 + ??? 로 표시한다.
+   * 발견된 재료만 클릭 시 드릴다운이 가능하다.
    * @param {object} matEntry - 재료 타워의 entry 객체
    * @param {number} cx - 노드 중심 X 좌표
    * @param {number} cy - 노드 중심 Y 좌표
@@ -542,46 +543,76 @@ export class TowerInfoOverlay {
    * @private
    */
   _renderMaterialNode(matEntry, cx, cy, r, matBaseY, currentEntry) {
-    // 재료 타워 아이콘 (이미지 우선, 폴백 시 색상 원)
-    const matTexKey = `tower_${matEntry.id}`;
-    if (this.scene.textures.exists(matTexKey)) {
-      const matImg = this.scene.add.image(cx, cy, matTexKey)
-        .setDisplaySize(r * 2, r * 2);
-      this._container.add(matImg);
+    const isDiscovered = this._isTowerDiscovered(matEntry.id);
+
+    if (isDiscovered) {
+      // ── 발견된 재료: 컬러 아이콘 + 이름 + 드릴다운 ──
+      const matTexKey = `tower_${matEntry.id}`;
+      if (this.scene.textures.exists(matTexKey)) {
+        const matImg = this.scene.add.image(cx, cy, matTexKey)
+          .setDisplaySize(r * 2, r * 2);
+        this._container.add(matImg);
+      } else {
+        const circle = this.scene.add.graphics();
+        circle.fillStyle(matEntry.color, 1);
+        circle.fillCircle(cx, cy, r);
+        const borderColor = matEntry.tier >= 2 ? BTN_PRIMARY : 0x636e72;
+        circle.lineStyle(2, borderColor, 1);
+        circle.strokeCircle(cx, cy, r);
+        this._container.add(circle);
+      }
+
+      // 재료 이름 (6자 초과 시 말줄임)
+      const displayName = matEntry.displayName.length > 6
+        ? matEntry.displayName.substring(0, 5) + '..'
+        : matEntry.displayName;
+      const nameText = this.scene.add.text(cx, matBaseY + r + 8, displayName, {
+        fontSize: '10px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#ffffff',
+      }).setOrigin(0.5);
+      this._container.add(nameText);
+
+      const tierBadge = this.scene.add.text(cx, matBaseY + r + 22, `T${matEntry.tier}`, {
+        fontSize: '9px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#ffd700',
+      }).setOrigin(0.5);
+      this._container.add(tierBadge);
+
+      // 투명 히트 영역 (드릴다운 가능)
+      const hitArea = this.scene.add.rectangle(cx, cy + 10, r * 2 + 10, 70, 0x000000, 0)
+        .setInteractive({ useHandCursor: true });
+      this._container.add(hitArea);
+
+      hitArea.on('pointerdown', () => {
+        this._history.push(currentEntry);
+        this._render(matEntry);
+      });
     } else {
+      // ── 미발견 재료: 실루엣 + ??? ──
       const circle = this.scene.add.graphics();
-      circle.fillStyle(matEntry.color, 1);
+      circle.fillStyle(0x222222, 1);
       circle.fillCircle(cx, cy, r);
-      const borderColor = matEntry.tier >= 2 ? BTN_PRIMARY : 0x636e72;
-      circle.lineStyle(2, borderColor, 1);
+      circle.lineStyle(2, 0x444444, 1);
       circle.strokeCircle(cx, cy, r);
       this._container.add(circle);
+
+      // "?" 텍스트
+      const qMark = this.scene.add.text(cx, cy, '?', {
+        fontSize: '14px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#444444', fontStyle: 'bold',
+      }).setOrigin(0.5);
+      this._container.add(qMark);
+
+      // ??? 이름
+      const nameText = this.scene.add.text(cx, matBaseY + r + 8, t('discovery.undiscovered'), {
+        fontSize: '10px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#636e72',
+      }).setOrigin(0.5);
+      this._container.add(nameText);
+
+      const tierBadge = this.scene.add.text(cx, matBaseY + r + 22, `T${matEntry.tier}`, {
+        fontSize: '9px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#636e72',
+      }).setOrigin(0.5);
+      this._container.add(tierBadge);
+
+      // 미발견 재료는 히트 영역 없음 (드릴다운 차단)
     }
-
-    // 재료 이름 (6자 초과 시 말줄임) — 원 하단 기준 상대 오프셋
-    const displayName = matEntry.displayName.length > 6
-      ? matEntry.displayName.substring(0, 5) + '..'
-      : matEntry.displayName;
-    const nameText = this.scene.add.text(cx, matBaseY + r + 8, displayName, {
-      fontSize: '10px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#ffffff',
-    }).setOrigin(0.5);
-    this._container.add(nameText);
-
-    const tierBadge = this.scene.add.text(cx, matBaseY + r + 22, `T${matEntry.tier}`, {
-      fontSize: '9px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#ffd700',
-    }).setOrigin(0.5);
-    this._container.add(tierBadge);
-
-    // 투명 히트 영역 (노드 영역을 덮는 클릭 가능 사각형)
-    const hitArea = this.scene.add.rectangle(cx, cy + 10, r * 2 + 10, 70, 0x000000, 0)
-      .setInteractive({ useHandCursor: true });
-    this._container.add(hitArea);
-
-    hitArea.on('pointerdown', () => {
-      // 현재 항목을 히스토리에 저장하고 재료 타워로 드릴다운
-      this._history.push(currentEntry);
-      this._render(matEntry);
-    });
   }
 
   /**
@@ -671,12 +702,20 @@ export class TowerInfoOverlay {
     for (let i = 0; i < usedInList.length; i++) {
       const { resultEntry } = usedInList[i];
       const itemY = scrollTopY + i * rowH + rowH / 2;
-      const label = `T${resultEntry.tier} ${resultEntry.displayName}`;
+
+      // 미발견 결과 타워는 "T{n} ???" 로 표시
+      const isDiscovered = this._isTowerDiscovered(resultEntry.id);
+      const label = isDiscovered
+        ? `T${resultEntry.tier} ${resultEntry.displayName}`
+        : `T${resultEntry.tier} ${t('discovery.undiscovered')}`;
+      const labelColor = isDiscovered ? '#dfe6e9' : '#636e72';
+
       const itemText = this.scene.add.text(panelX, itemY, label, {
-        fontSize: '11px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#dfe6e9',
+        fontSize: '11px', fontFamily: 'Galmuri11, Arial, sans-serif', color: labelColor,
       }).setOrigin(0.5);
       scrollContainer.add(itemText);
-      itemTexts.push({ text: itemText, entry: resultEntry, baseY: itemY });
+      // 미발견 타워는 드릴다운 불가이므로 entry를 null로 기록
+      itemTexts.push({ text: itemText, entry: isDiscovered ? resultEntry : null, baseY: itemY, discovered: isDiscovered });
     }
 
     // 스크롤 영역 클리핑 마스크
@@ -740,6 +779,8 @@ export class TowerInfoOverlay {
         const clickY = pointer.y + scrollY; // 스크롤 오프셋 보정
         for (const item of itemTexts) {
           if (Math.abs(clickY - item.baseY) <= rowH / 2) {
+            // 미발견 타워는 드릴다운 차단
+            if (!item.entry) return;
             this._history.push(currentEntry);
             this._render(item.entry);
             return;
@@ -753,11 +794,15 @@ export class TowerInfoOverlay {
       if (dragging) return;
       const hoverY = pointer.y + scrollY;
       for (const item of itemTexts) {
-        item.text.setColor(Math.abs(hoverY - item.baseY) <= rowH / 2 ? '#ffd700' : '#dfe6e9');
+        const defaultColor = item.discovered === false ? '#636e72' : '#dfe6e9';
+        const hoverColor = item.discovered === false ? '#636e72' : '#ffd700';
+        item.text.setColor(Math.abs(hoverY - item.baseY) <= rowH / 2 ? hoverColor : defaultColor);
       }
     });
     dragZone.on('pointerout', () => {
-      for (const item of itemTexts) item.text.setColor('#dfe6e9');
+      for (const item of itemTexts) {
+        item.text.setColor(item.discovered === false ? '#636e72' : '#dfe6e9');
+      }
     });
 
     this.scene.input.on('pointermove', this._scrollMoveHandler);
@@ -1012,6 +1057,26 @@ export class TowerInfoOverlay {
       a.resultEntry.displayName.localeCompare(b.resultEntry.displayName)
     );
     return results;
+  }
+
+  // ── 발견 여부 판별 ────────────────────────────────────────────
+
+  /**
+   * 해당 타워가 발견되었는지 판별한다.
+   * T1 타워는 항상 발견 상태이고, T2+ 타워는 saveData.discoveredMerges에 포함 여부로 판단한다.
+   * @param {string} towerId - 타워 ID
+   * @returns {boolean} 발견 여부
+   * @private
+   */
+  _isTowerDiscovered(towerId) {
+    if (TOWER_STATS[towerId]) return true;
+    try {
+      const saveData = JSON.parse(localStorage.getItem(SAVE_KEY) || '{}');
+      const discovered = saveData.discoveredMerges || [];
+      return discovered.includes(towerId);
+    } catch {
+      return false;
+    }
   }
 
   // ── 헬퍼 ────────────────────────────────────────────────────

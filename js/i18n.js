@@ -576,6 +576,14 @@ const STRINGS = {
     'pause.bgm': 'BGM',
     // ── 공통 네비게이션 ──
     'ui.backNav': '< BACK',
+    // ── 도감 발견 시스템 ──
+    'discovery.new': '\u2728 \uc2e0\uaddc \ubc1c\uacac! \u2728',
+    'discovery.confirm': '\ud655\uc778',
+    'discovery.undiscovered': '???',
+    'discovery.undiscoveredToast': '\uc544\uc9c1 \ubc1c\uacac\ud558\uc9c0 \ubabb\ud55c \ud0c0\uc6cc\uc785\ub2c8\ub2e4',
+    'discovery.hintUnknown': '???',
+    'codex.discovered': '\ubc1c\uacac',
+    'codex.progressDiscovery': 'T{n}: {discovered}/{total}',
   },
   en: {
     'tower.archer.name': 'Archer',
@@ -1108,5 +1116,13 @@ const STRINGS = {
     'pause.bgm': 'BGM',
     // ── Common navigation ──
     'ui.backNav': '< BACK',
+    // ── Discovery system ──
+    'discovery.new': '\u2728 New Combination! \u2728',
+    'discovery.confirm': 'OK',
+    'discovery.undiscovered': '???',
+    'discovery.undiscoveredToast': 'Tower not yet discovered',
+    'discovery.hintUnknown': '???',
+    'codex.discovered': 'Discovered',
+    'codex.progressDiscovery': 'T{n}: {discovered}/{total}',
   },
 };

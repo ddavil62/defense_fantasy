@@ -2017,7 +2017,7 @@ function createDefaultStats() {
 }
 
 /** @const {number} 현재 세이브 데이터 스키마 버전 */
-export const SAVE_DATA_VERSION = 5;
+export const SAVE_DATA_VERSION = 6;
 
 /**
  * 세이브 데이터를 최신 스키마로 마이그레이션한다.
@@ -2040,6 +2040,7 @@ export function migrateSaveData(saveData) {
       utilityUpgrades: { baseHp: 0, goldBoost: 0, waveBonus: 0 },
       unlockedTowers: [],
       discoveredMerges: [],
+      newDiscoveries: [],
       stats: createDefaultStats(),
       worldProgress: {},
       endlessUnlocked: false,
@@ -2122,6 +2123,19 @@ export function migrateSaveData(saveData) {
     saveData.saveDataVersion = 5;
   }
 
+  // ── v5 → v6 마이그레이션: 도감 발견 시스템 (discoveredMerges 활용, newDiscoveries 추가) ──
+  if (saveData.saveDataVersion < 6) {
+    if (!saveData.discoveredMerges) saveData.discoveredMerges = [];
+    // 기존 유저 → T2 전체 발견 처리
+    for (const [, recipe] of Object.entries(MERGE_RECIPES)) {
+      if (recipe.tier === 2 && !saveData.discoveredMerges.includes(recipe.id)) {
+        saveData.discoveredMerges.push(recipe.id);
+      }
+    }
+    saveData.newDiscoveries = [];
+    saveData.saveDataVersion = 6;
+  }
+
   // ── Ensure all v2 fields exist ──
   if (saveData.diamond === undefined) saveData.diamond = 0;
   if (saveData.totalDiamondEarned === undefined) saveData.totalDiamondEarned = 0;
@@ -2131,6 +2145,7 @@ export function migrateSaveData(saveData) {
   }
   if (!saveData.unlockedTowers) saveData.unlockedTowers = [];
   if (!saveData.discoveredMerges) saveData.discoveredMerges = [];
+  if (!saveData.newDiscoveries) saveData.newDiscoveries = [];
 
   if (!saveData.stats) {
     saveData.stats = createDefaultStats();

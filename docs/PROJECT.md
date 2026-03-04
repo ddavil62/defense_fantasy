@@ -15,7 +15,7 @@ Phaser.js 3 기반 판타지 타워 디펜스 게임. 도형 기반 프로토타
 | 모듈 구조 | ES6 모듈 기반 멀티 파일 (30개) |
 | 폰트 | Galmuri11 픽셀 폰트 (Regular + Bold), SIL OFL 라이선스, woff2 로컬 번들링 |
 | 렌더링 | HTML5 Canvas (Phaser 기본, pixelArt: true, antialias: false) |
-| 데이터 저장 | localStorage (최고 기록, Diamond, 메타 업그레이드, 타워 해금, 머지 발견, 통계, 게임 히스토리, 월드 진행 상태, 엔드리스 해금) -- 세이브 v4. 광고 일일 제한 카운터는 별도 키(`ftd_ad_daily_limit`), 언어 설정은 별도 키(`fantasy-td-lang`)에 저장 |
+| 데이터 저장 | localStorage (최고 기록, Diamond, 메타 업그레이드, 타워 해금, 머지 발견, 신규 발견, 통계, 게임 히스토리, 월드 진행 상태, 엔드리스 해금) -- 세이브 v6. 광고 일일 제한 카운터는 별도 키(`ftd_ad_daily_limit`), 언어 설정은 별도 키(`fantasy-td-lang`)에 저장 |
 | 광고 SDK | `@capacitor-community/admob` v7.2.0 (Capacitor 7 호환, 네이티브 전용, 웹 Mock 모드) |
 | 해상도 | 360x640 (모바일 세로, portrait) |
 | 서버 요구 | Vite dev 서버 (`npm run dev`) |
@@ -30,17 +30,17 @@ Phaser.js 3 기반 판타지 타워 디펜스 게임. 도형 기반 프로토타
 | `index.html` | 진입점 (Vite용 간소화, CDN 제거) |
 | `style.css` | 바디 배경, 터치 방지(`touch-action: none`), safe-area 패딩, Galmuri @font-face 선언 |
 | `js/main.js` | Phaser.Game 인스턴스 생성 (npm import, 360x640, FIT + CENTER_BOTH, pixelArt: true), Android 뒤로가기 키(ESC) 내비게이션 핸들러 (오버레이 우선 처리: TowerInfoOverlay/pauseOverlay 열림 시 씬 전환 대신 오버레이 닫기) |
-| `js/config.js` | 모든 게임 상수/밸런스 수치 집중 관리 (타워 10종, 적 8종, 웨이브 R1~R20, 메타 업그레이드 트리, 유틸리티 업그레이드, 저항 캡 0.55, 골드 싱크 상수, 머지 레시피 102종/스탯 102종 (T2 55종 + T3 30종 + T4 12종 + T5 5종), 별점 계산(calcStarRating), 캠페인 다이아몬드 보상(CAMPAIGN_DIAMOND_REWARDS), TOWER_UNLOCK_MAP(월드→타워 해금 매핑), 세이브 마이그레이션 v4, AdMob 광고 ID 5개/일일 제한 3개/보상 수치 4개/localStorage 키 1개, 밸런스 함수(calcHpScale/getBossHpMultiplier/calcWaveClearBonus), MAX_TOWER_COUNT=30, MERGE_COST 티어별 합성 비용, INITIAL_GOLD=160, 뽑기 비용 상수(DRAW_BASE_COST=80, DRAW_COST_INCREMENT=20) 및 calcDrawCost() 함수) |
+| `js/config.js` | 모든 게임 상수/밸런스 수치 집중 관리 (타워 10종, 적 8종, 웨이브 R1~R20, 메타 업그레이드 트리, 유틸리티 업그레이드, 저항 캡 0.55, 골드 싱크 상수, 머지 레시피 102종/스탯 102종 (T2 55종 + T3 30종 + T4 12종 + T5 5종), 별점 계산(calcStarRating), 캠페인 다이아몬드 보상(CAMPAIGN_DIAMOND_REWARDS), TOWER_UNLOCK_MAP(월드→타워 해금 매핑), 세이브 마이그레이션 v6, AdMob 광고 ID 5개/일일 제한 3개/보상 수치 4개/localStorage 키 1개, 밸런스 함수(calcHpScale/getBossHpMultiplier/calcWaveClearBonus), MAX_TOWER_COUNT=30, MERGE_COST 티어별 합성 비용, INITIAL_GOLD=160, 뽑기 비용 상수(DRAW_BASE_COST=80, DRAW_COST_INCREMENT=20) 및 calcDrawCost() 함수) |
 | `js/scenes/BootScene.js` | 초기 설정, localStorage 로드, 세이브 마이그레이션 (stats 필드 포함), UI 에셋 56장 preload (아이콘 16장 포함), `async create()` + AdManager 초기화/registry 등록 + `await document.fonts.ready`로 Galmuri 폰트 로딩 대기 후 메뉴 전환 |
 | `js/scenes/MenuScene.js` | 메뉴 화면, Diamond 표시, "Diamond 받기" 보상형 광고 버튼(일일 5회, Diamond +3), CAMPAIGN/ENDLESS(endlessUnlocked 조건부 활성)/COLLECTION/STATISTICS 버튼(광고 진행 중 isBusy 가드), 음소거 토글(centerX-48)/언어 토글(centerX+48) 버튼, 종료 확인 다이얼로그(_openExitDialog) |
-| `js/scenes/GameScene.js` | 핵심 게임플레이 (맵/타워/적/투사체/웨이브/AoE/체인/빔/메타 업그레이드/ProjectilePool/delta 캡/통계 추적/사거리 프리뷰/골드 싱크/머지 드래그 핸들링/타워 드래그 이동(_onTowerMove)/Pause 오버레이 합성도감 버튼/wake 이벤트 처리/mapClear 이벤트→MapClearScene 전환(clearBoostActive 전달)/일시정지 시 BGM 정지·복원/소모품 아이콘+툴팁/일시정지·음소거 버튼 아이콘/게임오버 전면 광고/부활 처리(revived/startWave 플래그, HP 절반 설정, 웨이브 재개)/광고 골드 2배 부스트(goldBoostActive, 적 처치+웨이브 보너스에 AD_GOLD_BOOST_MULTIPLIER 적용)/타워 슬롯 제한(MAX_TOWER_COUNT=30)/합성 골드 비용(MERGE_COST)/HUD 타워 카운트 매 프레임 갱신) |
+| `js/scenes/GameScene.js` | 핵심 게임플레이 (맵/타워/적/투사체/웨이브/AoE/체인/빔/메타 업그레이드/ProjectilePool/delta 캡/통계 추적/사거리 프리뷰/골드 싱크/머지 드래그 핸들링/타워 드래그 이동(_onTowerMove)/Pause 오버레이 합성도감 버튼/wake 이벤트 처리/mapClear 이벤트→MapClearScene 전환(clearBoostActive 전달)/일시정지 시 BGM 정지·복원/소모품 아이콘+툴팁/일시정지·음소거 버튼 아이콘/게임오버 전면 광고/부활 처리(revived/startWave 플래그, HP 절반 설정, 웨이브 재개)/광고 골드 2배 부스트(goldBoostActive, 적 처치+웨이브 보너스에 AD_GOLD_BOOST_MULTIPLIER 적용)/타워 슬롯 제한(MAX_TOWER_COUNT=30)/합성 골드 비용(MERGE_COST)/HUD 타워 카운트 매 프레임 갱신/합성 발견 팝업(_showDiscoveryPopup, newDiscoveries 등록)) |
 | `js/scenes/GameOverScene.js` | 결과 표시, Diamond 획득, 통계 저장, 게임 히스토리 관리, "광고 보고 부활" 보상형 광고 버튼(판당 1회, HP=maxHP/2로 해당 라운드 재개), RETRY/WORLD MAP(캠페인)/MENU 버튼(광고 진행 중 isBusy 가드, RETRY 시 mapData/gameMode 전달) |
 | `js/scenes/MapClearScene.js` | 캠페인 맵 클리어 결과 씬 (별점 1~3성 애니메이션, 다이아몬드 차액 보상 실제 지급, clearBoostActive 시 보상 2배, 사후 "보상 2배" 광고 버튼(120x22px), 세이브 지연 패턴(_ensureSaved), worldProgress/campaignStats/endlessUnlocked 세이브 갱신, 월드 클리어 시 타워 자동 해금+알림 UI, NEXT MAP/RETRY/WORLD MAP 버튼(광고 진행 중 isBusy 가드, _ensureSaved 이전 배치)) |
 | `js/scenes/WorldSelectScene.js` | 월드 선택 씬 (5개 월드 패널, 세이브 데이터 기반 해금/잠금, 별점 진행도, LevelSelectScene 이동) |
 | `js/scenes/LevelSelectScene.js` | 레벨 선택 씬 (6개 맵 카드, 세이브 데이터 기반 별점/해금, 기둥 장식 안쪽 패딩 35px, 설명 wordWrap 160px, "2배 골드"/"보상 2배" 광고 버튼(70x18px), START/BACK 버튼(광고 진행 중 isBusy 가드) -> GameScene(goldBoostActive/clearBoostActive 플래그 전달)) |
 | `js/scenes/EndlessMapSelectScene.js` | 엔드리스 맵 선택 씬 (6탭: 클래식+5월드, 맵 카드, 기둥 장식 안쪽 패딩 35px, 설명 wordWrap 160px, GameScene endless 모드 시작) |
-| `js/scenes/CollectionScene.js` | 컬렉션 모드 -- 이중 탭: (1) 메타업그레이드 (타워 카드 그리드, 메타 업그레이드 트리, 유틸리티 업그레이드, 잠긴 타워 월드 클리어 조건 안내), (2) 합성도감 탭 클릭 시 MergeCodexScene으로 전환 |
-| `js/scenes/MergeCodexScene.js` | 합성도감 전용 씬 -- T1~T5 서브탭, 전체 112종 타워 카드(발견 여부 무관 전부 공개), 카드 클릭 시 TowerInfoOverlay(codex 모드)로 상세 정보 표시, 드래그 스크롤(스크롤 시 visible 영역 밖 카드 interactive 비활성화), 상단 바 depth=10(카드 depth 6 / 서브탭 depth 8보다 상위), shutdown 핸들러로 리소스 정리. GameScene(Pause)과 CollectionScene 양쪽에서 진입 |
+| `js/scenes/CollectionScene.js` | 컬렉션 모드 -- 이중 탭: (1) 메타업그레이드 (타워 카드 그리드, 메타 업그레이드 트리, 유틸리티 업그레이드, 잠긴 타워 월드 클리어 조건 안내), (2) 합성도감 탭 클릭 시 MergeCodexScene으로 전환 + 신규 발견 빨간 점(newDiscoveries.length > 0 시 표시) |
+| `js/scenes/MergeCodexScene.js` | 합성도감 전용 씬 -- T1~T5 서브탭, 도감 발견 시스템 적용(미발견 타워 실루엣+??? 표시, T3+ 재료 미발견 시 카드 숨김, 재료 발견 상태별 힌트 텍스트, 진행률 발견수/전체수), 카드 클릭 시 TowerInfoOverlay(codex 모드)로 상세 정보 표시, 미발견 카드 클릭 시 토스트, 신규 발견 빨간 점+클릭 시 제거, 드래그 스크롤(스크롤 시 visible 영역 밖 카드 interactive 비활성화), 상단 바 depth=10(카드 depth 6 / 서브탭 depth 8보다 상위), shutdown 핸들러로 리소스 정리. GameScene(Pause)과 CollectionScene 양쪽에서 진입 |
 | `js/scenes/StatsScene.js` | 통계 표시 (스크롤 가능 UI, killsByType/killsByTower/goldEarned/damageDealt, 게임 히스토리) |
 | `js/entities/Tower.js` | 타워 배치/공격/판매/사거리 표시/강화(+1~+10)/머지(tier, mergeId, applyMergeResult) |
 | `js/entities/Enemy.js` | 적 이동/피격/슬로우/화상/독/방어력 감소/밀치기/분열/HP바 |
@@ -61,7 +61,7 @@ Phaser.js 3 기반 판타지 타워 디펜스 게임. 도형 기반 프로토타
 | `js/i18n.js` | 다국어 지원 (한국어/영어), 모든 UI 텍스트 번역 키 관리 (ko 467키, en 467키), SUPPORTED_LOCALES export, localStorage 언어 저장/복원 |
 | `js/ui/HUD.js` | 상단 HUD (Wave/Gold/HP, HP 위험 깜빡임, 웨이브 카운트다운, 적 프리뷰, 캠페인 Wave X/Y 표시, 타워 카운트 N/30 표시) |
 | `js/ui/TowerPanel.js` | 하단 뽑기 버튼(단일, 랜덤 T1 타워 선택)/판매(아이콘)/강화/드래그&드롭 머지+이동 UI/머지 프리뷰(드래그 하이라이트+호버 말풍선+합성 비용 표시)/3단 속도(아이콘, 1x/2x/3x) 패널. 뽑기 비용 표시/골드 부족 비활성화/롱프레스 풀 팝업. 드래그 시 빈 셀 하이라이트+이동/합성/취소 통합 분기. 타워 상세 모달은 TowerInfoOverlay로 위임 |
-| `js/ui/TowerInfoOverlay.js` | 공용 타워 정보 오버레이 (game/codex 모드). NineSlice 동적 패널, T1 스탯 패널, T2+ Y자 합성 트리, 상위 조합 드래그 스크롤, 드릴다운, game 모드 강화/판매 버튼, enhanceLevel 기반 baseH 동적 계산, handleBack() 공개 래퍼(ESC 키 외부 호출용) |
+| `js/ui/TowerInfoOverlay.js` | 공용 타워 정보 오버레이 (game/codex 모드). NineSlice 동적 패널, T1 스탯 패널, T2+ Y자 합성 트리, 상위 조합 드래그 스크롤, 드릴다운, game 모드 강화/판매 버튼, enhanceLevel 기반 baseH 동적 계산, handleBack() 공개 래퍼(ESC 키 외부 호출용), 미발견 타워 ??? 표시 + 드릴다운 차단 (상위 조합/재료 노드) |
 | `tools/balance-simulator.mjs` | Node.js 밸런스 시뮬레이터 (Phaser 의존성 없음). 5개 AI 전략 시나리오, CLI 지원 (`--scenarios`, `--rounds`, `--compare`, `--override`) |
 
 **총 33개 JS 파일** (+ 맵 데이터 5개 파일 + 도구 1개)
@@ -209,11 +209,11 @@ BootScene -> MenuScene
 
 ## 데이터 구조
 
-**localStorage 키: `fantasy-td-save`** (세이브 v4)
+**localStorage 키: `fantasy-td-save`** (세이브 v6)
 
 ```json
 {
-  "saveDataVersion": 4,
+  "saveDataVersion": 6,
   "bestRound": 15,
   "bestKills": 102,
   "totalGames": 5,
@@ -230,6 +230,7 @@ BootScene -> MenuScene
   },
   "unlockedTowers": ["dragon"],
   "discoveredMerges": [],
+  "newDiscoveries": [],
   "stats": {
     "totalKills": 512,
     "totalGoldEarned": 8420,
@@ -261,9 +262,10 @@ BootScene -> MenuScene
 }
 ```
 
-- `saveDataVersion`: 세이브 스키마 버전 (현재 4)
+- `saveDataVersion`: 세이브 스키마 버전 (현재 6)
 - `unlockedTowers`: 해금된 타워 타입 배열 (월드 클리어 기반, v4에서 worldProgress 기반 재계산)
-- `discoveredMerges`: 발견한 머지 결과 ID 배열 (v2 신규)
+- `discoveredMerges`: 발견한 머지 결과 ID 배열 (v2 신규, v6에서 도감 표시에 활용)
+- `newDiscoveries`: 아직 확인하지 않은 신규 발견 목록 (빨간 점 표시용, v6 신규). 카드 클릭 시 제거
 - `stats`: 전체 게임에 걸친 누적 통계 (킬 수, 골드, 데미지, 타입별/타워별 킬)
 - `gameHistory`: 최근 20게임 기록 배열 (FIFO, 게임당 상세 통계 포함)
 - `worldProgress`: 맵 ID별 진행 상태 (v3 신규). 클리어하지 않은 맵은 키 없음
@@ -277,7 +279,8 @@ BootScene -> MenuScene
 | v1 -> v2 | dragonUnlocked -> unlockedTowers, discoveredMerges 추가, saveDataVersion=2 |
 | v2 -> v3 | worldProgress={}, endlessUnlocked=false, campaignStats 기본값, saveDataVersion=3 |
 | v3 -> v4 | unlockedTowers를 worldProgress 기반으로 재계산 (TOWER_UNLOCK_MAP 참조, 각 월드 6맵 전부 cleared 시 해당 타워 해금), saveDataVersion=4 |
-| v1 -> v2 -> v3 -> v4 | 순차 실행 (각 블록에서 버전 고정하여 다음 블록 진입 보장) |
+| v5 -> v6 | discoveredMerges 미존재 시 빈 배열 초기화, 기존 유저 T2 전체 발견 처리(tier===2인 MERGE_RECIPES 전부 추가), newDiscoveries=[] 추가, saveDataVersion=6 |
+| v1 -> v2 -> ... -> v6 | 순차 실행 (각 블록에서 버전 고정하여 다음 블록 진입 보장) |
 
 ## 실행 방법
 
@@ -343,17 +346,18 @@ npx cap open android  # 또는 npx cap open ios
 - 랜덤 뽑기 시스템 Phase 3 (이코노미 리밸런스): Playwright 테스트 23개 (정상 15 + 예외 8) + 시각적 검증 3건, QA PASS
 - i18n 하드코딩 텍스트 t() 전환: Playwright 테스트 27개 (1차 FAIL 수정 2 + 잔존 하드코딩 10 + 키 정합성 4 + 재스캔 5 + 브라우저 4 + 코드 품질 2) + 시각적 검증 4건, QA PASS (R2)
 - 언어 전환 버튼 (Lang Toggle): Playwright 테스트 21개 (정상 10 + 예외 6 + UI 안정성 5) + 시각적 검증 10건, QA PASS
+- 타워 수집 시스템 (도감 발견 메커니즘): 코드 리뷰 6개 파일 전체 PASS, vite build PASS, QA PASS
 
 ## 시스템별 상세 문서
 
 | 문서 | 내용 |
 |---|---|
-| [systems/tower.md](systems/tower.md) | 타워 10종(Lv.1), T2 합성 55종, T3 합성 30종, T4 합성 12종, T5 전설 5종, 공격타입 7종, 머지 시스템, 강화 시스템, 랜덤 뽑기 시스템, 타워 드래그 이동 |
+| [systems/tower.md](systems/tower.md) | 타워 10종(Lv.1), T2 합성 55종, T3 합성 30종, T4 합성 12종, T5 전설 5종, 공격타입 7종, 머지 시스템, 강화 시스템, 랜덤 뽑기 시스템, 타워 드래그 이동, 타워 수집/발견 시스템 |
 | [systems/enemy.md](systems/enemy.md) | 적 8종, 스탯, 디버프 시스템, 면역 시스템 |
 | [systems/wave.md](systems/wave.md) | R1~R20 정의, R21+ 스케일링, 보스 라운드 |
 | [systems/economy.md](systems/economy.md) | Gold, Diamond, 메타 업그레이드, 컬렉션, 골드 싱크, 뽑기 비용 |
 | [systems/sound.md](systems/sound.md) | SFX 8종, BGM 3종, Web Audio API, 백그라운드 전환 BGM 자동 일시정지/재개 |
-| [systems/ui.md](systems/ui.md) | HUD(캠페인 Wave X/Y), TowerPanel(뽑기 버튼/풀 팝업/드래그 이동+합성 통합), TowerInfoOverlay(타워 정보 오버레이, game/codex 모드), 머지 프리뷰, 일시정지(합성도감 버튼 포함), 게임속도, 골드 싱크 UI(소모품 아이콘+툴팁), 컬렉션(이중 탭), MergeCodexScene(TowerInfoOverlay 연동), MapClearScene(차액 보상/세이브 갱신), WorldSelectScene(세이브 기반 해금), LevelSelectScene(세이브 기반 해금), MenuScene(CAMPAIGN/ENDLESS 조건부 활성, 음소거/언어 토글, 종료 확인 다이얼로그), EndlessMapSelectScene(6탭 맵 선택), GameOverScene(캠페인 3버튼), 씬 전환 페이드(fadeIn/fadeOut), Android 뒤로가기 키(ESC) 내비게이션, UI 이미지 에셋(버튼 23장/패널 5장/HUD 9장/장식 3장/아이콘 16장), Galmuri 픽셀 폰트, i18n(언어 전환/localStorage 저장), 모바일 |
+| [systems/ui.md](systems/ui.md) | HUD(캠페인 Wave X/Y), TowerPanel(뽑기 버튼/풀 팝업/드래그 이동+합성 통합), TowerInfoOverlay(타워 정보 오버레이, game/codex 모드, 미발견 타워 ???/드릴다운 차단), 머지 프리뷰, 일시정지(합성도감 버튼 포함), 게임속도, 골드 싱크 UI(소모품 아이콘+툴팁), 컬렉션(이중 탭, 합성도감 빨간 점), MergeCodexScene(도감 발견 시스템: 실루엣/힌트/진행률/빨간 점), 발견 축하 팝업, MapClearScene(차액 보상/세이브 갱신), WorldSelectScene(세이브 기반 해금), LevelSelectScene(세이브 기반 해금), MenuScene(CAMPAIGN/ENDLESS 조건부 활성, 음소거/언어 토글, 종료 확인 다이얼로그), EndlessMapSelectScene(6탭 맵 선택), GameOverScene(캠페인 3버튼), 씬 전환 페이드(fadeIn/fadeOut), Android 뒤로가기 키(ESC) 내비게이션, UI 이미지 에셋(버튼 23장/패널 5장/HUD 9장/장식 3장/아이콘 16장), Galmuri 픽셀 폰트, i18n(언어 전환/localStorage 저장), 모바일 |
 | [systems/ad.md](systems/ad.md) | AdMob 광고 시스템 (전면 광고, 보상형 광고 4종, 일일 제한, Mock 모드) |
 
 ## 향후 계획
