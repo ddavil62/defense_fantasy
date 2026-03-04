@@ -4,6 +4,26 @@
 
 ---
 
+## 2026-03-04 -- 합성 튜토리얼 (Merge Tutorial)
+
+### 추가
+
+- **`js/config.js`** -- SAVE_DATA_VERSION 7 -> 8. 신규 세이브 기본값에 `mergeTutorialDone: false` 추가. v7 -> v8 마이그레이션: 기존 유저는 `mergeTutorialDone = true` (이미 플레이한 유저이므로 튜토리얼 생략), 신규 유저만 `false`. Ensure v8 블록 추가
+- **`js/scenes/GameScene.js`** -- `_showMergeTutorialIfNeeded()` 메서드 신규 구현. `init()`에 `_mergeTutorialOverlay` 상태 변수 추가. `create()` 마지막에 호출. 오버레이 구성: 반투명 배경(alpha 0.75, depth 60) + 패널(280x180, depth 61) + 타이틀/설명 텍스트 + 확인 버튼(120x40, depth 62). 확인 클릭 시 오버레이 제거 + `isPaused = false` + `mergeTutorialDone = true` 세이브. `_cleanup()`에 오버레이 정리 코드 추가
+- **`js/i18n.js`** -- ko/en 각 4개 신규 키 추가: `tutorial.merge.title`, `tutorial.merge.desc1`, `tutorial.merge.desc2`, `tutorial.merge.confirm`
+
+### 참고
+
+- 스펙: `.claude/specs/2026-03-04-merge-tutorial.md`
+- 리포트: `.claude/specs/2026-03-04-merge-tutorial-report.md`
+- QA: `.claude/specs/2026-03-04-merge-tutorial-qa.md`
+- Playwright 테스트 24건 전체 PASS (정상 12 + 예외 5 + UI/시각 5 + i18n 2)
+- 오버레이 표시 중 BGM은 계속 재생 (isPaused만 설정, BGM 정지 없음)
+- 확인 버튼 높이 40px (Apple HIG 권장 44px보다 약간 작으나 스펙 명시 사항)
+- localStorage 쓰기 실패 시 silent ignore (다음 부팅 시 튜토리얼 재표시 가능, 허용된 동작)
+
+---
+
 ## 2026-03-04 -- 광고제거 인앱 구매 (Remove Ads IAP)
 
 ### 추가

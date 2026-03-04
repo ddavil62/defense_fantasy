@@ -607,6 +607,11 @@ const STRINGS = {
     'discovery.hintUnknown': '???',
     'codex.discovered': '\ubc1c\uacac',
     'codex.progressDiscovery': 'T{n}: {discovered}/{total}',
+    // ── 합성 튜토리얼 (GameScene) ──
+    'tutorial.merge.title': '합성 방법',
+    'tutorial.merge.desc1': '같은 타워를 드래그해서 겹치면 합성됩니다!',
+    'tutorial.merge.desc2': '일시정지 메뉴의 합성도감에서\n조합 레시피를 확인해보세요.',
+    'tutorial.merge.confirm': '확인',
   },
   en: {
     'tower.archer.name': 'Archer',
@@ -1170,5 +1175,10 @@ const STRINGS = {
     'discovery.hintUnknown': '???',
     'codex.discovered': 'Discovered',
     'codex.progressDiscovery': 'T{n}: {discovered}/{total}',
+    // ── Merge tutorial (GameScene) ──
+    'tutorial.merge.title': 'How to Merge',
+    'tutorial.merge.desc1': 'Drag the same tower onto another to merge them!',
+    'tutorial.merge.desc2': 'Check the Merge Codex in the Pause menu\nfor all combination recipes.',
+    'tutorial.merge.confirm': 'Got it!',
   },
 };

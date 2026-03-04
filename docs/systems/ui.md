@@ -1,6 +1,6 @@
 # UI 시스템
 
-HUD, TowerPanel, TowerInfoOverlay(타워 정보 오버레이), 머지 프리뷰, 일시정지, 게임속도, 통계, 골드 싱크 UI, 월드/레벨 선택, Android 뒤로가기 키(ESC) 내비게이션, UI 이미지 에셋, Galmuri 픽셀 폰트, 모바일 대응, 빌드/패키징.
+HUD, TowerPanel, TowerInfoOverlay(타워 정보 오버레이), 머지 프리뷰, 합성 튜토리얼, 일시정지, 게임속도, 통계, 골드 싱크 UI, 월드/레벨 선택, Android 뒤로가기 키(ESC) 내비게이션, UI 이미지 에셋, Galmuri 픽셀 폰트, 모바일 대응, 빌드/패키징.
 
 ## HUD (상단)
 
@@ -513,6 +513,56 @@ T1 카드 오버레이에서 DMG/SPD/RNG 표시 시, `saveData.towerUpgrades`에
 - **닫기**: 화면 아무 곳 탭
 - **짧은 탭(400ms 미만)**: 뽑기 실행
 - **i18n**: `draw.pool.title`, `draw.pool.prob` 키 사용
+
+## 합성 튜토리얼 (Merge Tutorial)
+
+첫 게임 시작 시 합성 방법과 합성도감을 안내하는 오버레이 팝업을 1회 표시한다. `GameScene._showMergeTutorialIfNeeded()`에서 구현.
+
+### 표시 조건
+
+- `saveData.mergeTutorialDone === false`인 경우에만 표시
+- 완전 신규 세이브(localStorage 없음)에서만 `mergeTutorialDone: false`로 초기화
+- 기존 유저(v7 이하 마이그레이션)는 `mergeTutorialDone: true`로 설정되어 표시하지 않음
+- 확인 버튼 클릭 시 `mergeTutorialDone = true`로 세이브, 이후 재표시 없음
+
+### 타이밍
+
+- `GameScene.create()` 마지막에 호출
+- `waveManager.startFirstWave()` 이후이지만 `isPaused = true` 상태이므로 웨이브 진행 억제
+- BGM은 계속 재생 (일시정지와 달리 BGM을 멈추지 않음)
+
+### 오버레이 레이아웃 (360x640)
+
+| 요소 | 좌표 | 크기 | depth | 상세 |
+|---|---|---|---|---|
+| 반투명 배경 | 중앙 | 360x640 | 60 | 0x000000, alpha 0.75, setInteractive (입력 차단) |
+| 패널 | (180, 300) | 280x180 | 61 | COLORS.UI_PANEL, 금색(BTN_PRIMARY) 테두리 2px |
+| 타이틀 | (180, 222) | - | 62 | 18px bold 금색(#ffd700), "합성 방법" |
+| 설명1 | (180, 270) | wordWrap 240 | 62 | 13px 흰색, "같은 타워를 드래그해서 겹치면 합성됩니다!" |
+| 설명2 | (180, 318) | wordWrap 240 | 62 | 13px 흰색, "일시정지 메뉴의 합성도감에서\n조합 레시피를 확인해보세요." |
+| 확인 버튼 | (180, 368) | 120x40 | 62 | COLORS.BUTTON_ACTIVE, BTN_PRIMARY 테두리 1px |
+
+### 확인 버튼 동작
+
+1. `_mergeTutorialOverlay.destroy()` + `null` 초기화
+2. `isPaused = false` (게임 재개)
+3. `saveData.mergeTutorialDone = true`
+4. `registry.set('saveData', saveData)`
+5. `localStorage.setItem(SAVE_KEY, ...)` (try/catch, 실패 시 무시)
+
+### 정리
+
+- `_cleanup()`에서 `_mergeTutorialOverlay` destroy + null 처리
+- 씬 재시작 시 메모리 누수 방지
+
+### i18n 키
+
+| 키 | ko | en |
+|---|---|---|
+| `tutorial.merge.title` | 합성 방법 | How to Merge |
+| `tutorial.merge.desc1` | 같은 타워를 드래그해서 겹치면 합성됩니다! | Drag the same tower onto another to merge them! |
+| `tutorial.merge.desc2` | 일시정지 메뉴의 합성도감에서\n조합 레시피를 확인해보세요. | Check the Merge Codex in the Pause menu\nfor all combination recipes. |
+| `tutorial.merge.confirm` | 확인 | Got it! |
 
 ## 일시정지 시스템 (Phase 4)
 

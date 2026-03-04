@@ -2027,7 +2027,7 @@ function createDefaultStats() {
 }
 
 /** @const {number} 현재 세이브 데이터 스키마 버전 */
-export const SAVE_DATA_VERSION = 7;
+export const SAVE_DATA_VERSION = 8;
 
 /**
  * 세이브 데이터를 최신 스키마로 마이그레이션한다.
@@ -2056,6 +2056,7 @@ export function migrateSaveData(saveData) {
       endlessUnlocked: false,
       campaignStats: { totalStars: 0, mapsCleared: 0, worldsCleared: 0 },
       adFree: false,
+      mergeTutorialDone: false,
     };
   }
 
@@ -2153,6 +2154,13 @@ export function migrateSaveData(saveData) {
     saveData.saveDataVersion = 7;
   }
 
+  // ── v7 → v8 마이그레이션: 합성 튜토리얼 완료 플래그 추가 ──
+  if (saveData.saveDataVersion < 8) {
+    // 기존 유저는 이미 게임을 해봤으므로 튜토리얼 생략
+    if (saveData.mergeTutorialDone === undefined) saveData.mergeTutorialDone = true;
+    saveData.saveDataVersion = 8;
+  }
+
   // ── Ensure all v2 fields exist ──
   if (saveData.diamond === undefined) saveData.diamond = 0;
   if (saveData.totalDiamondEarned === undefined) saveData.totalDiamondEarned = 0;
@@ -2179,6 +2187,9 @@ export function migrateSaveData(saveData) {
 
   // ── Ensure v7 fields exist ──
   if (saveData.adFree === undefined) saveData.adFree = false;
+
+  // ── Ensure v8 fields exist ──
+  if (saveData.mergeTutorialDone === undefined) saveData.mergeTutorialDone = false;
 
   return saveData;
 }

@@ -129,6 +129,9 @@ export class GameScene extends Phaser.Scene {
     /** @type {Phaser.GameObjects.Container|null} 일시정지 오버레이 컨테이너 */
     this.pauseOverlay = null;
 
+    /** @type {Phaser.GameObjects.Container|null} 합성 튜토리얼 오버레이 컨테이너 */
+    this._mergeTutorialOverlay = null;
+
     /** @type {boolean} 현재 웨이브에서 보스 등장 연출이 이미 트리거되었는지 여부 */
     this._bossAppearTriggered = false;
 
@@ -311,6 +314,9 @@ export class GameScene extends Phaser.Scene {
     } else {
       this.waveManager.startFirstWave();
     }
+
+    // 합성 튜토리얼 (첫 플레이어에게만 1회 표시)
+    this._showMergeTutorialIfNeeded();
   }
 
   /**
@@ -2059,6 +2065,97 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
+   * 첫 게임 진입 시 합성 튜토리얼 오버레이를 표시한다.
+   * saveData.mergeTutorialDone이 false인 경우에만 실행한다.
+   * 확인 버튼을 누르면 플래그를 저장하고 게임을 재개한다.
+   * @private
+   */
+  _showMergeTutorialIfNeeded() {
+    const saveData = this.registry.get('saveData');
+    if (!saveData || saveData.mergeTutorialDone === true) return;
+
+    // 게임 일시정지 (BGM은 계속 재생)
+    this.isPaused = true;
+
+    // 오버레이 컨테이너 생성
+    this._mergeTutorialOverlay = this.add.container(0, 0).setDepth(60);
+
+    // 전체 화면 반투명 어두운 배경 (입력 차단용 setInteractive)
+    const bg = this.add.rectangle(
+      GAME_WIDTH / 2, GAME_HEIGHT / 2,
+      GAME_WIDTH, GAME_HEIGHT,
+      0x000000
+    ).setAlpha(0.75).setInteractive().setDepth(60);
+    this._mergeTutorialOverlay.add(bg);
+
+    // 중앙 패널
+    const panel = this.add.rectangle(180, 300, 280, 180, COLORS.UI_PANEL)
+      .setStrokeStyle(2, BTN_PRIMARY).setDepth(61);
+    this._mergeTutorialOverlay.add(panel);
+
+    // 타이틀 텍스트 (금색)
+    const titleText = this.add.text(180, 222, t('tutorial.merge.title'), {
+      fontSize: '18px',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
+      color: '#ffd700',
+      fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(62);
+    this._mergeTutorialOverlay.add(titleText);
+
+    // 설명 텍스트 1: 드래그 합성 안내
+    const desc1Text = this.add.text(180, 270, t('tutorial.merge.desc1'), {
+      fontSize: '13px',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
+      color: '#ffffff',
+      align: 'center',
+      wordWrap: { width: 240 },
+    }).setOrigin(0.5).setDepth(62);
+    this._mergeTutorialOverlay.add(desc1Text);
+
+    // 설명 텍스트 2: 합성도감 안내
+    const desc2Text = this.add.text(180, 318, t('tutorial.merge.desc2'), {
+      fontSize: '13px',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
+      color: '#ffffff',
+      align: 'center',
+      wordWrap: { width: 240 },
+    }).setOrigin(0.5).setDepth(62);
+    this._mergeTutorialOverlay.add(desc2Text);
+
+    // 확인 버튼 배경
+    const confirmBtn = this.add.rectangle(180, 368, 120, 40, COLORS.BUTTON_ACTIVE)
+      .setStrokeStyle(1, BTN_PRIMARY)
+      .setInteractive({ useHandCursor: true }).setDepth(62);
+    this._mergeTutorialOverlay.add(confirmBtn);
+
+    // 확인 버튼 텍스트
+    const confirmText = this.add.text(180, 368, t('tutorial.merge.confirm'), {
+      fontSize: '14px',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
+      color: '#ffffff',
+      fontStyle: 'bold',
+    }).setOrigin(0.5).setDepth(62);
+    this._mergeTutorialOverlay.add(confirmText);
+
+    // 확인 버튼 클릭 핸들러
+    confirmBtn.on('pointerdown', () => {
+      // 오버레이 제거
+      this._mergeTutorialOverlay.destroy();
+      this._mergeTutorialOverlay = null;
+
+      // 게임 재개
+      this.isPaused = false;
+
+      // 세이브 데이터 갱신 및 저장
+      saveData.mergeTutorialDone = true;
+      this.registry.set('saveData', saveData);
+      try {
+        localStorage.setItem(SAVE_KEY, JSON.stringify(saveData));
+      } catch { /* localStorage 저장 실패 시 무시 */ }
+    });
+  }
+
+  /**
    * 게임을 일시정지하고 오버레이를 표시한다.
    * 현재 게임 속도를 저장하여 Resume 시 복원한다.
    * BGM도 함께 정지하여 백그라운드 전환 시 불일치를 방지한다.
@@ -2911,6 +3008,12 @@ export class GameScene extends Phaser.Scene {
     this._splitSpawnQueue = [];
 
     this._hidePauseOverlay();
+
+    // 합성 튜토리얼 오버레이 정리
+    if (this._mergeTutorialOverlay) {
+      this._mergeTutorialOverlay.destroy();
+      this._mergeTutorialOverlay = null;
+    }
 
     // 일시정지/음소거 아이콘 이미지 정리
     if (this.pauseBtnIcon) { this.pauseBtnIcon.destroy(); this.pauseBtnIcon = null; }
