@@ -8,3 +8,8 @@ android/local.properties
 *.iml
 .DS_Store
 Thumbs.db
+
+# 테스트 아티팩트
+test-results/
+tests/screenshots/
+sim/
