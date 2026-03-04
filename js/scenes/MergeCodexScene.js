@@ -667,27 +667,63 @@ export class MergeCodexScene extends Phaser.Scene {
   }
 
   /**
-   * 신규 발견 다이아몬드 보상 토스트를 표시한다.
-   * 화면 하단에서 위로 떠오르며 페이드아웃된다.
+   * 신규 발견 다이아몬드 보상 팝업을 표시한다.
+   * 화면 중앙에 배경 박스 + 다이아 아이콘 + 텍스트가 스케일업 후 페이드아웃된다.
+   * 동시에 "띠링" 효과음을 재생한다.
    * @private
    */
   _showDiamondRewardToast() {
-    const toast = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 80, '\u25C6 +1', {
-      fontSize: '16px',
-      fontFamily: 'Galmuri11, Arial, sans-serif',
-      color: '#9b59b6',
-      fontStyle: 'bold',
-      stroke: '#000000',
-      strokeThickness: 3,
-    }).setOrigin(0.5).setDepth(100);
+    // 효과음 재생
+    const soundManager = this.registry.get('soundManager');
+    if (soundManager) {
+      soundManager.playSfx('sfx_diamond_reward');
+    }
 
+    const cx = GAME_WIDTH / 2;
+    const cy = GAME_HEIGHT / 2;
+    const depth = 200;
+
+    // 반투명 배경 박스
+    const bg = this.add.graphics().setDepth(depth);
+    bg.fillStyle(0x1a1a2e, 0.9);
+    bg.fillRoundedRect(cx - 70, cy - 28, 140, 56, 12);
+    bg.lineStyle(2, 0x9b59b6, 1);
+    bg.strokeRoundedRect(cx - 70, cy - 28, 140, 56, 12);
+
+    // 다이아 아이콘 + 텍스트
+    const label = this.add.text(cx, cy, '\u25C6 +1', {
+      fontSize: '24px',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
+      color: '#d4a5ff',
+      fontStyle: 'bold',
+      stroke: '#1a1a2e',
+      strokeThickness: 4,
+    }).setOrigin(0.5).setDepth(depth + 1);
+
+    // 컨테이너로 묶어서 함께 애니메이션
+    const container = this.add.container(0, 0, [bg, label]).setDepth(depth);
+
+    // 등장 애니메이션: 스케일 0 → 1 (바운스)
+    container.setScale(0);
     this.tweens.add({
-      targets: toast,
-      y: toast.y - 50,
+      targets: container,
+      scaleX: 1,
+      scaleY: 1,
+      duration: 300,
+      ease: 'Back.easeOut',
+    });
+
+    // 1초 유지 후 위로 떠오르며 페이드아웃
+    this.tweens.add({
+      targets: container,
+      y: -40,
       alpha: 0,
-      duration: 1500,
+      delay: 1000,
+      duration: 600,
       ease: 'Power2',
-      onComplete: () => { toast.destroy(); },
+      onComplete: () => {
+        container.destroy();
+      },
     });
   }
 

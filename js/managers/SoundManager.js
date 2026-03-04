@@ -300,6 +300,9 @@ export class SoundManager {
         case 'sfx_merge_discovery':
           this._playSfxMergeDiscovery(ctx);
           break;
+        case 'sfx_diamond_reward':
+          this._playSfxDiamondReward(ctx);
+          break;
       }
     } catch (e) {
       // 오디오 오류 무시
@@ -638,6 +641,56 @@ export class SoundManager {
     sg.gain.exponentialRampToValueAtTime(0.001, sparkleStart + 0.3);
     sparkle.start(sparkleStart);
     sparkle.stop(sparkleStart + 0.3);
+  }
+
+  /**
+   * 다이아몬드 보상 SFX를 재생한다 (밝은 "띠링" 효과).
+   * 고음 2음(E6 → A6)의 짧은 벨 사운드 + 잔향으로 보상 획득감을 표현한다.
+   * @param {AudioContext} ctx - 오디오 컨텍스트
+   * @private
+   */
+  _playSfxDiamondReward(ctx) {
+    const now = ctx.currentTime;
+
+    // 1음: E6 (1319Hz) - 짧고 밝은 벨
+    const osc1 = ctx.createOscillator();
+    const g1 = ctx.createGain();
+    osc1.connect(g1);
+    g1.connect(this._sfxGain);
+    osc1.type = 'sine';
+    osc1.frequency.setValueAtTime(1319, now);
+    g1.gain.setValueAtTime(0.001, now);
+    g1.gain.linearRampToValueAtTime(0.5, now + 0.01);
+    g1.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+    osc1.start(now);
+    osc1.stop(now + 0.15);
+
+    // 2음: A6 (1760Hz) - 상승 벨 (0.08초 후)
+    const osc2 = ctx.createOscillator();
+    const g2 = ctx.createGain();
+    osc2.connect(g2);
+    g2.connect(this._sfxGain);
+    osc2.type = 'sine';
+    osc2.frequency.setValueAtTime(1760, now + 0.08);
+    g2.gain.setValueAtTime(0.001, now);
+    g2.gain.setValueAtTime(0.55, now + 0.08);
+    g2.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+    osc2.start(now + 0.08);
+    osc2.stop(now + 0.35);
+
+    // 잔향: 고음 반짝임 (E7 2637Hz)
+    const sparkle = ctx.createOscillator();
+    const sg = ctx.createGain();
+    sparkle.connect(sg);
+    sg.connect(this._sfxGain);
+    sparkle.type = 'triangle';
+    sparkle.frequency.setValueAtTime(2637, now + 0.12);
+    sparkle.frequency.exponentialRampToValueAtTime(2093, now + 0.4);
+    sg.gain.setValueAtTime(0.001, now);
+    sg.gain.setValueAtTime(0.15, now + 0.12);
+    sg.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+    sparkle.start(now + 0.12);
+    sparkle.stop(now + 0.4);
   }
 
   // ── BGM ─────────────────────────────────────────────────────────
