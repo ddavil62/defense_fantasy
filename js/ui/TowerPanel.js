@@ -520,6 +520,9 @@ export class TowerPanel {
     // 이미 모달이 열려있으면 닫기
     this._hideAdRewardModal();
 
+    // 타워 선택 중 게임 일시정지 (고민할 시간 확보)
+    this.scene.isPaused = true;
+
     const container = this.scene.add.container(0, 0).setDepth(61);
     this._adModalContainer = container;
 
@@ -645,6 +648,8 @@ export class TowerPanel {
 
     cancelText.on('pointerdown', () => {
       this._hideAdRewardModal();
+      // 취소 시에도 게임 재개
+      this.scene.isPaused = false;
     });
   }
 
@@ -658,6 +663,9 @@ export class TowerPanel {
    */
   _onAdTowerSelected(towerData) {
     this._hideAdRewardModal();
+
+    // 타워 선택 완료: 게임 재개
+    this.scene.isPaused = false;
 
     this.selectedTower = null;
     this._hideInfo();
