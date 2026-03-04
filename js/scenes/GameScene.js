@@ -716,6 +716,9 @@ export class GameScene extends Phaser.Scene {
     // 이미 팝업이 열려 있으면 무시
     if (this._discoveryPopup) return;
 
+    // 합성 발견 효과음 재생
+    if (this.soundManager) this.soundManager.playSfx('sfx_merge_discovery');
+
     // 레시피와 스탯 정보 찾기
     let recipe = null;
     for (const [, r] of Object.entries(MERGE_RECIPES)) {

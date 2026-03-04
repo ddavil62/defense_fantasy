@@ -3,7 +3,7 @@
  * 모든 사운드는 OscillatorNode + GainNode를 사용하여 런타임에 합성된다.
  * 외부 오디오 파일을 사용하지 않는다.
  *
- * SFX: fire, hit, kill, kill_boss, boss_appear, base_hit, wave_clear, game_over
+ * SFX: fire, hit, kill, kill_boss, boss_appear, base_hit, wave_clear, game_over, merge_discovery
  * BGM: menu, battle, boss (노트 시퀀서 루프, setInterval 사용)
  *
  * Web Audio API만 의존한다. Phaser 의존성 없음.
@@ -297,6 +297,9 @@ export class SoundManager {
         case 'sfx_game_over':
           this._playSfxGameOver(ctx);
           break;
+        case 'sfx_merge_discovery':
+          this._playSfxMergeDiscovery(ctx);
+          break;
       }
     } catch (e) {
       // 오디오 오류 무시
@@ -588,6 +591,53 @@ export class SoundManager {
     g2.gain.exponentialRampToValueAtTime(0.001, t + 1.0);
     osc2.start(t + 0.4);
     osc2.stop(t + 1.0);
+  }
+
+  /**
+   * 합성 신규 발견 SFX를 재생한다 (4음 상승 아르페지오 + 반짝임).
+   * C5 → E5 → G5 → C6의 밝은 메이저 코드로 발견의 기쁨을 표현한다.
+   * @param {AudioContext} ctx - 오디오 컨텍스트
+   * @private
+   */
+  _playSfxMergeDiscovery(ctx) {
+    const t = ctx.currentTime;
+
+    // 4음 상승 아르페지오: C5(523) → E5(659) → G5(784) → C6(1047)
+    const notes = [523, 659, 784, 1047];
+    const delay = 0.10;  // 각 음 간격
+
+    for (let i = 0; i < notes.length; i++) {
+      const start = t + i * delay;
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.connect(g);
+      g.connect(this._sfxGain);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(notes[i], start);
+      // 마지막 음은 더 길고 크게
+      const vol = i === notes.length - 1 ? 0.5 : 0.35;
+      const dur = i === notes.length - 1 ? 0.40 : 0.18;
+      g.gain.setValueAtTime(0.001, t);
+      g.gain.setValueAtTime(vol, start);
+      g.gain.exponentialRampToValueAtTime(0.001, start + dur);
+      osc.start(start);
+      osc.stop(start + dur);
+    }
+
+    // 반짝임: 고음 트라이앵글 효과 (마지막 음과 동시)
+    const sparkleStart = t + notes.length * delay;
+    const sparkle = ctx.createOscillator();
+    const sg = ctx.createGain();
+    sparkle.connect(sg);
+    sg.connect(this._sfxGain);
+    sparkle.type = 'sine';
+    sparkle.frequency.setValueAtTime(2093, sparkleStart);         // C7
+    sparkle.frequency.exponentialRampToValueAtTime(1568, sparkleStart + 0.3); // G6으로 하강
+    sg.gain.setValueAtTime(0.001, t);
+    sg.gain.setValueAtTime(0.2, sparkleStart);
+    sg.gain.exponentialRampToValueAtTime(0.001, sparkleStart + 0.3);
+    sparkle.start(sparkleStart);
+    sparkle.stop(sparkleStart + 0.3);
   }
 
   // ── BGM ─────────────────────────────────────────────────────────
