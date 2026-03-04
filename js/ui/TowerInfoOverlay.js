@@ -285,8 +285,11 @@ export class TowerInfoOverlay {
    * @private
    */
   _renderT1Panel(entry, panelX, panelTop, usedInList) {
+    // 콘텐츠 시작 Y: NineSlice 상단 장식(NS_TOP=48) 아래 + 여백
+    const contentY = panelTop + NS_TOP + 10;
+
     // 타워 이름
-    const nameText = this.scene.add.text(panelX, panelTop + 40, entry.displayName, {
+    const nameText = this.scene.add.text(panelX, contentY, entry.displayName, {
       fontSize: '16px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#ffffff', fontStyle: 'bold',
     }).setOrigin(0.5);
     this._container.add(nameText);
@@ -294,23 +297,23 @@ export class TowerInfoOverlay {
     // 타워 아이콘 (이미지 우선, 폴백 시 색상 원) + 티어 배지
     const towerTexKey = `tower_${entry.id}`;
     if (this.scene.textures.exists(towerTexKey)) {
-      const iconImg = this.scene.add.image(panelX - 30, panelTop + 65, towerTexKey)
+      const iconImg = this.scene.add.image(panelX - 30, contentY + 25, towerTexKey)
         .setDisplaySize(28, 28);
       this._container.add(iconImg);
     } else {
       const circleG = this.scene.add.graphics();
       circleG.fillStyle(entry.color, 1);
-      circleG.fillCircle(panelX - 30, panelTop + 65, 14);
+      circleG.fillCircle(panelX - 30, contentY + 25, 14);
       this._container.add(circleG);
     }
 
-    const tierBadge = this.scene.add.text(panelX + 5, panelTop + 65, 'T1', {
+    const tierBadge = this.scene.add.text(panelX + 5, contentY + 25, 'T1', {
       fontSize: '11px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#ffd700',
     }).setOrigin(0, 0.5);
     this._container.add(tierBadge);
 
     // ── 동적 Y 누산 시작 (이름+원 아래) ──
-    let curY = panelTop + 84;
+    let curY = contentY + 44;
 
     // 플레이버 텍스트 (분위기) — setOrigin(0.5, 0)으로 상단 기준 배치
     const flavorKey = `tower.${entry.id}.flavor`;
