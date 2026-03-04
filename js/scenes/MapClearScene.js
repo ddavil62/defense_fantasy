@@ -347,7 +347,7 @@ export class MapClearScene extends Phaser.Scene {
     this.add.text(centerX, nextY, nextLabel, {
       fontSize: '16px',
       fontFamily: 'Galmuri11, Arial, sans-serif',
-      color: '#1a1a2e',
+      color: '#ffffff',
       fontStyle: 'bold',
     }).setOrigin(0.5);
 
