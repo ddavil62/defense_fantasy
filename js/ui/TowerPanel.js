@@ -166,7 +166,7 @@ export class TowerPanel {
    */
   _createDrawButton() {
     const x = GAME_WIDTH / 2 - 40;
-    const y = PANEL_Y + 38;
+    const y = PANEL_Y + 50;
     const btnW = 120;
     const btnH = 44;
 
@@ -392,7 +392,7 @@ export class TowerPanel {
   _createSellButton() {
     const btnSize = VISUALS.ACTION_BUTTON_SIZE;
     const x = GAME_WIDTH - 75;
-    const y = PANEL_Y + 36;
+    const y = PANEL_Y + 48;
 
     if (this.scene.textures.exists('slot_action_normal')) {
       this.sellBg = this.scene.add.image(x, y, 'slot_action_normal')
@@ -441,7 +441,7 @@ export class TowerPanel {
   _createSpeedButton() {
     const btnSize = VISUALS.ACTION_BUTTON_SIZE;
     const x = GAME_WIDTH - 38;
-    const y = PANEL_Y + 36;
+    const y = PANEL_Y + 48;
 
     if (this.scene.textures.exists('slot_action_normal')) {
       this.speedBg = this.scene.add.image(x, y, 'slot_action_normal')
