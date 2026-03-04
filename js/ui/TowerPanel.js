@@ -381,6 +381,9 @@ export class TowerPanel {
     if (this._adDrawLabelText) this._adDrawLabelText.setText(t('ui.ad.loading'));
     if (this._adDrawButton) this._adDrawButton.disableInteractive();
 
+    // 광고 시청 중 게임 일시정지
+    this.scene.isPaused = true;
+
     try {
       const result = await adManager.showRewarded(ADMOB_REWARDED_TOWER_ID);
       // 씬이 파괴된 경우 안전하게 종료
@@ -395,12 +398,14 @@ export class TowerPanel {
         const towers = this._pickAdRewardTowers();
         this._showAdRewardModal(towers);
       } else {
-        // 광고 실패/취소: 에러 텍스트 표시
+        // 광고 실패/취소: 일시정지 해제 + 에러 텍스트 표시
+        this.scene.isPaused = false;
         this._showAdFailedToast();
       }
     } catch (e) {
-      // 예외 발생 시 에러 토스트
+      // 예외 발생 시 일시정지 해제 + 에러 토스트
       if (this.scene && this.scene.scene.isActive()) {
+        this.scene.isPaused = false;
         this._showAdFailedToast();
       }
     } finally {
