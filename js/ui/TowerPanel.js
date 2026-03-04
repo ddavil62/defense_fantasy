@@ -361,7 +361,7 @@ export class TowerPanel {
 
   /**
    * 무료뽑기 버튼 클릭 핸들러.
-   * AdManager가 busy 상태이면 무시하고, 아니면 보상형 광고를 표시한다.
+   * 클릭 즉시 버튼을 비활성화하고 로딩 라벨을 표시한다.
    * 광고 시청 완료 시 타워 선택 모달을 열고, 실패 시 에러 텍스트를 표시한다.
    * @private
    */
@@ -372,8 +372,14 @@ export class TowerPanel {
     // 판당 제한 초과 시 무시
     if (this._adDrawUsedCount >= AD_DRAW_LIMIT_PER_GAME) return;
 
-    // 광고 진행 중이면 무시
-    if (adManager.isBusy) return;
+    // 광고 진행 중 또는 처리 중이면 무시 (중복 탭 방지)
+    if (adManager.isBusy || this._adDrawProcessing) return;
+    this._adDrawProcessing = true;
+
+    // 즉시 로딩 상태로 전환 (버튼 비활성화 + 라벨 변경)
+    const originalLabel = this._adDrawLabelText ? this._adDrawLabelText.text : '';
+    if (this._adDrawLabelText) this._adDrawLabelText.setText(t('ui.ad.loading'));
+    if (this._adDrawButton) this._adDrawButton.disableInteractive();
 
     try {
       const result = await adManager.showRewarded(ADMOB_REWARDED_TOWER_ID);
@@ -396,6 +402,17 @@ export class TowerPanel {
       // 예외 발생 시 에러 토스트
       if (this.scene && this.scene.scene.isActive()) {
         this._showAdFailedToast();
+      }
+    } finally {
+      this._adDrawProcessing = false;
+      // 씬이 살아있으면 버튼 상태 복원
+      if (this.scene && this.scene.scene.isActive()) {
+        if (this._adDrawLabelText) this._adDrawLabelText.setText(originalLabel);
+        // 판당 제한 소진이 아닌 경우에만 인터랙티브 복원
+        const remaining = AD_DRAW_LIMIT_PER_GAME - this._adDrawUsedCount;
+        if (remaining > 0 && this._adDrawButton) {
+          this._adDrawButton.setInteractive({ useHandCursor: true });
+        }
       }
     }
   }
