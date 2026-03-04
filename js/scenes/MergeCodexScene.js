@@ -639,10 +639,14 @@ export class MergeCodexScene extends Phaser.Scene {
       newDiscoveries.splice(idx, 1);
       this._saveData.newDiscoveries = newDiscoveries;
 
+      // 신규 발견 보상: 다이아몬드 1개 지급
+      this._saveData.diamond = (this._saveData.diamond || 0) + 1;
+
       // registry 세이브 데이터도 동기화
       const registrySave = this.registry.get('saveData');
       if (registrySave) {
         registrySave.newDiscoveries = newDiscoveries;
+        registrySave.diamond = this._saveData.diamond;
       }
 
       // localStorage에 저장
@@ -656,7 +660,35 @@ export class MergeCodexScene extends Phaser.Scene {
       if (redDot) {
         redDot.destroy();
       }
+
+      // 다이아 보상 토스트 표시
+      this._showDiamondRewardToast();
     }
+  }
+
+  /**
+   * 신규 발견 다이아몬드 보상 토스트를 표시한다.
+   * 화면 하단에서 위로 떠오르며 페이드아웃된다.
+   * @private
+   */
+  _showDiamondRewardToast() {
+    const toast = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT - 80, '\u25C6 +1', {
+      fontSize: '16px',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
+      color: '#9b59b6',
+      fontStyle: 'bold',
+      stroke: '#000000',
+      strokeThickness: 3,
+    }).setOrigin(0.5).setDepth(100);
+
+    this.tweens.add({
+      targets: toast,
+      y: toast.y - 50,
+      alpha: 0,
+      duration: 1500,
+      ease: 'Power2',
+      onComplete: () => { toast.destroy(); },
+    });
   }
 
   /**
