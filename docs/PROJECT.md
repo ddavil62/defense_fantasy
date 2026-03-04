@@ -61,7 +61,7 @@ Phaser.js 3 기반 판타지 타워 디펜스 게임. 도형 기반 프로토타
 | `js/managers/SoundManager.js` | Web Audio API 프로시저럴 SFX/BGM, 백그라운드 전환 시 BGM 자동 일시정지/재개 |
 | `js/i18n.js` | 다국어 지원 (한국어/영어), 모든 UI 텍스트 번역 키 관리 (ko 497키, en 497키), SUPPORTED_LOCALES export, localStorage 언어 저장/복원 |
 | `js/ui/HUD.js` | 상단 HUD (Wave/Gold/HP, HP 위험 깜빡임, 웨이브 카운트다운, 적 프리뷰, 캠페인 Wave X/Y 표시, 타워 카운트 N/30 표시) |
-| `js/ui/TowerPanel.js` | 하단 뽑기 버튼(X=80, 랜덤 T1 타워 선택)+광고보기 버튼(X=240, 광고 시청 후 T1 90%/T2 10% 타워 3개 모달 선택, 무료 배치)/판매(아이콘)/강화/드래그&드롭 머지+이동 UI/머지 프리뷰(드래그 하이라이트+호버 말풍선+합성 비용 표시)/3단 속도(아이콘, 1x/2x/3x) 패널. 뽑기 비용 표시/골드 부족 비활성화/롱프레스 풀 팝업. 드래그 시 빈 셀 하이라이트+이동/합성/취소 통합 분기. 타워 상세 모달은 TowerInfoOverlay로 위임 |
+| `js/ui/TowerPanel.js` | 하단 2행 패널. 1행: 뽑기 버튼(X=95, 150x44, 랜덤 T1 타워 선택)+무료뽑기 버튼(X=265, 150x44, 광고 시청 후 T1 90%/T2 10% 타워 3개 모달 선택, 무료 배치). 2행: 배속(X=40)+소모품3종+HP회복. 강화/드래그&드롭 머지+이동 UI/머지 프리뷰(드래그 하이라이트+호버 말풍선+합성 비용 표시)/3단 속도(아이콘, 1x/2x/3x). 뽑기 비용 표시/골드 부족 비활성화/롱프레스 풀 팝업. 드래그 시 빈 셀 하이라이트+이동/합성/취소 통합 분기. 타워 상세 모달은 TowerInfoOverlay로 위임 |
 | `js/ui/TowerInfoOverlay.js` | 공용 타워 정보 오버레이 (game/codex 모드). NineSlice 동적 패널, T1 스탯 패널, T2+ Y자 합성 트리, 상위 조합 드래그 스크롤, 드릴다운, game 모드 강화/판매 버튼, enhanceLevel 기반 baseH 동적 계산, handleBack() 공개 래퍼(ESC 키 외부 호출용), 미발견 타워 ??? 표시 + 드릴다운 차단 (상위 조합/재료 노드) |
 | `tools/balance-simulator.mjs` | Node.js 밸런스 시뮬레이터 (Phaser 의존성 없음). 5개 AI 전략 시나리오, CLI 지원 (`--scenarios`, `--rounds`, `--compare`, `--override`) |
 
@@ -357,6 +357,7 @@ npx cap open android  # 또는 npx cap open ios
 - 광고 보상 타워 뽑기: Playwright 테스트 28개 (정상 17 + 예외 7 + 시각적 3 + 안정성 1) + 시각적 검증 5건, QA PASS
 - 광고제거 인앱 구매: Playwright 테스트 44건 (정상 22 + 예외 8 + 레이아웃 14), QA PASS (R2)
 - 합성 튜토리얼: Playwright 테스트 24건 (정상 12 + 예외 5 + UI/시각 5 + i18n 2) + 시각적 검증 6건, QA PASS
+- 하단 패널 UI 리디자인: Playwright 테스트 29건 (정상 18 + 예외/엣지케이스 4 + 시각적 4 + 안정성 3) + 시각적 검증 8건, QA PASS
 
 ## 시스템별 상세 문서
 
@@ -367,7 +368,7 @@ npx cap open android  # 또는 npx cap open ios
 | [systems/wave.md](systems/wave.md) | R1~R20 정의, R21+ 스케일링, 보스 라운드 |
 | [systems/economy.md](systems/economy.md) | Gold, Diamond, 메타 업그레이드, 컬렉션, 골드 싱크, 뽑기 비용, 광고 보상 타워(무료) |
 | [systems/sound.md](systems/sound.md) | SFX 8종, BGM 3종, Web Audio API, 백그라운드 전환 BGM 자동 일시정지/재개 |
-| [systems/ui.md](systems/ui.md) | HUD(캠페인 Wave X/Y), TowerPanel(뽑기 버튼+광고보기 버튼/풀 팝업/광고 보상 타워 모달/드래그 이동+합성 통합), TowerInfoOverlay(타워 정보 오버레이, game/codex 모드, 미발견 타워 ???/드릴다운 차단), 머지 프리뷰, 합성 튜토리얼(신규 유저 1회 오버레이), 일시정지(합성도감 버튼 포함), 게임속도, 골드 싱크 UI(소모품 아이콘+툴팁), 컬렉션(이중 탭, 합성도감 빨간 점), MergeCodexScene(도감 발견 시스템: 실루엣/힌트/진행률/빨간 점), 발견 축하 팝업, MapClearScene(차액 보상/세이브 갱신), WorldSelectScene(세이브 기반 해금), LevelSelectScene(세이브 기반 해금), MenuScene(CAMPAIGN/ENDLESS 조건부 활성, 음소거/언어 토글, 종료 확인 다이얼로그), EndlessMapSelectScene(6탭 맵 선택), GameOverScene(캠페인 3버튼), 씬 전환 페이드(fadeIn/fadeOut), Android 뒤로가기 키(ESC) 내비게이션, UI 이미지 에셋(버튼 23장/패널 5장/HUD 9장/장식 3장/아이콘 16장), Galmuri 픽셀 폰트, i18n(언어 전환/localStorage 저장), 모바일 |
+| [systems/ui.md](systems/ui.md) | HUD(캠페인 Wave X/Y), TowerPanel(2행 레이아웃: 1행 뽑기+무료뽑기 버튼/2행 배속+소모품3종+HP회복, 풀 팝업/광고 보상 타워 모달/드래그 이동+합성 통합), TowerInfoOverlay(타워 정보 오버레이, game/codex 모드, 미발견 타워 ???/드릴다운 차단), 머지 프리뷰, 합성 튜토리얼(신규 유저 1회 오버레이), 일시정지(합성도감 버튼 포함), 게임속도, 골드 싱크 UI(소모품 아이콘+툴팁), 컬렉션(이중 탭, 합성도감 빨간 점), MergeCodexScene(도감 발견 시스템: 실루엣/힌트/진행률/빨간 점), 발견 축하 팝업, MapClearScene(차액 보상/세이브 갱신), WorldSelectScene(세이브 기반 해금), LevelSelectScene(세이브 기반 해금), MenuScene(CAMPAIGN/ENDLESS 조건부 활성, 음소거/언어 토글, 종료 확인 다이얼로그), EndlessMapSelectScene(6탭 맵 선택), GameOverScene(캠페인 3버튼), 씬 전환 페이드(fadeIn/fadeOut), Android 뒤로가기 키(ESC) 내비게이션, UI 이미지 에셋(버튼 23장/패널 5장/HUD 9장/장식 3장/아이콘 16장), Galmuri 픽셀 폰트, i18n(언어 전환/localStorage 저장), 모바일 |
 | [systems/ad.md](systems/ad.md) | AdMob 광고 시스템 (전면 광고, 보상형 광고 5종, 일일 제한, Mock 모드) |
 
 ## 향후 계획

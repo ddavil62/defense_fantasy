@@ -4,6 +4,32 @@
 
 ---
 
+## 2026-03-04 -- 하단 패널 UI 리디자인 (Panel Redesign)
+
+### 변경
+
+- **`js/ui/TowerPanel.js`** -- 하단 패널을 2행 레이아웃으로 재편. 1행: 뽑기 버튼(X=95, Y=PANEL_Y+42, 150x44px) + 무료뽑기 버튼(X=265, Y=PANEL_Y+42, 150x44px). 2행: 배속 버튼(X=40, Y=PANEL_Y+80)을 2행 좌측으로 이동. "광고보기" 라벨을 "무료뽑기"로 변경 (adFree 여부 무관하게 `draw.ad.button` 키 고정). `_createSellButton()` 메서드 및 관련 참조(sellBg, sellIcon, sellText, showTowerInfo/hideInfo/destroy 내 참조) 전체 삭제. `_adFreeHintText` ("광고 없이 뽑기" 유도 텍스트) 전체 삭제 (constructor, _createAdDrawButton, _disableAdDrawButton 내 참조 포함)
+- **`js/scenes/GameScene.js`** -- HP회복 버튼 좌표 변경 (X=320, Y=PANEL_Y+80). 소모품 버튼 3종 좌표 변경 (baseX=90, spacing=50, Y=PANEL_Y+80 → slowAll X=90, goldRain X=140, lightning X=190)
+- **`js/i18n.js`** -- ko: `draw.ad.button` 값 '광고보기' -> '무료뽑기'. en: `draw.ad.button` 값 'Watch Ad' -> 'Free Draw'
+
+### 삭제
+
+- **`js/ui/TowerPanel.js`** -- 삭제(판매/휴지통) 버튼 (`_createSellButton` 메서드 전체). TowerInfoOverlay에 sell 버튼이 존재하므로 패널 상의 별도 버튼 불필요
+- **`js/ui/TowerPanel.js`** -- "광고 없이 뽑기" 유도 텍스트 (`_adFreeHintText` 관련 코드 전체)
+
+### 참고
+
+- 스펙: `.claude/specs/2026-03-04-panel-redesign.md`
+- 리포트: `.claude/specs/2026-03-04-panel-redesign-report.md`
+- QA: `.claude/specs/2026-03-04-panel-redesign-qa.md`
+- Playwright 테스트 29건 전체 PASS (정상 18 + 예외/엣지케이스 4 + 시각적 4 + 안정성 3)
+- `onSell` 콜백 자체는 유지 (TowerInfoOverlay에서 동일 콜백 사용)
+- `BTN_DANGER` import 유지 (`_updateSpeedHighlight`에서 사용 중)
+- `draw.ad.button.adFree` i18n 키는 하위 호환을 위해 유지
+- QA LOW 소견: TowerPanel.js 주석 6곳에 "광고보기" 구 라벨명 잔존 (코드 동작에 영향 없음)
+
+---
+
 ## 2026-03-04 -- 합성 튜토리얼 (Merge Tutorial)
 
 ### 추가

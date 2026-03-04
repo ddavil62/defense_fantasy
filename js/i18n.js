@@ -503,7 +503,7 @@ const STRINGS = {
     'draw.pool.title': '뽑기 풀',
     'draw.pool.prob': '각 {count}% 확률',
     // ── 광고 보상 타워 뽑기 ──
-    'draw.ad.button': '광고보기',
+    'draw.ad.button': '무료뽑기',
     'draw.ad.sublabel': '타워 3선택',
     'draw.ad.modal.title': '광고 보상: 타워 선택',
     'draw.ad.modal.select': '선택',
@@ -1071,7 +1071,7 @@ const STRINGS = {
     'draw.pool.title': 'Draw Pool',
     'draw.pool.prob': '{count}% each',
     // ── Ad reward tower draw ──
-    'draw.ad.button': 'Watch Ad',
+    'draw.ad.button': 'Free Draw',
     'draw.ad.sublabel': 'Pick 1 of 3',
     'draw.ad.modal.title': 'Ad Reward: Pick a Tower',
     'draw.ad.modal.select': 'Select',

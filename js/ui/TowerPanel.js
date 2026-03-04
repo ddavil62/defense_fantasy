@@ -1,6 +1,6 @@
 /**
  * @fileoverview TowerPanel - 하단 타워 조작 패널.
- * 랜덤 뽑기 버튼, 합성(드래그&드롭) 기능, 판매 버튼, 배속 토글을 제공한다.
+ * 랜덤 뽑기 버튼, 합성(드래그&드롭) 기능, 배속 토글을 제공한다.
  * 타워 상세 정보 모달은 TowerInfoOverlay로 위임한다.
  */
 
@@ -21,7 +21,7 @@ import { TowerInfoOverlay } from './TowerInfoOverlay.js';
 
 /**
  * 게임 하단 타워 패널 UI 클래스.
- * 타워 배치 선택, 합성 드래그&드롭, 판매, 게임 속도 조절 등
+ * 타워 배치 선택, 합성 드래그&드롭, 게임 속도 조절 등
  * 핵심 조작 인터페이스를 담당한다.
  * 배치된 타워 상세 정보 모달은 TowerInfoOverlay로 위임한다.
  */
@@ -33,7 +33,6 @@ export class TowerPanel {
    * @param {Function} callbacks.onTowerSelect - 타워 타입 선택 시 호출
    * @param {Function} callbacks.onMerge - 합성 드래그 성공 시 호출 (towerA, towerB)
    * @param {Function} callbacks.onEnhance - 강화 버튼 클릭 시 호출
-   * @param {Function} callbacks.onSell - 판매 버튼 클릭 시 호출
    * @param {Function} callbacks.onSpeedToggle - 배속 버튼 클릭 시 호출
    * @param {Function} callbacks.onDeselect - 선택 해제 시 호출
    * @param {string[]} [callbacks.unlockedTowers] - 잠금 해제된 타워 타입 키 배열
@@ -83,13 +82,13 @@ export class TowerPanel {
     this._pendingDrawType = null;
 
     // ── 광고 보상 타워 뽑기 상태 ──
-    /** @type {Phaser.GameObjects.Image|Phaser.GameObjects.Rectangle|null} 광고보기 버튼 배경 */
+    /** @type {Phaser.GameObjects.Image|Phaser.GameObjects.Rectangle|null} 무료뽑기 버튼 배경 */
     this._adDrawButton = null;
 
-    /** @type {Phaser.GameObjects.Text|null} 광고보기 라벨 텍스트 */
+    /** @type {Phaser.GameObjects.Text|null} 무료뽑기 라벨 텍스트 */
     this._adDrawLabelText = null;
 
-    /** @type {Phaser.GameObjects.Text|null} 광고보기 서브라벨 텍스트 */
+    /** @type {Phaser.GameObjects.Text|null} 무료뽑기 서브라벨 텍스트 */
     this._adDrawSublabelText = null;
 
     /** @type {Phaser.GameObjects.Container|null} 광고 보상 타워 선택 모달 컨테이너 */
@@ -100,9 +99,6 @@ export class TowerPanel {
 
     /** @type {number} 현재 판(게임)에서 광고 보상 뽑기를 사용한 횟수 */
     this._adDrawUsedCount = 0;
-
-    /** @type {Phaser.GameObjects.Text|null} 광고제거 유도 텍스트 ("광고 없이 뽑기") */
-    this._adFreeHintText = null;
 
     /** @type {TowerInfoOverlay} 타워 상세 정보 오버레이 */
     this.towerInfoOverlay = new TowerInfoOverlay(scene, {
@@ -145,7 +141,7 @@ export class TowerPanel {
   // ── 패널 UI 생성 ────────────────────────────────────────────
 
   /**
-   * 패널의 배경, 타워 버튼, 판매/배속 버튼을 생성한다.
+   * 패널의 배경, 뽑기 버튼, 배속 버튼을 생성한다.
    * @private
    */
   _create() {
@@ -178,9 +174,6 @@ export class TowerPanel {
     // 광고 보상 타워 뽑기 버튼
     this._createAdDrawButton();
 
-    // 판매 버튼
-    this._createSellButton();
-
     // 배속 토글 버튼
     this._createSpeedButton();
   }
@@ -193,9 +186,9 @@ export class TowerPanel {
    * @private
    */
   _createDrawButton() {
-    const x = 80;
-    const y = PANEL_Y + 50;
-    const btnW = 120;
+    const x = 95;
+    const y = PANEL_Y + 42;
+    const btnW = 150;
     const btnH = 44;
 
     // 뽑기 버튼 배경 (이미지 또는 사각형 폴백)
@@ -313,21 +306,17 @@ export class TowerPanel {
   // ── 광고 보상 타워 뽑기 ──────────────────────────────────────
 
   /**
-   * "광고보기" 버튼을 뽑기 버튼 오른쪽에 생성한다.
-   * 광고 시청 후 T1(90%)/T2(10%) 확률로 타워 3개를 모달로 제시한다.
+   * "무료뽑기" 버튼을 뽑기 버튼 오른쪽에 생성한다.
+   * 광고 시청(또는 adFree 시 즉시) 후 T1(90%)/T2(10%) 확률로 타워 3개를 모달로 제시한다.
    * @private
    */
   _createAdDrawButton() {
-    const x = 240;
-    const y = PANEL_Y + 50;
-    const btnW = 120;
+    const x = 265;
+    const y = PANEL_Y + 42;
+    const btnW = 150;
     const btnH = 44;
 
-    // adFree 상태 확인
-    const adManager = this.scene.registry.get('adManager');
-    const isAdFree = adManager ? adManager.isAdFree() : false;
-
-    // 광고보기 버튼 배경 (이미지 또는 사각형 폴백)
+    // 무료뽑기 버튼 배경 (이미지 또는 사각형 폴백)
     if (this.scene.textures.exists('slot_action_normal')) {
       this._adDrawButton = this.scene.add.image(x, y, 'slot_action_normal')
         .setDisplaySize(btnW, btnH)
@@ -339,8 +328,8 @@ export class TowerPanel {
     }
     this.container.add(this._adDrawButton);
 
-    // 광고보기 라벨 텍스트 (상단) — adFree이면 "무료뽑기"
-    const labelKey = isAdFree ? 'draw.ad.button.adFree' : 'draw.ad.button';
+    // 무료뽑기 라벨 텍스트 (상단) — adFree 여부 무관하게 동일 키 사용
+    const labelKey = 'draw.ad.button';
     this._adDrawLabelText = this.scene.add.text(x, y - 8, t(labelKey), {
       fontSize: '14px',
       fontFamily: 'Galmuri11, Arial, sans-serif',
@@ -349,7 +338,7 @@ export class TowerPanel {
     }).setOrigin(0.5);
     this.container.add(this._adDrawLabelText);
 
-    // 광고보기 서브라벨 텍스트 (하단, 연보라) — 잔여 횟수 표시
+    // 무료뽑기 서브라벨 텍스트 (하단, 연보라) — 잔여 횟수 표시
     const remaining = AD_DRAW_LIMIT_PER_GAME - this._adDrawUsedCount;
     const sublabelStr = `${t('draw.ad.sublabel')} (${remaining}/${AD_DRAW_LIMIT_PER_GAME})`;
     this._adDrawSublabelText = this.scene.add.text(x, y + 10, sublabelStr, {
@@ -368,34 +357,10 @@ export class TowerPanel {
     this._adDrawButton.on('pointerdown', () => {
       this._onAdDrawButtonClick();
     });
-
-    // "광고 없이 뽑기" 유도 텍스트 (adFree 미구매 시에만 표시)
-    if (!isAdFree) {
-      this._adFreeHintText = this.scene.add.text(x, PANEL_Y + 74, t('iap.removeAds.hint'), {
-        fontSize: '8px',
-        fontFamily: 'Galmuri11, Arial, sans-serif',
-        color: '#e74c3c',
-        fontStyle: 'bold',
-      }).setOrigin(0.5).setInteractive({ useHandCursor: true });
-      this.container.add(this._adFreeHintText);
-
-      // 클릭 시 광고제거 구매 진행 (MenuScene으로 안내)
-      this._adFreeHintText.on('pointerdown', () => {
-        // 인게임에서는 직접 구매 다이얼로그를 띄우지 않고, 시각적 피드백만 제공
-        // 다음 메뉴 방문 시 구매 버튼을 찾도록 깜빡임 효과로 유도
-        this.scene.tweens.add({
-          targets: this._adFreeHintText,
-          alpha: 0.3,
-          duration: 200,
-          yoyo: true,
-          repeat: 2,
-        });
-      });
-    }
   }
 
   /**
-   * 광고보기 버튼 클릭 핸들러.
+   * 무료뽑기 버튼 클릭 핸들러.
    * AdManager가 busy 상태이면 무시하고, 아니면 보상형 광고를 표시한다.
    * 광고 시청 완료 시 타워 선택 모달을 열고, 실패 시 에러 텍스트를 표시한다.
    * @private
@@ -746,7 +711,7 @@ export class TowerPanel {
   }
 
   /**
-   * 광고보기 버튼의 서브라벨을 잔여 횟수로 갱신한다.
+   * 무료뽑기 버튼의 서브라벨을 잔여 횟수로 갱신한다.
    * 제한 소진 시 버튼을 비활성화한다.
    * @private
    */
@@ -762,7 +727,7 @@ export class TowerPanel {
   }
 
   /**
-   * 광고보기 버튼을 비활성화한다 (판당 제한 소진 시).
+   * 무료뽑기 버튼을 비활성화한다 (판당 제한 소진 시).
    * 버튼을 반투명하게 만들고 인터랙티브를 해제한다.
    * @private
    */
@@ -776,9 +741,6 @@ export class TowerPanel {
     }
     if (this._adDrawSublabelText) {
       this._adDrawSublabelText.setAlpha(0.4);
-    }
-    if (this._adFreeHintText) {
-      this._adFreeHintText.setVisible(false);
     }
   }
 
@@ -883,54 +845,6 @@ export class TowerPanel {
     g.fillCircle(x, y + 2, 2);
   }
 
-  // ── 판매 버튼 ──────────────────────────────────────────────
-
-  /**
-   * 타워 판매 버튼을 생성한다.
-   * 타워가 선택되었을 때만 활성화되며, 클릭 시 onSell 콜백을 호출한다.
-   * @private
-   */
-  _createSellButton() {
-    const btnSize = VISUALS.ACTION_BUTTON_SIZE;
-    const x = GAME_WIDTH - 75;
-    const y = PANEL_Y + 48;
-
-    if (this.scene.textures.exists('slot_action_normal')) {
-      this.sellBg = this.scene.add.image(x, y, 'slot_action_normal')
-        .setInteractive({ useHandCursor: true })
-        .setAlpha(0.5);
-    } else {
-      this.sellBg = this.scene.add.rectangle(x, y, btnSize, btnSize, BTN_DANGER)
-        .setStrokeStyle(1, 0x636e72)
-        .setInteractive({ useHandCursor: true })
-        .setAlpha(0.5);
-    }
-    this.container.add(this.sellBg);
-
-    // 판매 아이콘 이미지 또는 텍스트 폴백
-    if (this.scene.textures.exists('icon_sell')) {
-      this.sellIcon = this.scene.add.image(x, y, 'icon_sell')
-        .setDisplaySize(20, 20);
-      this.container.add(this.sellIcon);
-      this.sellText = null;
-    } else {
-      this.sellIcon = null;
-      this.sellText = this.scene.add.text(x, y, 'S', {
-        fontSize: '14px',
-        fontFamily: 'Galmuri11, Arial, sans-serif',
-        color: '#ffffff',
-        fontStyle: 'bold',
-      }).setOrigin(0.5);
-      this.container.add(this.sellText);
-    }
-
-    this.sellBg.on('pointerdown', () => {
-      if (this.selectedTower && this.callbacks.onSell) {
-        this.callbacks.onSell(this.selectedTower);
-      }
-    });
-  }
-
   // ── 배속 토글 버튼 ─────────────────────────────────────────
 
   /**
@@ -941,8 +855,8 @@ export class TowerPanel {
    */
   _createSpeedButton() {
     const btnSize = VISUALS.ACTION_BUTTON_SIZE;
-    const x = GAME_WIDTH - 38;
-    const y = PANEL_Y + 48;
+    const x = 40;
+    const y = PANEL_Y + 80;
 
     if (this.scene.textures.exists('slot_action_normal')) {
       this.speedBg = this.scene.add.image(x, y, 'slot_action_normal')
@@ -1216,9 +1130,6 @@ export class TowerPanel {
     this.selectedTowerType = null;
     this._updateButtonHighlights();
     this._hideInfo();
-
-    // 판매 버튼 활성화 (불투명도 복원)
-    this.sellBg.setAlpha(1);
 
     // 타워 상세 오버레이 열기
     this.towerInfoOverlay.open(tower);
@@ -1592,14 +1503,11 @@ export class TowerPanel {
   // ── 정보 패널 관리 ─────────────────────────────────────────
 
   /**
-   * 타워 정보 오버레이를 닫고 판매 버튼을 비활성화한다.
+   * 타워 정보 오버레이를 닫는다.
    * @private
    */
   _hideInfo() {
     this.towerInfoOverlay.close();
-    if (this.sellBg) {
-      this.sellBg.setAlpha(0.5);
-    }
   }
 
   /**
@@ -1656,7 +1564,6 @@ export class TowerPanel {
     this._clearMergeHighlights();
     this._hideMergePreviewBubble();
     // 아이콘 이미지 오브젝트 정리
-    if (this.sellIcon) { this.sellIcon.destroy(); this.sellIcon = null; }
     if (this.speedIcon) { this.speedIcon.destroy(); this.speedIcon = null; }
     if (this.container) {
       this.container.destroy();

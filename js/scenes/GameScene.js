@@ -2471,8 +2471,8 @@ export class GameScene extends Phaser.Scene {
    * @private
    */
   _createHpRecoverButton() {
-    const x = GAME_WIDTH - 38;
-    const y = PANEL_Y + 86;
+    const x = 320;
+    const y = PANEL_Y + 80;
     const btnSize = VISUALS.ACTION_BUTTON_SIZE;
 
     // HP 회복 버튼 배경 (액션 슬롯 이미지 또는 사각형 폴백)
@@ -2577,11 +2577,11 @@ export class GameScene extends Phaser.Scene {
    */
   _createConsumableButtons() {
     const keys = ['slowAll', 'goldRain', 'lightning'];
-    const y = PANEL_Y + 86;  // HP 회복 버튼과 같은 행
+    const y = PANEL_Y + 80;  // 2행 기준선 (배속, HP회복과 같은 행)
     const btnSize = 24;
-    const spacing = 26;
-    // HP 회복 버튼(x=322) 왼쪽에 배치
-    const baseX = GAME_WIDTH - 38 - spacing * 3;
+    const spacing = 50;
+    // 배속 버튼(x=40) 오른쪽에 간격을 두고 배치
+    const baseX = 90;
 
     /** @type {object} 각 능력의 버튼 UI 참조 */
     this.consumableButtons = {};
