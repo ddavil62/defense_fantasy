@@ -115,7 +115,7 @@ export class MenuScene extends Phaser.Scene {
     this.add.text(centerX, 380 + offsetY, t('ui.campaign'), {
       fontSize: '16px',
       fontFamily: 'Galmuri11, Arial, sans-serif',
-      color: '#1a1a2e',
+      color: '#ffffff',
       fontStyle: 'bold',
     }).setOrigin(0.5);
 
@@ -142,7 +142,7 @@ export class MenuScene extends Phaser.Scene {
       this.add.text(centerX, 435 + offsetY, t('ui.endless'), {
         fontSize: '15px',
         fontFamily: 'Galmuri11, Arial, sans-serif',
-        color: '#1a1a2e',
+        color: '#ffffff',
         fontStyle: 'bold',
       }).setOrigin(0.5);
 
