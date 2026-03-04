@@ -778,21 +778,27 @@ export class TowerInfoOverlay {
     if (!tower) return;
 
     const info = tower.getInfo();
-    let curY = buttonsTopY + 10;
 
-    // ── 강화 버튼 (오버레이 전용 크기 유지: 200x32) ──
+    // ── 판매 버튼 Y 좌표 (패널 하단 고정) ──
+    const sellBtnW = 200;
+    const sellBtnH = 32;
+    const sellY = panelY + panelH / 2 - NS_BOTTOM - sellBtnH / 2 - 8;
+
+    // ── 강화 버튼 (판매 버튼 바로 위에 고정 배치: 200x32) ──
+    const enhBtnW = 200;
+    const enhBtnH = 32;
+    const enhY = sellY - sellBtnH / 2 - 8 - enhBtnH / 2;
+
     if (info.canEnhance && info.enhanceLevel < MAX_ENHANCE_LEVEL) {
-      const enhBtnW = 200;
-      const enhBtnH = 32;
       let enhBtn;
       if (this.scene.textures.exists('btn_medium_primary_normal')) {
-        enhBtn = this.scene.add.image(panelX, curY, 'btn_medium_primary_normal')
+        enhBtn = this.scene.add.image(panelX, enhY, 'btn_medium_primary_normal')
           .setInteractive({ useHandCursor: true });
         enhBtn.on('pointerdown', () => enhBtn.setTexture('btn_medium_primary_pressed'));
         enhBtn.on('pointerup', () => enhBtn.setTexture('btn_medium_primary_normal'));
         enhBtn.on('pointerout', () => enhBtn.setTexture('btn_medium_primary_normal'));
       } else {
-        enhBtn = this.scene.add.rectangle(panelX, curY, enhBtnW, enhBtnH, BTN_PRIMARY)
+        enhBtn = this.scene.add.rectangle(panelX, enhY, enhBtnW, enhBtnH, BTN_PRIMARY)
           .setStrokeStyle(1, 0xffd700)
           .setInteractive({ useHandCursor: true });
       }
@@ -801,7 +807,7 @@ export class TowerInfoOverlay {
       const enhLabel = t('ui.enhance')
         .replace('{level}', info.enhanceLevel + 1)
         .replace('{cost}', info.enhanceCost);
-      const enhText = this.scene.add.text(panelX, curY, `\u2b06 ${enhLabel}`, {
+      const enhText = this.scene.add.text(panelX, enhY, `\u2b06 ${enhLabel}`, {
         fontSize: '12px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#ffffff', fontStyle: 'bold',
       }).setOrigin(0.5);
       this._container.add(enhText);
@@ -811,25 +817,17 @@ export class TowerInfoOverlay {
           this._onEnhance(tower);
         }
       });
-
-      curY += enhBtnH + 8;
     }
 
     // 최대 강화 레벨 도달 시 텍스트 표시
     if (!info.canEnhance && info.enhanceLevel >= MAX_ENHANCE_LEVEL) {
-      const maxText = this.scene.add.text(panelX, curY, `\u2b50 ${t('ui.maxEnhance')}`, {
+      const maxText = this.scene.add.text(panelX, enhY, `\u2b50 ${t('ui.maxEnhance')}`, {
         fontSize: '12px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#ffd700', fontStyle: 'bold',
       }).setOrigin(0.5);
       this._container.add(maxText);
-      curY += 24;
     }
 
-    // ── 판매 버튼 (오버레이 전용 크기 유지: 200x32) ──
-    // 패널 하단 NineSlice 프레임 근처에 고정 배치
-    // panelBottom - NS_BOTTOM(44) - sellBtnH(32)/2 - 8(내부 여백)
-    const sellBtnW = 200;
-    const sellBtnH = 32;
-    const sellY = panelY + panelH / 2 - NS_BOTTOM - sellBtnH / 2 - 8;
+    // ── 판매 버튼 (패널 하단 고정: 200x32) ──
     let sellBtn;
     if (this.scene.textures.exists('btn_medium_danger_normal')) {
       sellBtn = this.scene.add.image(panelX, sellY, 'btn_medium_danger_normal')
