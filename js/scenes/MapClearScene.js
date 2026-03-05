@@ -306,26 +306,8 @@ export class MapClearScene extends Phaser.Scene {
       });
     }
 
-    // ── 타워 해금 알림 ──
-    if (this._newlyUnlockedTower) {
-      const towerName = t(`tower.${this._newlyUnlockedTower}.name`);
-      const unlockLabel = this.add.text(centerX, diamondY + 28,
-        `\uD83D\uDD13 ${towerName} ${t('ui.towerUnlocked')}`, {
-          fontSize: '16px',
-          fontFamily: 'Galmuri11, Arial, sans-serif',
-          color: '#00b894',
-          fontStyle: 'bold',
-        }).setOrigin(0.5).setAlpha(0).setScale(0.5);
-
-      this.tweens.add({
-        targets: unlockLabel,
-        alpha: 1,
-        scale: 1,
-        duration: 500,
-        delay: 1800,
-        ease: 'Back.easeOut',
-      });
-    }
+    // 타워 해금 알림은 별점 등급 텍스트와 영역이 겹쳐 제거함
+    // (해금 로직 자체는 유지 — saveData.unlockedTowers에 정상 추가됨)
 
     // ── 별점 등급 텍스트 ──
     const ratingTexts = ['', t('ui.rating1'), t('ui.rating2'), t('ui.rating3')];
