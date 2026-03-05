@@ -4,6 +4,24 @@
 
 ---
 
+## 2026-03-05 -- 맵 클리어 팡파레 사운드 추가
+
+### 추가
+
+- **`js/managers/SoundManager.js`** -- `_playSfxMapClearFanfare(ctx)` 메서드 추가. Web Audio API 5레이어 절차적 합성으로 승리 팡파레 생성. 구성: 멜로디(sine, C5->E5->G5->C6 아르페지오), 화음(triangle, E5+G5+C6), 베이스 타격(sine, C3), sparkle 1(triangle, C7->G6 하강), sparkle 2(triangle, E7->C7 하강). 전체 약 2.2초. `playSfx()` switch에 `sfx_map_clear_fanfare` 분기 추가
+- **`js/scenes/MapClearScene.js`** -- `create()` 내 `fadeIn(300)` 직후에 `soundManager.playSfx('sfx_map_clear_fanfare')` 호출 삽입. 별점 구분 없이 항상 동일한 최대 팡파레 재생
+
+### 참고
+
+- 기존 `sfx_wave_clear`(GameScene 맵 클리어 직전)와 약 1초 간격으로 연속 재생되어 자연스러운 연출 형성
+- `_sfxGain` 노드 경유로 SFX 볼륨/음소거 설정 반영. `_ensureContext()` 흐름 준수
+- 외부 오디오 파일 없이 Web Audio API만 사용
+- 스펙: `.claude/specs/2026-03-05-map-clear-sound.md`
+- 리포트: `.claude/specs/2026-03-05-map-clear-sound-report.md`
+- QA: `.claude/specs/2026-03-05-map-clear-sound-qa.md`
+
+---
+
 ## 2026-03-05 -- 무료 뽑기 클릭 관통 버그 수정
 
 ### 수정

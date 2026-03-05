@@ -174,6 +174,12 @@ export class MapClearScene extends Phaser.Scene {
     // ── 씬 진입 페이드인 ──
     this.cameras.main.fadeIn(300, 0, 0, 0);
 
+    // 맵 클리어 팡파레 재생 (씬 진입 즉시, 별점 애니메이션과 동시)
+    const soundManager = this.registry.get('soundManager');
+    if (soundManager) {
+      soundManager.playSfx('sfx_map_clear_fanfare');
+    }
+
     // ── 결과 패널 (이미지 또는 폴백 사각형) ──
     const panelW = 280;
     const panelH = 400;

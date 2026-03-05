@@ -2,7 +2,7 @@
 
 Web Audio API 프로시저럴 사운드. 외부 오디오 파일 없음.
 
-## SFX (8종)
+## SFX (11종)
 
 | SFX | 트리거 | 비고 |
 |---|---|---|
@@ -14,6 +14,9 @@ Web Audio API 프로시저럴 사운드. 외부 오디오 파일 없음.
 | base_hit | 기지 피격 | 빨간 플래시 이펙트 동반 |
 | wave_clear | 웨이브 클리어 | 보너스 Gold 텍스트 동반 |
 | game_over | 게임 오버 | 결과 패널 표시 |
+| merge_discovery | 신규 합성 발견 | GameScene 합성 시 첫 발견 |
+| diamond_reward | 다이아 보상 | MergeCodexScene 보상 수령 |
+| map_clear_fanfare | 맵 클리어 | MapClearScene 진입 즉시 재생. 5레이어 합성(멜로디+화음+베이스+sparkle x2), 약 2.2초 |
 
 ## BGM (3종)
 

@@ -368,7 +368,7 @@ npx cap open android  # 또는 npx cap open ios
 | [systems/enemy.md](systems/enemy.md) | 적 8종, 스탯, 디버프 시스템, 면역 시스템 |
 | [systems/wave.md](systems/wave.md) | R1~R20 정의, R21+ 스케일링, 보스 라운드 |
 | [systems/economy.md](systems/economy.md) | Gold, Diamond, 메타 업그레이드, 컬렉션, 광고제거 IAP(Google Play Billing 연동), 골드 싱크, 뽑기 비용, 광고 보상 타워(무료) |
-| [systems/sound.md](systems/sound.md) | SFX 8종, BGM 3종, Web Audio API, 백그라운드 전환 BGM 자동 일시정지/재개 |
+| [systems/sound.md](systems/sound.md) | SFX 11종, BGM 3종, Web Audio API, 백그라운드 전환 BGM 자동 일시정지/재개 |
 | [systems/ui.md](systems/ui.md) | HUD(캠페인 Wave X/Y), TowerPanel(2행 레이아웃: 1행 뽑기+무료뽑기 버튼/2행 배속+소모품3종+HP회복, 풀 팝업/광고 보상 타워 모달/드래그 이동+합성 통합), TowerInfoOverlay(타워 정보 오버레이, game/codex 모드, 미발견 타워 ???/드릴다운 차단), 머지 프리뷰, 합성 튜토리얼(신규 유저 1회 오버레이), 일시정지(합성도감 버튼 포함), 게임속도, 골드 싱크 UI(소모품 아이콘+툴팁), 컬렉션(이중 탭, 합성도감 빨간 점), MergeCodexScene(도감 발견 시스템: 실루엣/힌트/진행률/빨간 점), 발견 축하 팝업, MapClearScene(차액 보상/세이브 갱신), WorldSelectScene(세이브 기반 해금), LevelSelectScene(세이브 기반 해금), MenuScene(CAMPAIGN/ENDLESS 조건부 활성, 음소거/언어 토글, 종료 확인 다이얼로그), EndlessMapSelectScene(6탭 맵 선택), GameOverScene(캠페인 3버튼), 씬 전환 페이드(fadeIn/fadeOut), Android 뒤로가기 키(ESC) 내비게이션, UI 이미지 에셋(버튼 23장/패널 5장/HUD 9장/장식 3장/아이콘 16장), Galmuri 픽셀 폰트, i18n(언어 전환/localStorage 저장), 모바일 |
 | [systems/ad.md](systems/ad.md) | AdMob 광고 시스템 (전면 광고, 보상형 광고 5종, 일일 제한, Mock 모드) |
 
