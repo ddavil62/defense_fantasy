@@ -89,16 +89,16 @@ export class MenuScene extends Phaser.Scene {
     // ── "Diamond 받기" 광고 버튼 ──
     this._createDiamondAdButton(centerX, 312 + offsetY);
 
-    // ── 최고 기록 표시 ──
+    // ── 최고 기록 표시 (Diamond 버튼 아래) ──
     if (saveData && saveData.bestRound > 0) {
-      this.add.text(centerX, 328 + offsetY, t('menu.best').replace('{round}', saveData.bestRound), {
+      this.add.text(centerX, 348 + offsetY, t('menu.best').replace('{round}', saveData.bestRound), {
         fontSize: '18px',
         fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#ffd700',
         align: 'center',
       }).setOrigin(0.5);
 
-      this.add.text(centerX, 351 + offsetY, t('menu.record').replace('{kills}', saveData.bestKills).replace('{games}', saveData.totalGames), {
+      this.add.text(centerX, 369 + offsetY, t('menu.record').replace('{kills}', saveData.bestKills).replace('{games}', saveData.totalGames), {
         fontSize: '13px',
         fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#b2bec3',
@@ -108,11 +108,11 @@ export class MenuScene extends Phaser.Scene {
 
     // ── CAMPAIGN 버튼 (골드 프라이머리, 대형 160x44) ──
     const campaignBg = this._createImageButton(
-      centerX, 380 + offsetY, 'btn_large_primary',
+      centerX, 400 + offsetY, 'btn_large_primary',
       160, 44, BTN_PRIMARY, 0xffd700
     );
 
-    this.add.text(centerX, 380 + offsetY, t('ui.campaign'), {
+    this.add.text(centerX, 400 + offsetY, t('ui.campaign'), {
       fontSize: '16px',
       fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffffff',
@@ -135,11 +135,11 @@ export class MenuScene extends Phaser.Scene {
     if (endlessUnlocked) {
       // 활성 상태: 골드 프라이머리 버튼 (대형 160x44로 표준화)
       const endlessBg = this._createImageButton(
-        centerX, 435 + offsetY, 'btn_large_primary',
+        centerX, 455 + offsetY, 'btn_large_primary',
         160, 44, BTN_PRIMARY, 0xffd700
       );
 
-      this.add.text(centerX, 435 + offsetY, t('ui.endless'), {
+      this.add.text(centerX, 455 + offsetY, t('ui.endless'), {
         fontSize: '15px',
         fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#ffffff',
@@ -158,11 +158,11 @@ export class MenuScene extends Phaser.Scene {
     } else {
       // 비활성 상태: 회색 잠금 버튼 (대형 disabled)
       this._createImageButton(
-        centerX, 435 + offsetY, 'btn_large_disabled',
+        centerX, 455 + offsetY, 'btn_large_disabled',
         160, 44, BTN_SELL, 0x636e72, true
       );
 
-      this.add.text(centerX, 435 + offsetY, t('ui.endless'), {
+      this.add.text(centerX, 455 + offsetY, t('ui.endless'), {
         fontSize: '15px',
         fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#636e72',
@@ -170,7 +170,7 @@ export class MenuScene extends Phaser.Scene {
       }).setOrigin(0.5);
 
       // ENDLESS 하단 잠금 안내 텍스트
-      this.add.text(centerX, 460 + offsetY, t('ui.endlessLocked'), {
+      this.add.text(centerX, 480 + offsetY, t('ui.endlessLocked'), {
         fontSize: '12px',
         fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#636e72',
@@ -179,11 +179,11 @@ export class MenuScene extends Phaser.Scene {
 
     // ── COLLECTION 버튼 (퍼플 메타, 대형 160x44로 표준화) ──
     const collBg = this._createImageButton(
-      centerX, 492 + offsetY, 'btn_large_meta',
+      centerX, 512 + offsetY, 'btn_large_meta',
       160, 44, BTN_META, COLORS.DIAMOND
     );
 
-    this.add.text(centerX, 492 + offsetY, t('menu.collection'), {
+    this.add.text(centerX, 512 + offsetY, t('menu.collection'), {
       fontSize: '15px',
       fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffffff',
@@ -202,11 +202,11 @@ export class MenuScene extends Phaser.Scene {
 
     // ── STATISTICS 버튼 (틸 백, 대형 160x44로 표준화) ──
     const statsBg = this._createImageButton(
-      centerX, 544 + offsetY, 'btn_large_back',
+      centerX, 564 + offsetY, 'btn_large_back',
       160, 44, BTN_BACK, 0x1a9c7e
     );
 
-    this.add.text(centerX, 544 + offsetY, t('menu.statistics'), {
+    this.add.text(centerX, 564 + offsetY, t('menu.statistics'), {
       fontSize: '15px',
       fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffffff',
@@ -224,7 +224,7 @@ export class MenuScene extends Phaser.Scene {
     });
 
     // ── 광고제거 구매 버튼 (STATISTICS 아래, 음소거/언어 위) ──
-    this._createRemoveAdsButton(centerX, 590 + offsetY);
+    this._createRemoveAdsButton(centerX, 610 + offsetY);
 
     // ── 음소거 토글 버튼 (소형 80x26, 좌측 배치) ──
     /** @type {import('../managers/SoundManager.js').SoundManager|null} */
@@ -233,12 +233,12 @@ export class MenuScene extends Phaser.Scene {
       const isMuted = sm.muted;
       const muteTexKey = isMuted ? 'btn_small_disabled' : 'btn_small_back_normal';
       const muteBg = this._createImageButton(
-        centerX - 48, 630 + offsetY, isMuted ? 'btn_small_disabled' : 'btn_small_back',
+        centerX - 48, 650 + offsetY, isMuted ? 'btn_small_disabled' : 'btn_small_back',
         80, 26, isMuted ? BTN_SELL : BTN_BACK, isMuted ? 0x636e72 : 0x1a9c7e,
         false
       );
 
-      const muteLabel = this.add.text(centerX - 48, 630 + offsetY,
+      const muteLabel = this.add.text(centerX - 48, 650 + offsetY,
         isMuted ? '\u266A OFF' : '\u266A ON',
         {
           fontSize: '13px',
@@ -271,12 +271,12 @@ export class MenuScene extends Phaser.Scene {
     /** @type {Object<string, string>} 로케일별 버튼 레이블 */
     const localeLabels = { ko: '한국어', en: 'English' };
     const langBg = this._createImageButton(
-      centerX + 48, 630 + offsetY, 'btn_small_back',
+      centerX + 48, 650 + offsetY, 'btn_small_back',
       80, 26, BTN_BACK, 0x1a9c7e,
       false
     );
 
-    this.add.text(centerX + 48, 630 + offsetY,
+    this.add.text(centerX + 48, 650 + offsetY,
       localeLabels[curLocale] || curLocale,
       {
         fontSize: '13px',
