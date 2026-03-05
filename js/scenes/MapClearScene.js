@@ -150,6 +150,10 @@ export class MapClearScene extends Phaser.Scene {
       }
     }
 
+    // ── 누적 통계 업데이트 ──
+    saveData.totalGames = (saveData.totalGames || 0) + 1;
+    this._updateStats(saveData);
+
     // 세이브 데이터 참조 보관 (광고 시청 후 다이아몬드 갱신에 사용)
     this._saveData = saveData;
 
@@ -585,6 +589,64 @@ export class MapClearScene extends Phaser.Scene {
       localStorage.setItem(SAVE_KEY, JSON.stringify(data));
     } catch (e) {
       // localStorage 사용 불가 시 무시
+    }
+  }
+
+  // ── 누적 통계 업데이트 ─────────────────────────────────────────
+
+  /** @const {number} 게임 히스토리 최대 보관 건수 */
+  static MAX_HISTORY = 20;
+
+  /**
+   * 누적 통계를 갱신한다.
+   * 킬 수, 보스 킬, 타워 배치 수, 골드 수입, 피해량, 웨이브 클리어 수를 합산하고
+   * 적 유형별/타워 유형별 킬 수를 병합한다.
+   * @param {object} saveData - 세이브 데이터 객체
+   * @private
+   */
+  _updateStats(saveData) {
+    const stats = saveData.stats;
+    const gs = this.gameStats;
+    if (!stats) return;
+
+    stats.totalGamesPlayed = saveData.totalGames;
+    stats.totalKills += this.kills;
+    stats.totalBossKills += gs.bossesKilled || 0;
+    stats.totalTowersPlaced += gs.towersPlaced || 0;
+    stats.totalGoldEarned += gs.goldEarned || 0;
+    stats.totalDamageDealt += gs.damageDealt || 0;
+    stats.totalWavesCleared += gs.wavesCleared || 0;
+    if (this.wavesCleared > (stats.bestRound || 0)) {
+      saveData.bestRound = this.wavesCleared;
+    }
+    if (this.kills > (stats.bestKills || 0)) {
+      saveData.bestKills = this.kills;
+    }
+    stats.bestRound = saveData.bestRound;
+    stats.bestKills = saveData.bestKills;
+
+    // 적 유형별 킬 수 병합
+    for (const [type, count] of Object.entries(gs.killsByType || {})) {
+      stats.killsByEnemyType[type] = (stats.killsByEnemyType[type] || 0) + count;
+    }
+
+    // 타워 유형별 킬 수 병합
+    for (const [type, count] of Object.entries(gs.killsByTower || {})) {
+      stats.killsByTowerType[type] = (stats.killsByTowerType[type] || 0) + count;
+    }
+
+    // 게임 히스토리 추가 (FIFO, 최대 20건)
+    stats.gameHistory.push({
+      gameNumber: stats.totalGamesPlayed,
+      round: this.wavesCleared,
+      kills: this.kills,
+      bossKills: gs.bossesKilled || 0,
+      towersPlaced: gs.towersPlaced || 0,
+      goldEarned: gs.goldEarned || 0,
+      timestamp: Date.now(),
+    });
+    while (stats.gameHistory.length > MapClearScene.MAX_HISTORY) {
+      stats.gameHistory.shift();
     }
   }
 }
