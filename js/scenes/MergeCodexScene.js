@@ -300,6 +300,22 @@ export class MergeCodexScene extends Phaser.Scene {
     const startX = (GAME_WIDTH - totalW) / 2 + SUBTAB_W / 2;
     const cy = SUBTAB_Y + SUBTAB_H / 2;
 
+    // 티어별 신규 발견 여부 계산 (빨간 점 표시용)
+    const newDiscoveries = this._saveData.newDiscoveries || [];
+    const tierHasNew = { 1: false, 2: false, 3: false, 4: false, 5: false };
+    for (const mergeId of newDiscoveries) {
+      // T1 타워는 TOWER_STATS에서 확인
+      const t1 = TOWER_STATS[mergeId];
+      if (t1) { tierHasNew[1] = true; continue; }
+      // T2~T5는 MERGE_RECIPES에서 확인
+      for (const [, recipe] of Object.entries(MERGE_RECIPES)) {
+        if (recipe.id === mergeId && recipe.tier >= 2 && recipe.tier <= 5) {
+          tierHasNew[recipe.tier] = true;
+          break;
+        }
+      }
+    }
+
     for (let tier = 1; tier <= 5; tier++) {
       const x = startX + (tier - 1) * (SUBTAB_W + SUBTAB_GAP);
       const isActive = tier === this.codexTier;
@@ -317,6 +333,14 @@ export class MergeCodexScene extends Phaser.Scene {
         fontStyle: isActive ? 'bold' : 'normal',
       }).setOrigin(0.5);
       this._subTabContainer.add(label);
+
+      // 해당 티어에 신규 발견이 있으면 빨간 점 표시 (탭 클릭으로 다이아 획득 없음)
+      if (tierHasNew[tier]) {
+        const dot = this.add.graphics();
+        dot.fillStyle(0xff0000, 1);
+        dot.fillCircle(x + SUBTAB_W / 2 - 3, cy - SUBTAB_H / 2 + 3, 4);
+        this._subTabContainer.add(dot);
+      }
 
       bg.on('pointerdown', () => {
         if (!this._inputReady) return;
@@ -661,6 +685,9 @@ export class MergeCodexScene extends Phaser.Scene {
       if (redDot) {
         redDot.destroy();
       }
+
+      // 서브탭 빨간 점 갱신 (해당 티어에 더 이상 신규 발견이 없으면 탭 빨간 점도 제거)
+      this._buildSubTabs();
 
       // 다이아 보상 토스트 표시
       this._showDiamondRewardToast();
