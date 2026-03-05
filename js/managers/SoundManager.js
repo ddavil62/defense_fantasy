@@ -3,7 +3,7 @@
  * 모든 사운드는 OscillatorNode + GainNode를 사용하여 런타임에 합성된다.
  * 외부 오디오 파일을 사용하지 않는다.
  *
- * SFX: fire, hit, kill, kill_boss, boss_appear, base_hit, wave_clear, game_over, merge_discovery
+ * SFX: fire, hit, kill, kill_boss, boss_appear, base_hit, wave_clear, game_over, merge_discovery, map_clear_fanfare
  * BGM: menu, battle, boss (노트 시퀀서 루프, setInterval 사용)
  *
  * Web Audio API만 의존한다. Phaser 의존성 없음.
@@ -302,6 +302,9 @@ export class SoundManager {
           break;
         case 'sfx_diamond_reward':
           this._playSfxDiamondReward(ctx);
+          break;
+        case 'sfx_map_clear_fanfare':
+          this._playSfxMapClearFanfare(ctx);
           break;
       }
     } catch (e) {
@@ -605,21 +608,20 @@ export class SoundManager {
   _playSfxMergeDiscovery(ctx) {
     const t = ctx.currentTime;
 
-    // 4음 상승 아르페지오: C5(523) → E5(659) → G5(784) → C6(1047)
-    const notes = [523, 659, 784, 1047];
-    const delay = 0.10;  // 각 음 간격
-
-    for (let i = 0; i < notes.length; i++) {
-      const start = t + i * delay;
+    // ── 레이어 1: 멜로디 아르페지오 (sine) ──
+    // G4→B4→D5→G5 G장조 아르페지오로 발견의 설렘 표현
+    const melody = [392, 494, 587, 784];
+    const melodyDelay = 0.10;
+    for (let i = 0; i < melody.length; i++) {
+      const start = t + i * melodyDelay;
       const osc = ctx.createOscillator();
       const g = ctx.createGain();
       osc.connect(g);
       g.connect(this._sfxGain);
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(notes[i], start);
-      // 마지막 음은 더 길고 크게
-      const vol = i === notes.length - 1 ? 0.5 : 0.35;
-      const dur = i === notes.length - 1 ? 0.40 : 0.18;
+      osc.frequency.setValueAtTime(melody[i], start);
+      const vol = i === melody.length - 1 ? 0.45 : 0.30;
+      const dur = i === melody.length - 1 ? 0.50 : 0.15;
       g.gain.setValueAtTime(0.001, t);
       g.gain.setValueAtTime(vol, start);
       g.gain.exponentialRampToValueAtTime(0.001, start + dur);
@@ -627,20 +629,68 @@ export class SoundManager {
       osc.stop(start + dur);
     }
 
-    // 반짝임: 고음 트라이앵글 효과 (마지막 음과 동시)
-    const sparkleStart = t + notes.length * delay;
-    const sparkle = ctx.createOscillator();
-    const sg = ctx.createGain();
-    sparkle.connect(sg);
-    sg.connect(this._sfxGain);
-    sparkle.type = 'sine';
-    sparkle.frequency.setValueAtTime(2093, sparkleStart);         // C7
-    sparkle.frequency.exponentialRampToValueAtTime(1568, sparkleStart + 0.3); // G6으로 하강
-    sg.gain.setValueAtTime(0.001, t);
-    sg.gain.setValueAtTime(0.2, sparkleStart);
-    sg.gain.exponentialRampToValueAtTime(0.001, sparkleStart + 0.3);
-    sparkle.start(sparkleStart);
-    sparkle.stop(sparkleStart + 0.3);
+    // ── 레이어 2: 화음 (triangle) ──
+    // B4+D5+G5 동시 화음으로 풍성함 추가
+    const chordStart = t + 0.25;
+    const chordFreqs = [494, 587, 784];
+    for (const freq of chordFreqs) {
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.connect(g);
+      g.connect(this._sfxGain);
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, chordStart);
+      g.gain.setValueAtTime(0.001, t);
+      g.gain.setValueAtTime(0.18, chordStart);
+      g.gain.exponentialRampToValueAtTime(0.001, chordStart + 0.60);
+      osc.start(chordStart);
+      osc.stop(chordStart + 0.60);
+    }
+
+    // ── 레이어 3: 저음 어택 (sine) ──
+    // G3(196Hz) 짧은 베이스로 임팩트감
+    const bassOsc = ctx.createOscillator();
+    const bassG = ctx.createGain();
+    bassOsc.connect(bassG);
+    bassG.connect(this._sfxGain);
+    bassOsc.type = 'sine';
+    bassOsc.frequency.setValueAtTime(196, t);
+    bassG.gain.setValueAtTime(0.30, t);
+    bassG.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
+    bassOsc.start(t);
+    bassOsc.stop(t + 0.25);
+
+    // ── 레이어 4: 반짝임 sparkle (triangle) ──
+    // G6→D6 하강 반짝임
+    const sp1Start = t + 0.40;
+    const sp1 = ctx.createOscillator();
+    const sp1g = ctx.createGain();
+    sp1.connect(sp1g);
+    sp1g.connect(this._sfxGain);
+    sp1.type = 'triangle';
+    sp1.frequency.setValueAtTime(1568, sp1Start);        // G6
+    sp1.frequency.exponentialRampToValueAtTime(1175, sp1Start + 0.30); // D6
+    sp1g.gain.setValueAtTime(0.001, t);
+    sp1g.gain.setValueAtTime(0.15, sp1Start);
+    sp1g.gain.exponentialRampToValueAtTime(0.001, sp1Start + 0.30);
+    sp1.start(sp1Start);
+    sp1.stop(sp1Start + 0.30);
+
+    // ── 레이어 5: 잔향 sparkle (triangle) ──
+    // B6→G6 하강 잔향
+    const sp2Start = t + 0.55;
+    const sp2 = ctx.createOscillator();
+    const sp2g = ctx.createGain();
+    sp2.connect(sp2g);
+    sp2g.connect(this._sfxGain);
+    sp2.type = 'triangle';
+    sp2.frequency.setValueAtTime(1976, sp2Start);        // B6
+    sp2.frequency.exponentialRampToValueAtTime(1568, sp2Start + 0.35); // G6
+    sp2g.gain.setValueAtTime(0.001, t);
+    sp2g.gain.setValueAtTime(0.12, sp2Start);
+    sp2g.gain.exponentialRampToValueAtTime(0.001, sp2Start + 0.35);
+    sp2.start(sp2Start);
+    sp2.stop(sp2Start + 0.35);
   }
 
   /**
@@ -691,6 +741,107 @@ export class SoundManager {
     sg.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
     sparkle.start(now + 0.12);
     sparkle.stop(now + 0.4);
+  }
+
+  /**
+   * 맵 클리어 승리 팡파레 SFX를 재생한다 (5레이어 절차적 합성, 약 2.2초).
+   * C장조 계열의 상승 아르페지오 + 화음 + 베이스 타격 + 반짝임 2종으로
+   * 화려한 승리 연출을 만든다. 별점 구분 없이 항상 최대 강도로 재생한다.
+   * @param {AudioContext} ctx - 오디오 컨텍스트
+   * @private
+   */
+  _playSfxMapClearFanfare(ctx) {
+    const t = ctx.currentTime;
+
+    // ── 레이어 1: 멜로디 (sine) ──
+    // C5(523) → E5(659) → G5(784) → C6(1047) 4음 아르페지오, 각 0.18초 간격
+    const melodyNotes = [523, 659, 784, 1047];
+    const melodyInterval = 0.18;
+    const melodyNoteDur = 0.22;
+    const melodyRelease = 0.05;
+
+    for (let i = 0; i < melodyNotes.length; i++) {
+      const start = t + i * melodyInterval;
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.connect(g);
+      g.connect(this._sfxGain);
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(melodyNotes[i], start);
+      g.gain.setValueAtTime(0.001, t);
+      g.gain.setValueAtTime(0.5, start);
+      g.gain.setValueAtTime(0.5, start + melodyNoteDur - melodyRelease);
+      g.gain.exponentialRampToValueAtTime(0.001, start + melodyNoteDur);
+      osc.start(start);
+      osc.stop(start + melodyNoteDur);
+    }
+
+    // ── 레이어 2: 화음 (triangle) ──
+    // E5(659) + G5(784) + C6(1047) 동시 화음, t+0.36 ~ t+1.10
+    const chordStart = t + 0.36;
+    const chordDur = 0.74;
+    const chordFreqs = [659, 784, 1047];
+
+    for (let i = 0; i < chordFreqs.length; i++) {
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.connect(g);
+      g.connect(this._sfxGain);
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(chordFreqs[i], chordStart);
+      g.gain.setValueAtTime(0.001, t);
+      g.gain.setValueAtTime(0.20, chordStart);
+      g.gain.exponentialRampToValueAtTime(0.001, chordStart + chordDur);
+      osc.start(chordStart);
+      osc.stop(chordStart + chordDur);
+    }
+
+    // ── 레이어 3: 베이스 타격 (sine) ──
+    // C3(130Hz) 짧은 어택, 묵직한 시작감, t+0.00 ~ t+0.30
+    const bassOsc = ctx.createOscillator();
+    const bassG = ctx.createGain();
+    bassOsc.connect(bassG);
+    bassG.connect(this._sfxGain);
+    bassOsc.type = 'sine';
+    bassOsc.frequency.setValueAtTime(130, t);
+    bassG.gain.setValueAtTime(0.35, t);
+    bassG.gain.exponentialRampToValueAtTime(0.001, t + 0.30);
+    bassOsc.start(t);
+    bassOsc.stop(t + 0.30);
+
+    // ── 레이어 4: sparkle 1 (triangle) ──
+    // C7(2093Hz) → G6(1568Hz) 하강 반짝임, t+0.72 ~ t+1.12
+    const sp1Start = t + 0.72;
+    const sp1Dur = 0.40;
+    const sp1 = ctx.createOscillator();
+    const sp1G = ctx.createGain();
+    sp1.connect(sp1G);
+    sp1G.connect(this._sfxGain);
+    sp1.type = 'triangle';
+    sp1.frequency.setValueAtTime(2093, sp1Start);
+    sp1.frequency.exponentialRampToValueAtTime(1568, sp1Start + sp1Dur);
+    sp1G.gain.setValueAtTime(0.001, t);
+    sp1G.gain.setValueAtTime(0.25, sp1Start);
+    sp1G.gain.exponentialRampToValueAtTime(0.001, sp1Start + sp1Dur);
+    sp1.start(sp1Start);
+    sp1.stop(sp1Start + sp1Dur);
+
+    // ── 레이어 5: sparkle 2 (triangle) ──
+    // E7(2637Hz) → C7(2093Hz) 하강 잔향, t+0.90 ~ t+1.40
+    const sp2Start = t + 0.90;
+    const sp2Dur = 0.50;
+    const sp2 = ctx.createOscillator();
+    const sp2G = ctx.createGain();
+    sp2.connect(sp2G);
+    sp2G.connect(this._sfxGain);
+    sp2.type = 'triangle';
+    sp2.frequency.setValueAtTime(2637, sp2Start);
+    sp2.frequency.exponentialRampToValueAtTime(2093, sp2Start + sp2Dur);
+    sp2G.gain.setValueAtTime(0.001, t);
+    sp2G.gain.setValueAtTime(0.15, sp2Start);
+    sp2G.gain.exponentialRampToValueAtTime(0.001, sp2Start + sp2Dur);
+    sp2.start(sp2Start);
+    sp2.stop(sp2Start + sp2Dur);
   }
 
   // ── BGM ─────────────────────────────────────────────────────────
