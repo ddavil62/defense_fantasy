@@ -405,17 +405,19 @@ export class CollectionScene extends Phaser.Scene {
     }).setOrigin(0, 0.5);
     this._scrollContainer.add(nameText);
 
-    // 현재 효과 수치
+    // 프로그레스 바 X 좌표 (효과 텍스트 maxWidth 계산에 선행 필요)
+    const barX = PADDING_X + 150;
+
+    // 현재 효과 수치 (프로그레스 바 영역 침범 방지)
     const effectStr = this._getEffectString(key, currentLevel);
+    const effectMaxW = barX - nameX - 4;
     const effectText = this.add.text(nameX, cy + 10, effectStr, {
       fontSize: '10px',
       fontFamily: 'Galmuri11, Arial, sans-serif',
       color: currentLevel > 0 ? colorCSS : '#636e72',
+      wordWrap: { width: effectMaxW, useAdvancedWrap: true },
     }).setOrigin(0, 0.5);
     this._scrollContainer.add(effectText);
-
-    // 프로그레스 바 (중앙)
-    const barX = PADDING_X + 150;
     const barW = 80;
     const barH = 8;
     const barY = cy - 8;
