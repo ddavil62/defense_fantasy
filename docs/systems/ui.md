@@ -82,6 +82,12 @@ HUD, TowerPanel, TowerInfoOverlay(타워 정보 오버레이), 머지 프리뷰,
 - T2: `MERGE_RECIPES`에서 레시피 키의 첫 번째 재료(base type) 추출 -> `_pendingAdTower = { type, tier: 2, mergeData }`, `onTowerSelect(baseType)` 호출
 - GameScene `_attemptPlaceTower`: `_pendingAdTower` 감지 시 cost=0, T2면 `tower.applyMergeResult(mergeData)` + `totalInvested=0`
 - 배치 완료 시 `_pendingAdTower = null` 초기화, `drawCount` 미증가
+
+#### 클릭 관통 방지 (입력 쿨다운)
+- "선택" 버튼 클릭 시 `_onAdTowerSelected()`에서 `isPaused = false` 직후 `scene._resumeCooldown = true` + 100ms 후 해제. `_resumeGame()`의 기존 패턴과 동일
+- "취소" 버튼 클릭 시에도 동일한 `_resumeCooldown` 100ms 쿨다운 적용
+- `GameScene._onPointerDown` / `_onPointerUp`이 `_resumeCooldown === true` 시 조기 리턴하여, 모달 버튼의 pointerdown이 게임 씬 타일까지 관통되는 것을 차단
+- 100ms는 사람이 체감하기 어려운 수준이므로 UX 단절 없음
 - 타워 미선택 시: 뽑기 버튼만 표시
 - Lv.1 타워 선택 시: A/B Lv.2 업그레이드 2줄 분기 버튼
 - Lv.2 타워 선택 시: A/B Lv.3 업그레이드 2줄 분기 버튼

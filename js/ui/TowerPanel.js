@@ -676,8 +676,10 @@ export class TowerPanel {
 
     cancelText.on('pointerdown', () => {
       this._hideAdRewardModal();
-      // 취소 시에도 게임 재개
+      // 취소 시에도 게임 재개 + 클릭 관통 방지 쿨다운
       this.scene.isPaused = false;
+      this.scene._resumeCooldown = true;
+      this.scene.time.delayedCall(100, () => { this.scene._resumeCooldown = false; });
     });
   }
 
@@ -694,6 +696,10 @@ export class TowerPanel {
 
     // 타워 선택 완료: 게임 재개
     this.scene.isPaused = false;
+    // 모달 버튼 pointerdown이 게임 씬까지 관통하는 것을 방지하는 입력 쿨다운
+    // (_resumeGame의 _resumeCooldown 패턴과 동일)
+    this.scene._resumeCooldown = true;
+    this.scene.time.delayedCall(100, () => { this.scene._resumeCooldown = false; });
 
     this.selectedTower = null;
     this._hideInfo();

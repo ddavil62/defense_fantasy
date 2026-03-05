@@ -4,6 +4,24 @@
 
 ---
 
+## 2026-03-05 -- 무료 뽑기 클릭 관통 버그 수정
+
+### 수정
+
+- **`js/ui/TowerPanel.js`** -- `_onAdTowerSelected()` 메서드에서 `isPaused = false` 직후 `_resumeCooldown` 100ms 쿨다운 추가 (line 699-702). 모달 "선택" 버튼의 pointerdown이 게임 씬까지 관통되어 버튼 아래 타일에 타워가 즉시 배치되는 버그 수정
+- **`js/ui/TowerPanel.js`** -- `_showAdRewardModal()` 내부 취소 버튼 핸들러에서 `isPaused = false` 직후 동일한 `_resumeCooldown` 100ms 쿨다운 추가 (line 681-682). 취소 버튼 아래 타일에 의도치 않은 배치 방지
+
+### 참고
+
+- 기존 `_resumeGame()` (GameScene.js line 2168-2169)의 `_resumeCooldown` 패턴을 정확히 재사용. `GameScene._onPointerDown` (line 389)과 `_onPointerUp` (line 3083)이 쿨다운 중 조기 리턴하여 입력 차단
+- 변경 범위: TowerPanel.js 2곳에 각 2줄 추가 (총 4줄). 다른 파일 변경 없음
+- QA에서 합성 튜토리얼 확인 버튼(GameScene.js line 2129)에도 동일 패턴 미적용이 확인되었으나 현재 실질적 영향 없어 별도 이슈로 추적 권장
+- 스펙: `.claude/specs/2026-03-05-gacha-click-fix.md`
+- 리포트: `.claude/specs/2026-03-05-gacha-click-fix-report.md`
+- QA: `.claude/specs/2026-03-05-gacha-click-fix-qa.md`
+
+---
+
 ## 2026-03-05 -- IAP 실결제 Google Play Billing 연동
 
 ### 변경
