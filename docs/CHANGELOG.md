@@ -4,6 +4,48 @@
 
 ---
 
+## 2026-03-05 -- 메타 업그레이드 시스템 재설계 (Global Meta Upgrade)
+
+### 변경
+
+- **`js/config.js`** -- 타워별 메타 업그레이드(`META_UPGRADE_CONFIG`) + 유틸리티 업그레이드(`UTILITY_UPGRADES`) 제거. 글로벌 메타 업그레이드 10종(`GLOBAL_META`) 신규 도입. 비용 공식: `5 + currentLevel * 3`. 헬퍼 함수 10종 추가. SAVE_DATA_VERSION 8 → 9. v8 → v9 마이그레이션: 기존 towerUpgrades + utilityUpgrades 투자 다이아 전액 환불 후 `globalUpgrades` 10종 0레벨로 초기화
+- **`js/scenes/CollectionScene.js`** -- 메타 탭 UI 전면 재작성. 타워 카드 그리드 + 메타 트리 + 유틸리티 섹션 → 카테고리별(전투/경제/생존/성장) 스크롤 리스트. 각 항목: 아이콘 + 이름 + 프로그레스 바 + 레벨 + 비용/강화 버튼 + 효과 설명
+- **`js/scenes/GameScene.js`** -- `_applyMetaUpgradesToTower()` → `_applyGlobalUpgradesToTower()` (damage/fireRate/range 글로벌 배율 적용). 시작골드(`getGlobalStartGold`), 기지HP(`getGlobalBaseHP`), 처치골드(`getGlobalKillGoldMult`), 웨이브보너스(`getGlobalWaveBonusMult`), 합성할인(`getGlobalMergeDiscountMult`) 글로벌 적용
+- **`js/ui/TowerPanel.js`** -- 뽑기 비용에 `getGlobalDrawDiscountMult` 적용, 합성 비용에 `getGlobalMergeDiscountMult` 적용
+- **`js/scenes/GameOverScene.js`** -- Diamond 획득에 `getGlobalDiamondBonusMult` 적용
+- **`js/scenes/MapClearScene.js`** -- Diamond 차액 보상에 `getGlobalDiamondBonusMult` 적용
+- **`js/scenes/MergeCodexScene.js`** -- `_applyMetaUpgradesToStats()` → `_applyGlobalUpgradesToStats()` (타워 타입 불필요)
+- **`js/i18n.js`** -- 글로벌 업그레이드 10종 이름/설명, 카테고리 4종, UI 키 다수 추가 (ko/en)
+
+### 글로벌 메타 업그레이드 10종
+
+| 카테고리 | 항목 | 효과 (레벨당) | 최대레벨 |
+|----------|------|---------------|----------|
+| 전투 | 공격력 (⚔) | ×1.1^n | 10 |
+| 전투 | 공격속도 (⚡) | ×0.9^n (빨라짐) | 10 |
+| 전투 | 사거리 (🎯) | ×1.1^n | 5 |
+| 경제 | 시작 골드 (💰) | +20*lv | 10 |
+| 경제 | 처치 보상 (🪙) | ×1.1^n | 10 |
+| 경제 | 뽑기 할인 (🏷) | ×0.95^n | 10 |
+| 경제 | 합성 할인 (🔧) | ×0.95^n | 10 |
+| 생존 | 기지 HP (❤) | +3*lv | 10 |
+| 생존 | 웨이브 보너스 (⭐) | ×1.1^n | 10 |
+| 성장 | 다이아 보너스 (💎) | ×1.1^n | 10 |
+
+### 삭제
+
+- **`js/config.js`** -- `META_UPGRADE_CONFIG` (타워별 3티어 x A/B 분기), `UTILITY_UPGRADES` (3종 3티어), 관련 헬퍼 함수 전체 삭제
+- **`js/scenes/CollectionScene.js`** -- 타워 카드 그리드, 상세 오버레이 (3슬롯), 유틸리티 섹션 UI 전체 삭제
+
+### 참고
+
+- 스펙: `.claude/specs/2026-03-05-meta-upgrade-redesign.md`
+- 세이브 마이그레이션 v8 → v9: 기존 투자 다이아 환불 (towerUpgrades 비용 공식 역산 + utilityUpgrades 티어별 고정 비용[8,15,30])
+- 사거리(range)만 maxLevel=5, 나머지 9종은 maxLevel=10
+- Playwright 테스트 39건 QA PASS
+
+---
+
 ## 2026-03-04 -- 하단 패널 UI 리디자인 (Panel Redesign)
 
 ### 변경
