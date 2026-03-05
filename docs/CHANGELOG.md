@@ -4,6 +4,63 @@
 
 ---
 
+## 2026-03-05 -- IAP 실결제 Google Play Billing 연동
+
+### 변경
+
+- **`js/managers/IAPManager.js`** -- 네이티브 구매 로직 전면 재작성. `@capgo/native-purchases@^7.16.2` 플러그인을 동적 import로 로드하여 Google Play Billing에 직접 연동. 주요 메서드: `initialize()`(isBillingSupported + getProducts 프리로드), `purchaseRemoveAds()`(purchaseProduct 호출), `restorePurchases()`(getPurchases로 구매 이력 조회), `getLocalizedPrice()`(스토어 현지화 가격 반환, 폴백 $1.99), `isBillingSupportedSync()`(결제 지원 여부 동기 확인). 에러 처리: 사용자 취소(cancel/user 키워드 감지, 조용히 무시), 이미 구매됨(already/owned 키워드 감지, adFree 자동 적용), 네트워크 오류(실패 메시지 반환). 초기화 실패 시 Mock 모드로 자동 폴백
+- **`js/scenes/MenuScene.js`** -- 광고제거 버튼 가격을 `iapManager.getLocalizedPrice()`로 동적 표시. `isBillingSupportedSync()` false 시 버튼 비활성화. 사용자 취소 시 에러 토스트 없이 조용히 닫기
+- **`js/i18n.js`** -- `iap.removeAds.price` 폴백 가격을 ko/en 모두 `$1.99`로 통일 (기존 ko: `₩1,100`, en: `$0.99`). 신규 키 3개 추가: `iap.billingNotSupported`(결제 미지원 안내), `iap.restoreFailed`(복원 실패), `iap.restoreNotFound`(복원 대상 없음)
+- **`fantasydefence/package.json`** -- `@capgo/native-purchases@^7.16.2` 의존성 추가
+- **`android/app/src/main/AndroidManifest.xml`** -- `com.android.vending.BILLING` 권한 추가
+
+### 참고
+
+- 상품 ID: `remove_ads`, 비소모품, $1.99 USD
+- 스펙에서 `restorePurchases()` API를 사용하도록 명시했으나, 해당 API가 `Promise<void>`를 반환하여 구매 목록 확인이 불가하므로 `getPurchases()`로 변경
+- 스펙에서 `@capgo/native-purchases@7`(latest)을 명시했으나, v7.17.0이 `@capacitor/core>=8.0.0`을 요구하여 Capacitor 7과 호환되지 않으므로 v7.16.2로 고정
+- 웹 환경에서는 기존과 동일한 Mock 모드로 동작 (즉시 성공 처리)
+- Google Play Console에 `remove_ads` 인앱 상품 등록이 필요하며, 등록 전에는 폴백 가격($1.99)이 표시됨
+- 스펙: `.claude/specs/2026-03-05-iap-real-billing.md`
+- 리포트: `.claude/specs/2026-03-05-iap-real-billing-report.md`
+- QA: `.claude/specs/2026-03-05-iap-real-billing-qa.md`
+
+---
+
+## 2026-03-05 -- 멀티 스폰 시스템 + 스테이지 순서 재배치
+
+### 추가
+
+- **`js/managers/WaveManager.js`** -- 동적 멀티 스폰 시스템 도입. 웨이브 진행도에 따라 틱당 스폰 수량이 증가하는 `_calcSpawnCount(progress)` 메서드 추가. 상수: `MULTI_SPAWN_THRESHOLD_MEDIUM=8`, `MULTI_SPAWN_THRESHOLD_LARGE=16`. 소규모 웨이브(8마리 미만) 항상 1마리/틱, 중규모(8~15마리) 50% 이후 2마리/틱, 대규모(16+마리) 50% 이후 2마리/틱 + 75% 이후 3마리/틱. 총 적 수량과 스폰 간격은 불변, 스폰 수량만 변경
+- **`js/managers/WaveManager.js`** -- R21+ 생성 웨이브에 적 난이도순 정렬(`ENEMY_DIFFICULTY_ORDER`) 추가. 순서: normal(0) < fast(1) < swarm(2) < tank(3) < splitter(4) < armored(5). 보스 라운드에서는 보스가 첫 번째(bossDelay 적용), 나머지 적이 난이도순 정렬
+
+### 변경
+
+- **`js/data/worlds.js`** -- 각 월드 `mapIds` 배열 순서 재배치. 웨이포인트 수(경로 길이) 내림차순 정렬: 긴 경로(쉬움) → 월드 초반, 짧은 경로(어려움) → 월드 후반
+- **`js/data/maps/forest.js`** -- totalWaves 재분배 (8~12), difficulty 메타데이터 조정 (초반 1, 후반 3)
+- **`js/data/maps/desert.js`** -- totalWaves 재분배 (10~15), difficulty 메타데이터 조정
+- **`js/data/maps/tundra.js`** -- totalWaves 재분배 (12~18), difficulty 메타데이터 조정
+- **`js/data/maps/volcano.js`** -- totalWaves 재분배 (15~20), difficulty 메타데이터 조정
+- **`js/data/maps/shadow.js`** -- totalWaves 재분배 (18~25), difficulty 메타데이터 조정
+
+### 스테이지 순서 (웨이포인트 수 내림차순)
+
+| 월드 | 순서 | 맵 ID (wp수, 웨이브수) |
+|------|------|------------------------|
+| Forest | 1~6 | M5(36wp,8w) → M3(30,9) → M6(28,10) → M4(26,10) → M2(24,11) → M1(18,12) |
+| Desert | 1~6 | M5(31wp,10w) → M4(30,11) → M6(28,12) → M1(24,13) → M2(24,14) → M3(20,15) |
+| Tundra | 1~6 | M1(40wp,12w) → M4(36,13) → M6(33,14) → M3(27,15) → M2(21,16) → M5(21,18) |
+| Volcano | 1~6 | M4(30wp,15w) → M1(28,16) → M2(25,17) → M3(24,18) → M5(24,19) → M6(22,20) |
+| Shadow | 1~6 | M6(36wp,18w) → M4(33,19) → M1(32,20) → M3(31,22) → M2(29,23) → M5(29,25) |
+
+### 참고
+
+- 멀티 스폰: 총 적 수량 불변, 스폰 간격(spawnInterval) 불변. 동시 스폰 수량만 웨이브 진행도에 따라 변경
+- 난이도순 정렬: R1~R20 사전 정의 웨이브에는 적용 안 됨. R21+ 자동 생성 웨이브에만 적용
+- 스테이지 재배치: 맵 데이터(그리드, 웨이포인트)는 변경 없음. mapIds 순서, totalWaves, difficulty 메타데이터만 변경
+
+---
+
 ## 2026-03-05 -- 메타 업그레이드 시스템 재설계 (Global Meta Upgrade)
 
 ### 변경

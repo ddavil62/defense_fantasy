@@ -17,6 +17,7 @@ Phaser.js 3 기반 판타지 타워 디펜스 게임. 도형 기반 프로토타
 | 렌더링 | HTML5 Canvas (Phaser 기본, pixelArt: true, antialias: false) |
 | 데이터 저장 | localStorage (최고 기록, Diamond, 글로벌 메타 업그레이드 10종, 타워 해금, 머지 발견, 신규 발견, 통계, 게임 히스토리, 월드 진행 상태, 엔드리스 해금, 광고제거 구매 상태, 합성 튜토리얼 완료 플래그) -- 세이브 v9. 광고 일일 제한 카운터는 별도 키(`ftd_ad_daily_limit`), 언어 설정은 별도 키(`fantasy-td-lang`)에 저장 |
 | 광고 SDK | `@capacitor-community/admob` v7.2.0 (Capacitor 7 호환, 네이티브 전용, 웹 Mock 모드) |
+| IAP 플러그인 | `@capgo/native-purchases` ^7.16.2 (Google Play Billing 직접 연동, 네이티브 전용, 웹 Mock 모드) |
 | 해상도 | 360x640 (모바일 세로, portrait) |
 | 서버 요구 | Vite dev 서버 (`npm run dev`) |
 
@@ -32,7 +33,7 @@ Phaser.js 3 기반 판타지 타워 디펜스 게임. 도형 기반 프로토타
 | `js/main.js` | Phaser.Game 인스턴스 생성 (npm import, 360x640, FIT + CENTER_BOTH, pixelArt: true), Android 뒤로가기 키(ESC) 내비게이션 핸들러 (오버레이 우선 처리: TowerInfoOverlay/pauseOverlay 열림 시 씬 전환 대신 오버레이 닫기) |
 | `js/config.js` | 모든 게임 상수/밸런스 수치 집중 관리 (타워 10종, 적 8종, 웨이브 R1~R20, 글로벌 메타 업그레이드 10종(GLOBAL_META), 저항 캡 0.55, 골드 싱크 상수, 머지 레시피 102종/스탯 102종 (T2 55종 + T3 30종 + T4 12종 + T5 5종), 별점 계산(calcStarRating), 캠페인 다이아몬드 보상(CAMPAIGN_DIAMOND_REWARDS), TOWER_UNLOCK_MAP(월드→타워 해금 매핑), 세이브 마이그레이션 v9, AdMob 광고 ID 6개/일일 제한 3개/보상 수치 4개/localStorage 키 1개, IAP_PRODUCT_REMOVE_ADS 상수, 밸런스 함수(calcHpScale/getBossHpMultiplier/calcWaveClearBonus), MAX_TOWER_COUNT=30, MERGE_COST 티어별 합성 비용, INITIAL_GOLD=160, 뽑기 비용 상수(DRAW_BASE_COST=80, DRAW_COST_INCREMENT=20) 및 calcDrawCost() 함수, calcGlobalUpgradeCost() 및 글로벌 메타 헬퍼 함수 10종) |
 | `js/scenes/BootScene.js` | 초기 설정, localStorage 로드, 세이브 마이그레이션 (stats 필드 포함), UI 에셋 56장 preload (아이콘 16장 포함), `async create()` + AdManager 초기화/registry 등록 + IAPManager 초기화/registry 등록 + adFree 상태 AdManager 동기화 + `await document.fonts.ready`로 Galmuri 폰트 로딩 대기 후 메뉴 전환 |
-| `js/scenes/MenuScene.js` | 메뉴 화면, Diamond 표시, "Diamond 받기" 보상형 광고 버튼(일일 5회, Diamond +3, adFree시 무제한 ∞ 표시), CAMPAIGN/ENDLESS(endlessUnlocked 조건부 활성)/COLLECTION/STATISTICS 버튼(광고 진행 중 isBusy 가드), 광고제거 구매 버튼(Y=590+offsetY, 확인 다이얼로그, 구매완료 비활성화), 음소거 토글(centerX-48)/언어 토글(centerX+48) 버튼(Y=630+offsetY), 종료 확인 다이얼로그(_openExitDialog) |
+| `js/scenes/MenuScene.js` | 메뉴 화면, Diamond 표시, "Diamond 받기" 보상형 광고 버튼(일일 5회, Diamond +3, adFree시 무제한 ∞ 표시), CAMPAIGN/ENDLESS(endlessUnlocked 조건부 활성)/COLLECTION/STATISTICS 버튼(광고 진행 중 isBusy 가드), 광고제거 구매 버튼(Y=590+offsetY, 동적 가격 표시(getLocalizedPrice()), 확인 다이얼로그, 결제 미지원 시 버튼 비활성화, 구매완료 비활성화), 음소거 토글(centerX-48)/언어 토글(centerX+48) 버튼(Y=630+offsetY), 종료 확인 다이얼로그(_openExitDialog) |
 | `js/scenes/GameScene.js` | 핵심 게임플레이 (맵/타워/적/투사체/웨이브/AoE/체인/빔/글로벌 메타 업그레이드 적용(_applyGlobalUpgradesToTower: damage/fireRate/range, 시작골드/기지HP/처치골드/웨이브보너스/합성할인)/ProjectilePool/delta 캡/통계 추적/사거리 프리뷰/골드 싱크/머지 드래그 핸들링/타워 드래그 이동(_onTowerMove)/Pause 오버레이 합성도감 버튼/wake 이벤트 처리/mapClear 이벤트→MapClearScene 전환(clearBoostActive 전달)/일시정지 시 BGM 정지·복원/소모품 아이콘+툴팁/일시정지·음소거 버튼 아이콘/게임오버 전면 광고/부활 처리(revived/startWave 플래그, HP 절반 설정, 웨이브 재개)/광고 골드 2배 부스트(goldBoostActive, 적 처치+웨이브 보너스에 AD_GOLD_BOOST_MULTIPLIER 적용)/타워 슬롯 제한(MAX_TOWER_COUNT=30)/합성 골드 비용(MERGE_COST, 합성할인 적용)/HUD 타워 카운트 매 프레임 갱신/합성 발견 팝업(_showDiscoveryPopup, newDiscoveries 등록)/광고 보상 타워 무료 배치(_pendingAdTower 감지, cost=0, T2 applyMergeResult 적용)/합성 튜토리얼 오버레이(_showMergeTutorialIfNeeded, 신규 유저 1회 표시, isPaused로 웨이브 억제, BGM 계속 재생)) |
 | `js/scenes/GameOverScene.js` | 결과 표시, Diamond 획득(글로벌 메타 다이아 보너스 적용), 통계 저장, 게임 히스토리 관리, "광고 보고 부활" 보상형 광고 버튼(판당 1회, HP=maxHP/2로 해당 라운드 재개), RETRY/WORLD MAP(캠페인)/MENU 버튼(광고 진행 중 isBusy 가드, RETRY 시 mapData/gameMode 전달) |
 | `js/scenes/MapClearScene.js` | 캠페인 맵 클리어 결과 씬 (별점 1~3성 애니메이션, 다이아몬드 차액 보상 실제 지급(글로벌 메타 다이아 보너스 적용), clearBoostActive 시 보상 2배, 사후 "보상 2배" 광고 버튼(120x22px), 세이브 지연 패턴(_ensureSaved), worldProgress/campaignStats/endlessUnlocked 세이브 갱신, 월드 클리어 시 타워 자동 해금+알림 UI, NEXT MAP/RETRY/WORLD MAP 버튼(광고 진행 중 isBusy 가드, _ensureSaved 이전 배치)) |
@@ -45,7 +46,7 @@ Phaser.js 3 기반 판타지 타워 디펜스 게임. 도형 기반 프로토타
 | `js/entities/Tower.js` | 타워 배치/공격/판매/사거리 표시/강화(+1~+10)/머지(tier, mergeId, applyMergeResult) |
 | `js/entities/Enemy.js` | 적 이동/피격/슬로우/화상/독/방어력 감소/밀치기/분열/HP바 |
 | `js/entities/Projectile.js` | 투사체 이동/충돌/스플래시/슬로우/도트/방어관통/풀 reset/deactivate |
-| `js/managers/WaveManager.js` | 웨이브 스폰/진행/클리어/자동 스케일링 (R21+)/저항 캡/프리뷰/MAP_CLEAR 상태(totalWaves 도달 시 mapClear 이벤트 발행) |
+| `js/managers/WaveManager.js` | 웨이브 스폰/진행/클리어/자동 스케일링 (R21+)/저항 캡/프리뷰/MAP_CLEAR 상태(totalWaves 도달 시 mapClear 이벤트 발행)/멀티 스폰(진행도 기반 동시 스폰 수량 1~3마리)/R21+ 적 난이도순 정렬(ENEMY_DIFFICULTY_ORDER) |
 | `js/managers/MapManager.js` | 맵 그리드 렌더링/좌표 변환/배치 검증/타워 이동(moveTower) (동적 mapData 파라미터, 테마 색상 지원) |
 | `js/data/maps.js` | MapData/MapTheme 타입 정의, CLASSIC_MAP, mapRegistry(getMapById, registerMap), validateMapData() |
 | `js/data/worlds.js` | 5개 월드 정의 (id, nameKey, theme, mapIds, requiredStars), getWorldById(), getWorldByMapId(), getNextMapId() |
@@ -56,7 +57,7 @@ Phaser.js 3 기반 판타지 타워 디펜스 게임. 도형 기반 프로토타
 | `js/data/maps/shadow.js` | 그림자 월드 6개 맵 (totalWaves 18~25, 전부 완성) |
 | `js/managers/GoldManager.js` | Gold 획득/소비/잔액 관리 |
 | `js/managers/ProjectilePool.js` | 오브젝트 풀 (투사체 30개 사전 할당, acquire/release) |
-| `js/managers/IAPManager.js` | IAP 관리자 클래스 (Mock/Native 이중 구현). 광고제거 구매(purchaseRemoveAds), 구매 복원(restorePurchases), 상태 확인(isAdFree). BootScene에서 초기화, registry에 `'iapManager'` 키로 등록 |
+| `js/managers/IAPManager.js` | IAP 관리자 클래스 (Mock/Native 이중 구현). `@capgo/native-purchases@^7.16.2` 플러그인을 통해 Google Play Billing 연동. 동적 import로 네이티브/웹 자동 분기. 주요 API: purchaseRemoveAds(구매), restorePurchases(복원, getPurchases 사용), isAdFree(상태 확인), getLocalizedPrice(현지화 가격, 폴백 $1.99), isBillingSupportedSync(결제 지원 여부). 에러 처리: 취소(조용히 무시), 이미 구매됨(자동 적용), 네트워크 오류(실패 메시지). BootScene에서 초기화, registry에 `'iapManager'` 키로 등록 |
 | `js/managers/AdManager.js` | AdMob 플러그인 래핑 클래스. 네이티브 환경에서 실제 광고, 웹에서 Mock 모드. 전면/보상형 광고 생명주기 관리, 일일 제한 카운터(localStorage), isBusy 플래그(광고 진행 중 씬 네비게이션 차단), adFree 상태(광고 스킵 + 일일 제한 해제) |
 | `js/managers/SoundManager.js` | Web Audio API 프로시저럴 SFX/BGM, 백그라운드 전환 시 BGM 자동 일시정지/재개 |
 | `js/i18n.js` | 다국어 지원 (한국어/영어), 모든 UI 텍스트 번역 키 관리 (ko/en 각 530+키), SUPPORTED_LOCALES export, localStorage 언어 저장/복원 |
@@ -161,7 +162,7 @@ BootScene -> MenuScene
 | 화산 (Volcano) | volcano | 42별 | 6 | 15~20 |
 | 그림자 (Shadow) | shadow | 60별 | 6 | 18~25 |
 
-30개 캠페인 맵 전부 고유 경로로 완성됨.
+30개 캠페인 맵 전부 고유 경로로 완성됨. 각 월드 내 맵 순서는 웨이포인트 수(경로 길이) 내림차순으로 배치: 긴 경로(쉬움)가 월드 초반, 짧은 경로(어려움)가 월드 후반. totalWaves도 초반 맵은 적게, 후반 맵은 많게 재분배됨.
 
 ### 월드 테마 색상
 
@@ -357,6 +358,7 @@ npx cap open android  # 또는 npx cap open ios
 - 합성 튜토리얼: Playwright 테스트 24건 (정상 12 + 예외 5 + UI/시각 5 + i18n 2) + 시각적 검증 6건, QA PASS
 - 하단 패널 UI 리디자인: Playwright 테스트 29건 (정상 18 + 예외/엣지케이스 4 + 시각적 4 + 안정성 3) + 시각적 검증 8건, QA PASS
 - 메타 업그레이드 시스템 재설계 (글로벌 10종 통합): Playwright 테스트 39건 (정상 25 + 예외 8 + 시각적 3 + 안정성 3) + 시각적 검증 9건, QA PASS (조건부)
+- IAP 실결제 Google Play Billing 연동: Playwright 테스트 42건 (정상 32 + 예외 10) + 시각적 검증 10건, QA PASS
 
 ## 시스템별 상세 문서
 
@@ -365,7 +367,7 @@ npx cap open android  # 또는 npx cap open ios
 | [systems/tower.md](systems/tower.md) | 타워 10종(Lv.1), T2 합성 55종, T3 합성 30종, T4 합성 12종, T5 전설 5종, 공격타입 7종, 머지 시스템, 강화 시스템, 랜덤 뽑기 시스템, 타워 드래그 이동, 타워 수집/발견 시스템 |
 | [systems/enemy.md](systems/enemy.md) | 적 8종, 스탯, 디버프 시스템, 면역 시스템 |
 | [systems/wave.md](systems/wave.md) | R1~R20 정의, R21+ 스케일링, 보스 라운드 |
-| [systems/economy.md](systems/economy.md) | Gold, Diamond, 메타 업그레이드, 컬렉션, 골드 싱크, 뽑기 비용, 광고 보상 타워(무료) |
+| [systems/economy.md](systems/economy.md) | Gold, Diamond, 메타 업그레이드, 컬렉션, 광고제거 IAP(Google Play Billing 연동), 골드 싱크, 뽑기 비용, 광고 보상 타워(무료) |
 | [systems/sound.md](systems/sound.md) | SFX 8종, BGM 3종, Web Audio API, 백그라운드 전환 BGM 자동 일시정지/재개 |
 | [systems/ui.md](systems/ui.md) | HUD(캠페인 Wave X/Y), TowerPanel(2행 레이아웃: 1행 뽑기+무료뽑기 버튼/2행 배속+소모품3종+HP회복, 풀 팝업/광고 보상 타워 모달/드래그 이동+합성 통합), TowerInfoOverlay(타워 정보 오버레이, game/codex 모드, 미발견 타워 ???/드릴다운 차단), 머지 프리뷰, 합성 튜토리얼(신규 유저 1회 오버레이), 일시정지(합성도감 버튼 포함), 게임속도, 골드 싱크 UI(소모품 아이콘+툴팁), 컬렉션(이중 탭, 합성도감 빨간 점), MergeCodexScene(도감 발견 시스템: 실루엣/힌트/진행률/빨간 점), 발견 축하 팝업, MapClearScene(차액 보상/세이브 갱신), WorldSelectScene(세이브 기반 해금), LevelSelectScene(세이브 기반 해금), MenuScene(CAMPAIGN/ENDLESS 조건부 활성, 음소거/언어 토글, 종료 확인 다이얼로그), EndlessMapSelectScene(6탭 맵 선택), GameOverScene(캠페인 3버튼), 씬 전환 페이드(fadeIn/fadeOut), Android 뒤로가기 키(ESC) 내비게이션, UI 이미지 에셋(버튼 23장/패널 5장/HUD 9장/장식 3장/아이콘 16장), Galmuri 픽셀 폰트, i18n(언어 전환/localStorage 저장), 모바일 |
 | [systems/ad.md](systems/ad.md) | AdMob 광고 시스템 (전면 광고, 보상형 광고 5종, 일일 제한, Mock 모드) |

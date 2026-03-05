@@ -112,6 +112,52 @@ floor(round / 5) * 2 + floor(round / 10) * 3
 - v8 → v9: 기존 `towerUpgrades` + `utilityUpgrades` 투자 다이아 전액 환불, `globalUpgrades` 10종 0레벨 초기화
 - `migrateSaveData()` 함수로 순차 마이그레이션 (v1 → v2 → ... → v9)
 
+## 광고제거 인앱 구매 (IAP)
+
+`@capgo/native-purchases@^7.16.2` 플러그인을 통해 Google Play Billing에 직접 연동한다.
+
+### 상품 정보
+
+| 항목 | 값 |
+|------|-----|
+| 상품 ID | `remove_ads` (config.js `IAP_PRODUCT_REMOVE_ADS`) |
+| 유형 | 비소모품 (일회성) |
+| 기본 가격 | $1.99 USD |
+| 효과 | 모든 광고 제거 + 무료뽑기 무제한 + Diamond 받기 무제한 |
+
+### 구현 구조
+
+- **IAPManager 클래스** (`js/managers/IAPManager.js`): Mock/Native 이중 구현
+  - 네이티브: 동적 import로 `@capgo/native-purchases` 로드, Google Play Billing API 호출
+  - 웹: Mock 모드로 즉시 성공 처리
+- **초기화**: `isBillingSupported()` + `getProducts()` (상품 정보 캐싱)
+- **구매**: `purchaseProduct()` (성공 시 `saveData.adFree = true`, AdManager 동기화)
+- **복원**: `getPurchases()` (구매 이력에서 `remove_ads` 존재 확인)
+- **가격 조회**: `getLocalizedPrice()` (캐싱된 상품 정보에서 현지화 가격, 폴백 `$1.99`)
+- **결제 지원 확인**: `isBillingSupportedSync()` (Mock에서 항상 true)
+
+### MenuScene 연동
+
+- 광고제거 버튼에 `getLocalizedPrice()`로 동적 가격 표시
+- `isBillingSupportedSync()` false 시 버튼 비활성화 + "결제를 지원하지 않는 기기입니다" 토스트
+- 구매 완료 시 버튼 비활성화 ("구매완료" 표시)
+
+### 에러 처리
+
+| 상황 | 처리 |
+|------|------|
+| 결제 지원 안됨 | 구매 버튼 비활성화, 토스트 표시 |
+| 사용자 취소 | 조용히 무시 (cancel/user 키워드 감지) |
+| 네트워크 오류 | "구매 실패" 메시지 표시 |
+| 이미 구매됨 | adFree 자동 적용 (already/owned 키워드 감지) |
+| 상품 로드 실패 | 폴백 가격($1.99) 표시, 구매 시도 허용 |
+| 초기화 실패 | Mock 모드로 자동 폴백 |
+
+### 알려진 제약
+
+- Google Play Console에 `remove_ads` 인앱 상품 등록이 선행되어야 네이티브 가격 표시 및 실결제 가능
+- 취소 판별 시 "user" 키워드 false positive 가능성 (LOW 심각도, 운영 모니터링 후 개선 판단)
+
 ## 골드 싱크 시스템
 
 후반 라운드(R30+)에서 축적되는 골드 인플레이션을 해소하기 위한 3가지 골드 소비처.

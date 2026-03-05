@@ -541,7 +541,7 @@ const STRINGS = {
     'draw.ad.button.adFree': '무료뽑기',
     // ── IAP (인앱 구매) ──
     'iap.removeAds': '광고 제거',
-    'iap.removeAds.price': '₩1,100',
+    'iap.removeAds.price': '$1.99',
     'iap.removeAds.purchased': '구매완료 \u2713',
     'iap.removeAds.hint': '광고 없이 뽑기',
     'iap.removeAds.confirm': '광고를 제거하시겠습니까?',
@@ -551,6 +551,9 @@ const STRINGS = {
     'iap.removeAds.success': '광고가 제거되었습니다!',
     'iap.removeAds.failed': '구매에 실패했습니다',
     'iap.removeAds.restored': '구매가 복원되었습니다',
+    'iap.billingNotSupported': '결제를 지원하지 않는 기기입니다',
+    'iap.restoreFailed': '구매 복원에 실패했습니다',
+    'iap.restoreNotFound': '복원할 구매가 없습니다',
     // ── 통계 씬 (StatsScene) ──
     'stats.title': 'STATISTICS',
     'stats.overview': 'OVERVIEW',
@@ -1136,7 +1139,7 @@ const STRINGS = {
     'draw.ad.button.adFree': 'Free Draw',
     // ── IAP (In-App Purchase) ──
     'iap.removeAds': 'Remove Ads',
-    'iap.removeAds.price': '$0.99',
+    'iap.removeAds.price': '$1.99',
     'iap.removeAds.purchased': 'Purchased \u2713',
     'iap.removeAds.hint': 'Draw without ads',
     'iap.removeAds.confirm': 'Remove all ads?',
@@ -1146,6 +1149,9 @@ const STRINGS = {
     'iap.removeAds.success': 'Ads removed!',
     'iap.removeAds.failed': 'Purchase failed',
     'iap.removeAds.restored': 'Purchase restored',
+    'iap.billingNotSupported': 'Billing not supported on this device',
+    'iap.restoreFailed': 'Failed to restore purchases',
+    'iap.restoreNotFound': 'No purchases to restore',
     // ── Stats scene (StatsScene) ──
     'stats.title': 'STATISTICS',
     'stats.overview': 'OVERVIEW',

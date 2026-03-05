@@ -555,6 +555,31 @@ export class MenuScene extends Phaser.Scene {
       return;
     }
 
+    // 결제 지원 여부 확인 (네이티브 환경에서 결제 미지원 시 비활성화)
+    /** @type {import('../managers/IAPManager.js').IAPManager|null} */
+    const iapManager = this.registry.get('iapManager');
+    const isBillingOk = iapManager ? iapManager.isBillingSupportedSync() : true;
+
+    if (!isBillingOk) {
+      // 결제 미지원 기기: 비활성 버튼 + 안내 텍스트
+      this._createImageButton(
+        x, y, 'btn_medium_disabled', 160, 34, BTN_SELL, 0x636e72, true
+      );
+
+      this.add.text(x, y - 5, t('iap.removeAds'), {
+        fontSize: '13px',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
+        color: '#636e72',
+      }).setOrigin(0.5);
+
+      this.add.text(x, y + 10, t('iap.billingNotSupported'), {
+        fontSize: '9px',
+        fontFamily: 'Galmuri11, Arial, sans-serif',
+        color: '#636e72',
+      }).setOrigin(0.5);
+      return;
+    }
+
     // 활성 상태: 위험 레드 버튼
     const btnBg = this._createImageButton(
       x, y, 'btn_medium_danger', 160, 34, BTN_DANGER, 0xc0392b
@@ -568,8 +593,11 @@ export class MenuScene extends Phaser.Scene {
       fontStyle: 'bold',
     }).setOrigin(0.5);
 
+    // 동적 가격 표시: 스토어에서 가져온 현지 가격, 실패 시 폴백 "$1.99"
+    const priceText = iapManager ? iapManager.getLocalizedPrice() : t('iap.removeAds.price');
+
     /** @type {Phaser.GameObjects.Text} 가격 서브라벨 */
-    const priceLabel = this.add.text(x, y + 10, t('iap.removeAds.price'), {
+    const priceLabel = this.add.text(x, y + 10, priceText, {
       fontSize: '10px',
       fontFamily: 'Galmuri11, Arial, sans-serif',
       color: '#ffcccc',
@@ -720,8 +748,11 @@ export class MenuScene extends Phaser.Scene {
             this.scene.restart();
           }
         });
+      } else if (result.error === 'cancelled') {
+        // 사용자 취소: 조용히 다이얼로그만 닫기
+        closeDialog();
       } else {
-        // 실패 시 다이얼로그 닫고 에러 메시지 표시
+        // 네트워크 오류 등 실패 시 다이얼로그 닫고 에러 메시지 표시
         closeDialog();
         const failToast = this.add.text(GAME_WIDTH / 2, GAME_HEIGHT / 2 - 60,
           t('iap.removeAds.failed'), {

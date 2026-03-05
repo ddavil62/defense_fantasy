@@ -51,6 +51,39 @@ R1~R20 수동 정의 + R21+ 자동 스케일링 무한 모드.
 - 전용 SFX (boss_appear)
 - BGM 자동 전환 (battle -> boss)
 
+## 멀티 스폰 시스템
+
+웨이브 진행도에 따라 틱당 동시 스폰 수량이 증가한다. 초반은 여유를 주고, 후반에 물량 러시 긴장감을 높인다.
+
+- 상수: `MULTI_SPAWN_THRESHOLD_MEDIUM = 8`, `MULTI_SPAWN_THRESHOLD_LARGE = 16`
+- 총 적 수량과 스폰 간격(spawnInterval)은 불변. 동시 스폰 수량만 변경
+
+| 웨이브 규모 | 총 적 수 | 전반 (0~50%) | 중후반 (50~75%) | 후반 (75~100%) |
+|---|---|---|---|---|
+| 소규모 | < 8마리 | 1마리/틱 | 1마리/틱 | 1마리/틱 |
+| 중규모 | 8~15마리 | 1마리/틱 | 2마리/틱 | 2마리/틱 |
+| 대규모 | 16+마리 | 1마리/틱 | 2마리/틱 | 3마리/틱 |
+
+- 관련 코드: `WaveManager._calcSpawnCount(progress)`, `WaveManager._updateSpawning(delta, spawnEnemy)`
+- 보스 스폰 시 즉시 루프 중단 + bossDelay 적용 (멀티 스폰 중에도 보스는 단독 스폰)
+
+## R21+ 적 난이도순 정렬
+
+R21+ 자동 생성 웨이브에서 적을 난이도순으로 정렬하여 약한 적이 먼저, 강한 적이 나중에 스폰된다.
+
+| 적 타입 | 난이도 순서 |
+|---|---|
+| normal | 0 (가장 먼저) |
+| fast | 1 |
+| swarm | 2 |
+| tank | 3 |
+| splitter | 4 |
+| armored | 5 (가장 나중) |
+
+- 보스 라운드: 보스가 첫 번째(bossDelay 포함), 나머지 적이 난이도순 정렬
+- R1~R20 사전 정의 웨이브에는 적용되지 않음
+- 관련 코드: `ENEMY_DIFFICULTY_ORDER` 상수, `WaveManager._generateScaledWave(round)`
+
 ## 웨이브 클리어
 
 - 보너스 Gold: `round * 3 + floor(currentHP / maxHP * 8)` (`calcWaveClearBonus`)
