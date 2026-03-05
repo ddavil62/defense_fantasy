@@ -388,8 +388,9 @@ export class TowerInfoOverlay {
 
     // 상위 조합 섹션 — curY 누산 기반으로 enhanceOffset 분기 불필요
     if (usedInList.length > 0) {
-      this._renderUsedInSection(entry, usedInList, panelX, curY);
-      return curY + 100; // usedIn viewH = 100
+      const panelBottom = panelTop + 540 - 50; // 패널 하단 여백 확보
+      this._renderUsedInSection(entry, usedInList, panelX, curY, panelBottom);
+      return panelBottom;
     }
 
     return curY;
@@ -525,8 +526,9 @@ export class TowerInfoOverlay {
 
     // ── 상위 조합 섹션 ──
     if (usedInList.length > 0) {
-      this._renderUsedInSection(entry, usedInList, panelX, nextY);
-      return nextY + 100; // usedIn viewH = 100
+      const panelBottom = panelTop + 540 - 50; // 패널 하단 여백 확보
+      this._renderUsedInSection(entry, usedInList, panelX, nextY, panelBottom);
+      return panelBottom;
     }
 
     return nextY;
@@ -665,10 +667,12 @@ export class TowerInfoOverlay {
    * @param {Array} usedInList - _findUsedInRecipes의 결과
    * @param {number} panelX - 패널 중심 X
    * @param {number} startY - 섹션 시작 Y 좌표
+   * @param {number} [panelBottomY] - 패널 하단 Y 좌표 (남은 공간 동적 계산용)
    * @private
    */
-  _renderUsedInSection(currentEntry, usedInList, panelX, startY) {
-    const viewH = 100;
+  _renderUsedInSection(currentEntry, usedInList, panelX, startY, panelBottomY) {
+    // 패널 하단까지 남은 공간을 활용하되 최소 100px 보장
+    const viewH = panelBottomY ? Math.max(100, panelBottomY - startY) : 100;
     const rowH = 22;
     const headerH = 18;
     let y = startY + 6;
