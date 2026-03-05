@@ -10,7 +10,8 @@ import {
   GAME_WIDTH, GAME_HEIGHT, COLORS,
   TOWER_STATS, MERGE_RECIPES, MERGED_TOWER_STATS,
   CODEX_TIER_BG, ATTACK_TYPE_COLORS_CSS,
-  META_UPGRADE_CONFIG, SAVE_KEY,
+  GLOBAL_META, SAVE_KEY,
+  getGlobalDamageMult, getGlobalFireRateMult, getGlobalRangeMult,
 } from '../config.js';
 import { t } from '../i18n.js';
 import { TowerInfoOverlay } from '../ui/TowerInfoOverlay.js';
@@ -111,8 +112,8 @@ export class MergeCodexScene extends Phaser.Scene {
     /** @type {object} 세이브 데이터 참조 */
     this._saveData = JSON.parse(localStorage.getItem(SAVE_KEY) || '{}');
 
-    /** @type {object} 타워별 메타 업그레이드 선택 정보 */
-    this._towerMetaUpgrades = this._saveData.towerUpgrades || {};
+    /** @type {object} 글로벌 메타 업그레이드 레벨 정보 */
+    this._globalUpgrades = this._saveData.globalUpgrades || {};
   }
 
   /**
@@ -135,7 +136,7 @@ export class MergeCodexScene extends Phaser.Scene {
     // 타워 정보 오버레이 생성 (codex 모드)
     this.towerInfoOverlay = new TowerInfoOverlay(this, {
       mode: 'codex',
-      applyMetaUpgrades: (id, stats) => this._applyMetaUpgradesToStats(id, stats),
+      applyMetaUpgrades: (id, stats) => this._applyGlobalUpgradesToStats(stats),
     });
 
     // 100ms 후 입력 허용
@@ -764,39 +765,17 @@ export class MergeCodexScene extends Phaser.Scene {
   // ── 메타 업그레이드 적용 ─────────────────────────────────────
 
   /**
-   * 메타 업그레이드 보너스를 일반 스탯 객체에 적용한다.
-   * GameScene._applyMetaUpgradesToTower의 로직을 미러링하되,
-   * 타워 인스턴스 대신 일반 객체에서 동작한다.
-   * damage/fireRate/range 3개 슬롯의 레벨에 따라 누적 곱연산으로 보너스를 적용한다.
-   * @param {string} towerType - 타워 타입 id (예: 'archer')
+   * 글로벌 메타 업그레이드 보너스를 일반 스탯 객체에 적용한다.
+   * GameScene._applyGlobalUpgradesToTower의 로직을 미러링하되,
+   * 타워 인스턴스 대신 일반 객체에서 동작한다. 타워 타입에 무관하게 적용된다.
    * @param {object} stats - { damage, fireRate, range, ... } - 직접 변경됨
    * @private
    */
-  _applyMetaUpgradesToStats(towerType, stats) {
-    const upgrades = this._towerMetaUpgrades[towerType];
-    if (!upgrades) return;
-
-    const { BONUS_PER_LEVEL } = META_UPGRADE_CONFIG;
-
-    // 공격력 보너스: 1.1^n
-    const damageLevel = upgrades.damage || 0;
-    if (damageLevel > 0) {
-      stats.damage *= Math.pow(1 + BONUS_PER_LEVEL, damageLevel);
-      stats.damage = Math.round(stats.damage);
-    }
-
-    // 공격속도 보너스: 0.9^n
-    const fireRateLevel = upgrades.fireRate || 0;
-    if (fireRateLevel > 0) {
-      stats.fireRate *= Math.pow(1 - BONUS_PER_LEVEL, fireRateLevel);
-    }
-
-    // 사거리 보너스: 1.1^n
-    const rangeLevel = upgrades.range || 0;
-    if (rangeLevel > 0) {
-      stats.range *= Math.pow(1 + BONUS_PER_LEVEL, rangeLevel);
-      stats.range = Math.round(stats.range);
-    }
+  _applyGlobalUpgradesToStats(stats) {
+    const g = this._globalUpgrades;
+    stats.damage = Math.round(stats.damage * getGlobalDamageMult(g));
+    stats.fireRate *= getGlobalFireRateMult(g);
+    stats.range = Math.round(stats.range * getGlobalRangeMult(g));
   }
 
   // ── 드래그 스크롤 ──────────────────────────────────────────

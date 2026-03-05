@@ -13,9 +13,10 @@ import {
   VISUALS, COLORS,
   pixelToGrid, gridToPixel,
   SPEED_NORMAL,
-  META_UPGRADE_CONFIG,
-  getMetaBaseHP, getMetaMaxBaseHP,
-  getMetaInitialGold, getMetaWaveBonusMultiplier,
+  getGlobalBaseHP, getGlobalStartGold,
+  getGlobalWaveBonusMult, getGlobalKillGoldMult,
+  getGlobalDamageMult, getGlobalFireRateMult, getGlobalRangeMult,
+  getGlobalMergeDiscountMult,
   calcHpRecoverCost, HP_RECOVER_AMOUNT,
   CONSUMABLE_ABILITIES,
   getMergeResult, MERGE_RECIPES, MERGED_TOWER_STATS, SAVE_KEY,
@@ -216,20 +217,17 @@ export class GameScene extends Phaser.Scene {
 
     // ── 세이브 데이터에서 메타 업그레이드 로드 ──
     const saveData = this.registry.get('saveData');
-    /** @type {object} 타워별 메타 업그레이드 선택 정보 (tier1~3) */
-    this.towerMetaUpgrades = saveData?.towerUpgrades || {};
-    /** @type {object} 유틸리티 업그레이드 티어 정보 (기지 HP, 시작 골드 등) */
-    this.utilityUpgrades = saveData?.utilityUpgrades || {};
+    /** @type {object} 글로벌 메타 업그레이드 레벨 정보 */
+    this.globalUpgrades = saveData?.globalUpgrades || {};
     /** @type {string[]} 해금된 타워 타입 목록 */
     this.unlockedTowers = saveData?.unlockedTowers || [];
 
     /** @type {import('../managers/SoundManager.js').SoundManager|null} 사운드 매니저 참조 */
     this.soundManager = this.registry.get('soundManager') || null;
 
-    // ── 유틸리티 메타 업그레이드 적용 (기지 HP, 시작 골드) ──
-    const metaBaseHP = getMetaBaseHP(this.utilityUpgrades);
-    const metaMaxHP = getMetaMaxBaseHP(this.utilityUpgrades);
-    this.maxBaseHP = metaMaxHP;
+    // ── 글로벌 메타 업그레이드 적용 (기지 HP, 시작 골드) ──
+    const metaBaseHP = getGlobalBaseHP(this.globalUpgrades);
+    this.maxBaseHP = metaBaseHP;
 
     // 부활 시 기지 HP를 최대 HP의 절반으로 설정
     if (this.revived && this._reviveStartWave > 0) {
@@ -238,7 +236,7 @@ export class GameScene extends Phaser.Scene {
       this.baseHP = metaBaseHP;
     }
 
-    const metaGold = getMetaInitialGold(this.utilityUpgrades);
+    const metaGold = getGlobalStartGold(this.globalUpgrades);
 
     // ── 매니저 초기화 ──
     this.mapManager = new MapManager(this, this.mapData);
@@ -276,6 +274,7 @@ export class GameScene extends Phaser.Scene {
       onDragEnd: () => this.mapManager.clearHighlights(),
       getTowers: () => this.towers,
       unlockedTowers: this.unlockedTowers,
+      globalUpgrades: this.globalUpgrades,
     });
     this.towerPanel.updateAffordability(this.goldManager.getGold());
 
@@ -578,7 +577,7 @@ export class GameScene extends Phaser.Scene {
     const cost = isAdTower
       ? 0
       : isPendingDraw
-        ? calcDrawCost(this.towerPanel.drawCount)
+        ? this.towerPanel.getDiscountedDrawCost(this.towerPanel.drawCount)
         : TOWER_STATS[type].levels[1].cost;
 
     if (!isAdTower && !this.goldManager.canAfford(cost)) {
@@ -597,10 +596,10 @@ export class GameScene extends Phaser.Scene {
     if (isAdTower && this.towerPanel._pendingAdTower.mergeData) {
       tower.totalInvested = 0; // 무료 배치이므로 투자 골드 0
       tower.applyMergeResult(this.towerPanel._pendingAdTower.mergeData);
-      this._applyMetaUpgradesToTower(tower);
+      this._applyGlobalUpgradesToTower(tower);
     } else {
       // 메타 업그레이드(영구 강화)를 새 타워에 적용
-      this._applyMetaUpgradesToTower(tower);
+      this._applyGlobalUpgradesToTower(tower);
       if (isAdTower) {
         tower.totalInvested = 0; // 광고 보상 T1도 무료
       }
@@ -640,8 +639,8 @@ export class GameScene extends Phaser.Scene {
     const mergeResult = getMergeResult(idA, idB);
     if (!mergeResult) return;
 
-    // 합성 비용 체크 (밸런스 오버홀: 티어별 골드 비용 부과)
-    const mergeCost = MERGE_COST[mergeResult.tier] || 0;
+    // 합성 비용 체크 (글로벌 메타 할인 적용)
+    const mergeCost = Math.floor((MERGE_COST[mergeResult.tier] || 0) * getGlobalMergeDiscountMult(this.globalUpgrades));
     if (mergeCost > 0 && !this.goldManager.canAfford(mergeCost)) {
       // 드래그로 숨겨진 타워를 복원 (alpha=0 상태 방지)
       if (towerA.graphics) towerA.graphics.setAlpha(1);
@@ -661,7 +660,7 @@ export class GameScene extends Phaser.Scene {
     towerB.applyMergeResult(mergeResult);
 
     // 머지된 타워에 메타 업그레이드 재적용
-    this._applyMetaUpgradesToTower(towerB);
+    this._applyGlobalUpgradesToTower(towerB);
 
     // towerA를 맵과 타워 목록에서 제거
     this.mapManager.removeTower(towerA.col, towerA.row);
@@ -1068,7 +1067,8 @@ export class GameScene extends Phaser.Scene {
         // 적 처치: 골드 지급 (Gold Rain 활성 시 2배, 광고 골드 부스트 시 추가 2배)
         const goldRainMultiplier = this.consumableState.goldRain.active ? 2 : 1;
         const adGoldMultiplier = this.goldBoostActive ? AD_GOLD_BOOST_MULTIPLIER : 1;
-        const killGold = Math.floor(enemy.gold * goldRainMultiplier * adGoldMultiplier);
+        const killGoldMult = getGlobalKillGoldMult(this.globalUpgrades);
+        const killGold = Math.floor(enemy.gold * killGoldMult * goldRainMultiplier * adGoldMultiplier);
         this.goldManager.earn(killGold);
         this.gameStats.goldEarned += killGold;
         this.totalKills++;
@@ -1801,15 +1801,15 @@ export class GameScene extends Phaser.Scene {
 
   /**
    * 웨이브 클리어 이벤트 처리.
-   * 유틸리티 메타 업그레이드의 보너스 배율을 적용한 골드를 지급하고,
+   * 글로벌 메타 업그레이드의 웨이브 보너스 배율을 적용한 골드를 지급하고,
    * 보스 웨이브였으면 BGM을 일반 전투곡으로 복원한다.
    * @param {number} bonusGold - 기본 보너스 골드
    * @returns {number} 배율 적용 후 실제 지급된 골드
    * @private
    */
   _onWaveClear(bonusGold) {
-    // 유틸리티 업그레이드의 웨이브 보너스 배율 적용 + 광고 골드 부스트
-    const multiplier = getMetaWaveBonusMultiplier(this.utilityUpgrades);
+    // 글로벌 메타 업그레이드의 웨이브 보너스 배율 적용 + 광고 골드 부스트
+    const multiplier = getGlobalWaveBonusMult(this.globalUpgrades);
     const adGoldMultiplier = this.goldBoostActive ? AD_GOLD_BOOST_MULTIPLIER : 1;
     const adjustedBonus = Math.floor(bonusGold * multiplier * adGoldMultiplier);
     this.goldManager.earn(adjustedBonus);
@@ -1926,40 +1926,19 @@ export class GameScene extends Phaser.Scene {
   }
 
   /**
-   * 세이브 데이터의 영구 메타 업그레이드를 타워 스탯에 적용한다.
-   * 타워 배치 시와 머지 후에 호출된다. damage/fireRate/range 3개 슬롯의
-   * 레벨에 따라 누적 곱연산(1.1^n 또는 0.9^n)으로 보너스를 적용한다.
+   * 글로벌 메타 업그레이드를 타워 스탯에 적용한다.
+   * 타워 배치 시와 머지 후에 호출된다. 타워 타입에 무관하게
+   * damage/fireRate/range를 글로벌 레벨에 따라 보너스 적용한다.
    * @param {Tower} tower - 보너스를 적용할 타워 인스턴스
    * @private
    */
-  _applyMetaUpgradesToTower(tower) {
-    const upgrades = this.towerMetaUpgrades[tower.type];
-    if (!upgrades) return;
-
-    const { BONUS_PER_LEVEL } = META_UPGRADE_CONFIG;
-
-    // 공격력 보너스: 1.1^n (레벨당 +10%)
-    const damageLevel = upgrades.damage || 0;
-    if (damageLevel > 0) {
-      tower.stats.damage *= Math.pow(1 + BONUS_PER_LEVEL, damageLevel);
-      tower.stats.damage = Math.round(tower.stats.damage);
-    }
-
-    // 공격속도 보너스: 0.9^n (fireRate 값이 작을수록 빠름)
-    const fireRateLevel = upgrades.fireRate || 0;
-    if (fireRateLevel > 0) {
-      tower.stats.fireRate *= Math.pow(1 - BONUS_PER_LEVEL, fireRateLevel);
-    }
-
-    // 사거리 보너스: 1.1^n (레벨당 +10%)
-    const rangeLevel = upgrades.range || 0;
-    if (rangeLevel > 0) {
-      tower.stats.range *= Math.pow(1 + BONUS_PER_LEVEL, rangeLevel);
-      tower.stats.range = Math.round(tower.stats.range);
-    }
-
-    // 메타 업그레이드 참조를 타워에 저장 (향후 확장용)
-    tower._metaUpgrades = this.towerMetaUpgrades;
+  _applyGlobalUpgradesToTower(tower) {
+    const g = this.globalUpgrades;
+    tower.stats.damage = Math.round(tower.stats.damage * getGlobalDamageMult(g));
+    tower.stats.fireRate *= getGlobalFireRateMult(g);
+    tower.stats.range = Math.round(tower.stats.range * getGlobalRangeMult(g));
+    // 글로벌 업그레이드 참조를 타워에 저장 (향후 확장용)
+    tower._globalUpgrades = g;
   }
 
   // ── 일시정지 시스템 ──────────────────────────────────────────

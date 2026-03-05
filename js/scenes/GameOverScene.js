@@ -13,6 +13,7 @@ import {
   calcDiamondReward, migrateSaveData,
   BTN_PRIMARY, BTN_BACK, BTN_DANGER, BTN_PRIMARY_CSS, BTN_DANGER_CSS,
   ADMOB_REWARDED_REVIVE_ID, BTN_META,
+  getGlobalDiamondBonusMult,
 } from '../config.js';
 import { t } from '../i18n.js';
 
@@ -87,8 +88,10 @@ export class GameOverScene extends Phaser.Scene {
     }
     saveData.totalGames++;
 
-    // ── 다이아몬드 보상 계산 ──
-    const diamondEarned = calcDiamondReward(this.round);
+    // ── 다이아몬드 보상 계산 (글로벌 메타 다이아 보너스 적용) ──
+    const baseDiamond = calcDiamondReward(this.round);
+    const diamondMult = getGlobalDiamondBonusMult(saveData.globalUpgrades);
+    const diamondEarned = Math.floor(baseDiamond * diamondMult);
     saveData.diamond = (saveData.diamond || 0) + diamondEarned;
     saveData.totalDiamondEarned = (saveData.totalDiamondEarned || 0) + diamondEarned;
 

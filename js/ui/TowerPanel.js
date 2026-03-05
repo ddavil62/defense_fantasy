@@ -15,6 +15,7 @@ import {
   calcDrawCost,
   ADMOB_REWARDED_TOWER_ID,
   AD_DRAW_LIMIT_PER_GAME,
+  getGlobalDrawDiscountMult, getGlobalMergeDiscountMult,
 } from '../config.js';
 import { t } from '../i18n.js';
 import { TowerInfoOverlay } from './TowerInfoOverlay.js';
@@ -46,6 +47,9 @@ export class TowerPanel {
 
     /** @type {string[]} 잠금 해제된 타워 타입 목록 */
     this.unlockedTowers = callbacks.unlockedTowers || [];
+
+    /** @type {object} 글로벌 메타 업그레이드 참조 (뽑기/합성 할인 계산용) */
+    this._globalUpgrades = callbacks.globalUpgrades || {};
 
     /** @type {number} 현재 보유 골드 (합성 미리보기 비용 표시용) */
     this._currentGold = 0;
@@ -168,6 +172,25 @@ export class TowerPanel {
       this.container.add(divider);
     }
 
+    /**
+     * 글로벌 메타 할인이 적용된 뽑기 비용을 계산한다.
+     * @param {number} drawCount - 현재 뽑기 횟수
+     * @returns {number} 할인 적용된 뽑기 비용
+     */
+    this.getDiscountedDrawCost = (drawCount) => {
+      return Math.floor(calcDrawCost(drawCount) * getGlobalDrawDiscountMult(this._globalUpgrades));
+    };
+
+    /**
+     * 글로벌 메타 할인이 적용된 합성 비용을 계산한다.
+     * @param {number} tier - 합성 결과 티어
+     * @returns {number} 할인 적용된 합성 비용
+     */
+    this.getDiscountedMergeCost = (tier) => {
+      const baseCost = MERGE_COST[tier] || 0;
+      return Math.floor(baseCost * getGlobalMergeDiscountMult(this._globalUpgrades));
+    };
+
     // 뽑기 버튼 (기존 2행 5열 타워 버튼 대체)
     this._createDrawButton();
 
@@ -212,8 +235,8 @@ export class TowerPanel {
     }).setOrigin(0.5);
     this.container.add(this._drawLabelText);
 
-    // 뽑기 비용 텍스트 (하단, 금색)
-    const initialCost = calcDrawCost(0);
+    // 뽑기 비용 텍스트 (하단, 금색) — 글로벌 메타 할인 적용
+    const initialCost = this.getDiscountedDrawCost(0);
     this._drawCostText = this.scene.add.text(x, y + 10, `${initialCost}G`, {
       fontSize: '11px',
       fontFamily: 'Galmuri11, Arial, sans-serif',
@@ -253,7 +276,7 @@ export class TowerPanel {
    * @private
    */
   _onDrawButtonClick() {
-    const cost = calcDrawCost(this.drawCount);
+    const cost = this.getDiscountedDrawCost(this.drawCount);
 
     // 골드 부족 시 무시
     if (this._currentGold < cost) return;
@@ -291,7 +314,7 @@ export class TowerPanel {
     this.drawCount++;
     this._pendingDrawType = null;
     if (this._drawCostText) {
-      this._drawCostText.setText(`${calcDrawCost(this.drawCount)}G`);
+      this._drawCostText.setText(`${this.getDiscountedDrawCost(this.drawCount)}G`);
     }
   }
 
@@ -1129,7 +1152,7 @@ export class TowerPanel {
 
     // 뽑기 버튼 활성화/비활성화
     if (this._drawButton) {
-      const cost = calcDrawCost(this.drawCount);
+      const cost = this.getDiscountedDrawCost(this.drawCount);
       if (gold >= cost) {
         this._drawButton.setAlpha(1);
         if (this._drawLabelText) this._drawLabelText.setAlpha(1);
@@ -1274,8 +1297,8 @@ export class TowerPanel {
 
     const container = this.scene.add.container(tower.x, by).setDepth(41);
 
-    // 합성 비용 산출 (밸런스 오버홀)
-    const mergeCost = MERGE_COST[result.tier] || 0;
+    // 합성 비용 산출 (글로벌 메타 할인 적용)
+    const mergeCost = this.getDiscountedMergeCost(result.tier);
     const canAfford = this._currentGold >= mergeCost;
     // 비용 포함 시 버블 높이를 늘림
     const bubbleH = mergeCost > 0 ? 44 : 32;

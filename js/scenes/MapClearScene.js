@@ -13,6 +13,7 @@ import {
   AD_CLEAR_BOOST_MULTIPLIER,
   AD_LIMIT_CLEAR_BOOST,
   ADMOB_REWARDED_CLEAR_BOOST_ID,
+  getGlobalDiamondBonusMult,
 } from '../config.js';
 import { t } from '../i18n.js';
 import { getNextMapId, WORLDS } from '../data/worlds.js';
@@ -83,9 +84,11 @@ export class MapClearScene extends Phaser.Scene {
     const mapId = this.mapData.id;
     const prevStars = saveData.worldProgress[mapId]?.stars || 0;
 
-    // 기본 차액 보상
-    const baseDiamond = Math.max(0,
+    // 기본 차액 보상 (글로벌 메타 다이아 보너스 적용)
+    const rawDiamond = Math.max(0,
       (CAMPAIGN_DIAMOND_REWARDS[stars] || 0) - (CAMPAIGN_DIAMOND_REWARDS[prevStars] || 0));
+    const diamondMult = getGlobalDiamondBonusMult(saveData.globalUpgrades);
+    const baseDiamond = Math.floor(rawDiamond * diamondMult);
 
     // 부스트 배율 적용
     const boostMultiplier = this.clearBoostActive ? AD_CLEAR_BOOST_MULTIPLIER : 1;

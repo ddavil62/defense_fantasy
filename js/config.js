@@ -1878,129 +1878,138 @@ export const CAMPAIGN_DIAMOND_REWARDS = [0, 3, 5, 8];
 
 // (타워 해금은 월드 클리어 기반, TOWER_UNLOCK_MAP 참조)
 
-// ── 메타 업그레이드 설정 (타워별 능력치 선형 강화) ──────────────
+// ── 글로벌 메타 업그레이드 설정 (10개 카테고리) ──────────────────
 /**
- * 타워별 메타 업그레이드 설정.
- * 각 타워의 damage/fireRate/range 3개 슬롯을 독립적으로 레벨업하는 선형 스택 시스템.
+ * 글로벌 메타 업그레이드 설정.
+ * 모든 타워/경제/생존/성장에 일괄 적용되는 10개 업그레이드 항목.
+ * - MAX_LEVEL: 기본 최대 레벨 (항목별 override 가능)
  * - BONUS_PER_LEVEL: 레벨당 보너스 비율 (+10%)
  * - BASE_COST: 레벨 1 구매 비용 (다이아몬드)
  * - COST_STEP: 레벨당 비용 증가분
- * - towers: 타워별 각 슬롯의 최대 레벨 (maxLevel)
+ * - upgrades: 항목별 카테고리/아이콘/색상/최대레벨 정의
  * @type {object}
  */
-export const META_UPGRADE_CONFIG = {
-  BONUS_PER_LEVEL: 0.10,  // 레벨당 보너스 비율 (+10%)
-  BASE_COST: 5,            // 레벨 1 비용 (다이아몬드)
-  COST_STEP: 3,            // 레벨당 비용 증가분
-  towers: {
-    archer:    { damage: 3, fireRate: 5, range: 3 },
-    mage:      { damage: 5, fireRate: 3, range: 3 },
-    ice:       { damage: 2, fireRate: 3, range: 5 },
-    lightning: { damage: 5, fireRate: 3, range: 3 },
-    flame:     { damage: 3, fireRate: 5, range: 3 },
-    rock:      { damage: 5, fireRate: 2, range: 3 },
-    poison:    { damage: 2, fireRate: 3, range: 5 },
-    wind:      { damage: 3, fireRate: 5, range: 3 },
-    light:     { damage: 5, fireRate: 3, range: 3 },
-    dragon:    { damage: 5, fireRate: 2, range: 5 },
+export const GLOBAL_META = {
+  MAX_LEVEL: 10,
+  BONUS_PER_LEVEL: 0.10,
+  BASE_COST: 5,
+  COST_STEP: 3,
+
+  upgrades: {
+    damage:        { category: 'combat',   icon: '\u2694', color: 0xe74c3c },
+    fireRate:      { category: 'combat',   icon: '\u26A1', color: 0xf39c12 },
+    range:         { category: 'combat',   icon: '\uD83C\uDFAF', color: 0x3498db, maxLevel: 5 },
+    startGold:     { category: 'economy',  icon: '\uD83D\uDCB0', color: 0xf1c40f },
+    killGold:      { category: 'economy',  icon: '\uD83E\uDE99', color: 0xe67e22 },
+    drawDiscount:  { category: 'economy',  icon: '\uD83C\uDFF7', color: 0x1abc9c },
+    mergeDiscount: { category: 'economy',  icon: '\uD83D\uDD27', color: 0x16a085 },
+    baseHp:        { category: 'survival', icon: '\u2764', color: 0xe94560 },
+    waveBonus:     { category: 'survival', icon: '\u2B50', color: 0xfdcb6e },
+    diamondBonus:  { category: 'growth',   icon: '\uD83D\uDC8E', color: 0x9b59b6 },
   },
 };
 
 /**
- * 메타 업그레이드 다음 레벨 구매 비용을 계산한다.
- * 비용 공식: baseCost + (nextLevel - 1) * step
- * 예: Lv1=5, Lv2=8, Lv3=11, Lv4=14, Lv5=17
+ * 글로벌 메타 업그레이드 다음 레벨 구매 비용을 계산한다.
+ * 비용 공식: baseCost + currentLevel * step
+ * 예: Lv0→1=5, Lv1→2=8, Lv2→3=11, ...
  * @param {number} currentLevel - 현재 레벨 (0이면 미강화)
  * @returns {number} 다음 레벨 구매 비용 (다이아몬드)
  */
-export function calcMetaUpgradeCost(currentLevel) {
-  const nextLevel = currentLevel + 1;
-  return META_UPGRADE_CONFIG.BASE_COST + (nextLevel - 1) * META_UPGRADE_CONFIG.COST_STEP;
+export function calcGlobalUpgradeCost(currentLevel) {
+  return GLOBAL_META.BASE_COST + currentLevel * GLOBAL_META.COST_STEP;
 }
 
-// ── Utility Upgrades ───────────────────────────────────────────
-/**
- * Utility upgrade definitions (linear tier progression, no A/B branching).
- * @type {Object<string, object>}
- */
-export const UTILITY_UPGRADES = {
-  baseHp: {
-    name: 'Base HP+',
-    desc: '기지 시작 체력 증가',
-    icon: 'heart',
-    iconColor: 0xe94560,
-    tiers: [
-      { value: 22, cost: 8, desc: 'HP 22' },
-      { value: 25, cost: 15, desc: 'HP 25' },
-      { value: 30, cost: 30, desc: 'HP 30' },
-    ],
-  },
-  goldBoost: {
-    name: 'Gold Boost',
-    desc: '시작 골드 증가',
-    icon: 'coin',
-    iconColor: 0xffd700,
-    tiers: [
-      { value: 275, cost: 8, desc: '275G' },
-      { value: 300, cost: 15, desc: '300G' },
-      { value: 350, cost: 30, desc: '350G' },
-    ],
-  },
-  waveBonus: {
-    name: 'Wave Bonus+',
-    desc: '웨이브 클리어 보너스 배율 증가',
-    icon: 'star',
-    iconColor: 0xfdcb6e,
-    tiers: [
-      { value: 1.1, cost: 8, desc: '1.1x' },
-      { value: 1.2, cost: 15, desc: '1.2x' },
-      { value: 1.3, cost: 30, desc: '1.3x' },
-    ],
-  },
-};
-
-// ── Meta Upgrade Helper Functions ──────────────────────────────
+// ── 글로벌 메타 업그레이드 헬퍼 함수 ──────────────────────────────
 
 /**
- * Get base HP considering utility upgrades.
- * @param {object} utilityUpgrades - { baseHp: number, ... }
- * @returns {number} Effective base HP
+ * 글로벌 메타 공격력 배율을 반환한다 (1.1^lv).
+ * @param {object} globalUpgrades - { damage: number, ... }
+ * @returns {number} 공격력 배율
  */
-export function getMetaBaseHP(utilityUpgrades) {
-  const tier = utilityUpgrades?.baseHp || 0;
-  if (tier === 0) return BASE_HP;
-  return UTILITY_UPGRADES.baseHp.tiers[tier - 1].value;
+export function getGlobalDamageMult(globalUpgrades) {
+  return Math.pow(1.1, globalUpgrades?.damage || 0);
 }
 
 /**
- * Get max base HP considering utility upgrades (same as base HP).
- * @param {object} utilityUpgrades - { baseHp: number, ... }
- * @returns {number} Effective max base HP
+ * 글로벌 메타 공격속도 배율을 반환한다 (0.9^lv).
+ * @param {object} globalUpgrades - { fireRate: number, ... }
+ * @returns {number} 공격속도 배율 (fireRate에 곱하면 간격 감소)
  */
-export function getMetaMaxBaseHP(utilityUpgrades) {
-  return getMetaBaseHP(utilityUpgrades);
+export function getGlobalFireRateMult(globalUpgrades) {
+  return Math.pow(0.9, globalUpgrades?.fireRate || 0);
 }
 
 /**
- * Get initial gold considering utility upgrades.
- * @param {object} utilityUpgrades - { goldBoost: number, ... }
- * @returns {number} Effective initial gold
+ * 글로벌 메타 사거리 배율을 반환한다 (1.1^lv).
+ * @param {object} globalUpgrades - { range: number, ... }
+ * @returns {number} 사거리 배율
  */
-export function getMetaInitialGold(utilityUpgrades) {
-  const tier = utilityUpgrades?.goldBoost || 0;
-  if (tier === 0) return INITIAL_GOLD;
-  return UTILITY_UPGRADES.goldBoost.tiers[tier - 1].value;
+export function getGlobalRangeMult(globalUpgrades) {
+  return Math.pow(1.1, globalUpgrades?.range || 0);
 }
 
 /**
- * Get wave bonus multiplier considering utility upgrades.
- * @param {object} utilityUpgrades - { waveBonus: number, ... }
- * @returns {number} Wave bonus multiplier
+ * 글로벌 메타 시작 골드를 반환한다 (INITIAL_GOLD + 20*lv).
+ * @param {object} globalUpgrades - { startGold: number, ... }
+ * @returns {number} 시작 골드량
  */
-export function getMetaWaveBonusMultiplier(utilityUpgrades) {
-  const tier = utilityUpgrades?.waveBonus || 0;
-  if (tier === 0) return 1.0;
-  return UTILITY_UPGRADES.waveBonus.tiers[tier - 1].value;
+export function getGlobalStartGold(globalUpgrades) {
+  return INITIAL_GOLD + 20 * (globalUpgrades?.startGold || 0);
+}
+
+/**
+ * 글로벌 메타 처치 골드 배율을 반환한다 (1.1^lv).
+ * @param {object} globalUpgrades - { killGold: number, ... }
+ * @returns {number} 처치 골드 배율
+ */
+export function getGlobalKillGoldMult(globalUpgrades) {
+  return Math.pow(1.1, globalUpgrades?.killGold || 0);
+}
+
+/**
+ * 글로벌 메타 뽑기 할인 배율을 반환한다 (0.95^lv).
+ * @param {object} globalUpgrades - { drawDiscount: number, ... }
+ * @returns {number} 뽑기 비용 배율
+ */
+export function getGlobalDrawDiscountMult(globalUpgrades) {
+  return Math.pow(0.95, globalUpgrades?.drawDiscount || 0);
+}
+
+/**
+ * 글로벌 메타 합성 할인 배율을 반환한다 (0.95^lv).
+ * @param {object} globalUpgrades - { mergeDiscount: number, ... }
+ * @returns {number} 합성 비용 배율
+ */
+export function getGlobalMergeDiscountMult(globalUpgrades) {
+  return Math.pow(0.95, globalUpgrades?.mergeDiscount || 0);
+}
+
+/**
+ * 글로벌 메타 기지 체력을 반환한다 (BASE_HP + 3*lv).
+ * @param {object} globalUpgrades - { baseHp: number, ... }
+ * @returns {number} 기지 시작/최대 체력
+ */
+export function getGlobalBaseHP(globalUpgrades) {
+  return BASE_HP + 3 * (globalUpgrades?.baseHp || 0);
+}
+
+/**
+ * 글로벌 메타 웨이브 보너스 배율을 반환한다 (1.1^lv).
+ * @param {object} globalUpgrades - { waveBonus: number, ... }
+ * @returns {number} 웨이브 보너스 배율
+ */
+export function getGlobalWaveBonusMult(globalUpgrades) {
+  return Math.pow(1.1, globalUpgrades?.waveBonus || 0);
+}
+
+/**
+ * 글로벌 메타 다이아 보너스 배율을 반환한다 (1.1^lv).
+ * @param {object} globalUpgrades - { diamondBonus: number, ... }
+ * @returns {number} 다이아 보상 배율
+ */
+export function getGlobalDiamondBonusMult(globalUpgrades) {
+  return Math.pow(1.1, globalUpgrades?.diamondBonus || 0);
 }
 
 // ── Save Data Migration ────────────────────────────────────────
@@ -2027,7 +2036,7 @@ function createDefaultStats() {
 }
 
 /** @const {number} 현재 세이브 데이터 스키마 버전 */
-export const SAVE_DATA_VERSION = 8;
+export const SAVE_DATA_VERSION = 9;
 
 /**
  * 세이브 데이터를 최신 스키마로 마이그레이션한다.
@@ -2046,8 +2055,11 @@ export function migrateSaveData(saveData) {
       totalGames: 0,
       diamond: 0,
       totalDiamondEarned: 0,
-      towerUpgrades: {},
-      utilityUpgrades: { baseHp: 0, goldBoost: 0, waveBonus: 0 },
+      globalUpgrades: {
+        damage: 0, fireRate: 0, range: 0,
+        startGold: 0, killGold: 0, drawDiscount: 0, mergeDiscount: 0,
+        baseHp: 0, waveBonus: 0, diamondBonus: 0,
+      },
       unlockedTowers: [],
       discoveredMerges: [],
       newDiscoveries: [],
@@ -2161,12 +2173,68 @@ export function migrateSaveData(saveData) {
     saveData.saveDataVersion = 8;
   }
 
+  // ── v8 → v9 마이그레이션: 글로벌 메타 업그레이드 통합 (다이아 환불) ──
+  if (saveData.saveDataVersion < 9) {
+    let refund = 0;
+
+    // 기존 towerUpgrades의 모든 레벨 비용 합산 → 환불
+    const oldTowerUpgrades = saveData.towerUpgrades || {};
+    for (const towerType of Object.keys(oldTowerUpgrades)) {
+      const slots = oldTowerUpgrades[towerType];
+      if (!slots || typeof slots !== 'object') continue;
+      for (const slotKey of Object.keys(slots)) {
+        const level = slots[slotKey] || 0;
+        for (let lv = 1; lv <= level; lv++) {
+          refund += 5 + (lv - 1) * 3; // 기존 calcMetaUpgradeCost 공식
+        }
+      }
+    }
+
+    // 기존 utilityUpgrades의 모든 티어 비용 합산 → 환불
+    const oldUtility = saveData.utilityUpgrades || {};
+    const utilityTierCosts = {
+      baseHp:    [8, 15, 30],
+      goldBoost: [8, 15, 30],
+      waveBonus: [8, 15, 30],
+    };
+    for (const key of Object.keys(utilityTierCosts)) {
+      const tier = oldUtility[key] || 0;
+      for (let t = 0; t < tier; t++) {
+        refund += utilityTierCosts[key][t] || 0;
+      }
+    }
+
+    // 다이아 환불 적용
+    saveData.diamond = (saveData.diamond || 0) + refund;
+
+    // 기존 데이터 삭제
+    delete saveData.towerUpgrades;
+    delete saveData.utilityUpgrades;
+
+    // globalUpgrades 초기화
+    saveData.globalUpgrades = {
+      damage: 0, fireRate: 0, range: 0,
+      startGold: 0, killGold: 0, drawDiscount: 0, mergeDiscount: 0,
+      baseHp: 0, waveBonus: 0, diamondBonus: 0,
+    };
+
+    // 환불 금액 기록 (CollectionScene에서 토스트 표시용)
+    if (refund > 0) {
+      saveData._metaRefundAmount = refund;
+    }
+
+    saveData.saveDataVersion = 9;
+  }
+
   // ── Ensure all v2 fields exist ──
   if (saveData.diamond === undefined) saveData.diamond = 0;
   if (saveData.totalDiamondEarned === undefined) saveData.totalDiamondEarned = 0;
-  if (!saveData.towerUpgrades) saveData.towerUpgrades = {};
-  if (!saveData.utilityUpgrades) {
-    saveData.utilityUpgrades = { baseHp: 0, goldBoost: 0, waveBonus: 0 };
+  if (!saveData.globalUpgrades) {
+    saveData.globalUpgrades = {
+      damage: 0, fireRate: 0, range: 0,
+      startGold: 0, killGold: 0, drawDiscount: 0, mergeDiscount: 0,
+      baseHp: 0, waveBonus: 0, diamondBonus: 0,
+    };
   }
   if (!saveData.unlockedTowers) saveData.unlockedTowers = [];
   if (!saveData.discoveredMerges) saveData.discoveredMerges = [];

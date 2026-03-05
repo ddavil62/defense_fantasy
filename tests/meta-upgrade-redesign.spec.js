@@ -1,1319 +1,786 @@
-// @ts-check
+/**
+ * @fileoverview 메타 업그레이드 시스템 재설계 QA 테스트.
+ * config.js 헬퍼 함수, 세이브 마이그레이션, CollectionScene UI,
+ * GameScene/TowerPanel/GameOverScene/MapClearScene 연동을 검증한다.
+ */
 import { test, expect } from '@playwright/test';
 
-/**
- * Meta Upgrade Redesign QA Tests
- *
- * 검증 대상:
- * - META_UPGRADE_CONFIG: 10개 타워별 damage/fireRate/range maxLevel
- * - calcMetaUpgradeCost: Lv1=5, Lv2=8, Lv3=11, Lv4=14, Lv5=17
- * - 보너스 계산: damage/range 1.1^n, fireRate 0.9^n
- * - SAVE_DATA_VERSION = 5, v4->v5 마이그레이션
- * - CollectionScene UI: 3개 슬롯 카드, 비용, 버튼
- * - GameScene: 메타 보너스 적용
- * - MergeCodexScene: 미리보기 보너스
- * - i18n 키 존재
- * - 엣지케이스: 초기 상태, MAX 도달, 다이아 0
- */
+const SAVE_KEY = 'fantasy-td-save';
 
-const BASE_URL = 'http://localhost:5173';
-
-// ── Helpers ──────────────────────────────────────────────────────
-
-async function waitForGame(page, timeout = 15000) {
-  await page.goto(BASE_URL, { waitUntil: 'networkidle' });
-  await page.waitForSelector('canvas', { timeout });
-  await page.waitForFunction(() => {
-    return window.__game && window.__game.scene && window.__game.scene.scenes.length > 0;
-  }, { timeout });
+// 기본 세이브 데이터 (v9, globalUpgrades 모두 0)
+function makeBaseSave(overrides = {}) {
+  return {
+    saveDataVersion: 9,
+    bestRound: 0,
+    bestKills: 0,
+    totalGames: 0,
+    diamond: 100,
+    totalDiamondEarned: 100,
+    globalUpgrades: {
+      damage: 0, fireRate: 0, range: 0,
+      startGold: 0, killGold: 0, drawDiscount: 0, mergeDiscount: 0,
+      baseHp: 0, waveBonus: 0, diamondBonus: 0,
+    },
+    unlockedTowers: [],
+    discoveredMerges: [],
+    newDiscoveries: [],
+    stats: {
+      totalGamesPlayed: 0, totalKills: 0, totalBossKills: 0,
+      totalTowersPlaced: 0, totalGoldEarned: 0, totalDamageDealt: 0,
+      totalWavesCleared: 0, killsByEnemyType: {}, killsByTowerType: {},
+      bestRound: 0, bestKills: 0, gameHistory: [],
+    },
+    worldProgress: {},
+    endlessUnlocked: false,
+    campaignStats: { totalStars: 0, mapsCleared: 0, worldsCleared: 0 },
+    adFree: false,
+    mergeTutorialDone: true,
+    ...overrides,
+  };
 }
 
-async function waitForScene(page, sceneKey, timeout = 10000) {
-  await page.waitForFunction((key) => {
-    const g = window.__game;
-    if (!g) return false;
-    const scene = g.scene.getScene(key);
-    return scene && scene.scene.isActive();
-  }, sceneKey, { timeout });
-  await page.waitForTimeout(500);
+// v8 세이브 데이터 (마이그레이션 전)
+function makeV8Save(overrides = {}) {
+  return {
+    saveDataVersion: 8,
+    bestRound: 10,
+    bestKills: 50,
+    totalGames: 5,
+    diamond: 20,
+    totalDiamondEarned: 50,
+    towerUpgrades: {
+      archer: { damage: 2, fireRate: 1, range: 0 },
+      mage: { damage: 1, fireRate: 0, range: 0 },
+    },
+    utilityUpgrades: { baseHp: 2, goldBoost: 1, waveBonus: 0 },
+    unlockedTowers: [],
+    discoveredMerges: [],
+    newDiscoveries: [],
+    stats: {
+      totalGamesPlayed: 5, totalKills: 50, totalBossKills: 0,
+      totalTowersPlaced: 0, totalGoldEarned: 0, totalDamageDealt: 0,
+      totalWavesCleared: 0, killsByEnemyType: {}, killsByTowerType: {},
+      bestRound: 10, bestKills: 50, gameHistory: [],
+    },
+    worldProgress: {},
+    endlessUnlocked: false,
+    campaignStats: { totalStars: 0, mapsCleared: 0, worldsCleared: 0 },
+    adFree: false,
+    mergeTutorialDone: true,
+    ...overrides,
+  };
 }
 
-/** CollectionScene으로 직접 전환 */
-async function enterCollectionScene(page) {
-  await waitForGame(page);
-  await page.evaluate(() => {
-    const g = window.__game;
-    const activeScenes = g.scene.getScenes(true);
-    if (activeScenes.length > 0) {
-      activeScenes[0].scene.start('CollectionScene');
-    }
+test.describe('메타 업그레이드 재설계 - config.js 헬퍼 함수 검증', () => {
+  test('GLOBAL_META 구조와 10개 항목 존재 확인', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForFunction(() => window.__game?.scene?.scenes?.length > 0, { timeout: 10000 });
+
+    const result = await page.evaluate(() => {
+      // config.js는 ES Module이므로 동적으로 import
+      return import('/js/config.js').then(mod => {
+        const GM = mod.GLOBAL_META;
+        const keys = Object.keys(GM.upgrades);
+        return {
+          maxLevel: GM.MAX_LEVEL,
+          bonusPerLevel: GM.BONUS_PER_LEVEL,
+          baseCost: GM.BASE_COST,
+          costStep: GM.COST_STEP,
+          upgradeKeys: keys,
+          rangeMaxLevel: GM.upgrades.range?.maxLevel,
+          categories: keys.map(k => GM.upgrades[k].category),
+        };
+      });
+    });
+
+    expect(result.maxLevel).toBe(10);
+    expect(result.bonusPerLevel).toBe(0.10);
+    expect(result.baseCost).toBe(5);
+    expect(result.costStep).toBe(3);
+    expect(result.upgradeKeys).toHaveLength(10);
+    expect(result.upgradeKeys).toEqual([
+      'damage', 'fireRate', 'range',
+      'startGold', 'killGold', 'drawDiscount', 'mergeDiscount',
+      'baseHp', 'waveBonus', 'diamondBonus',
+    ]);
+    expect(result.rangeMaxLevel).toBe(5);
+    expect(result.categories).toContain('combat');
+    expect(result.categories).toContain('economy');
+    expect(result.categories).toContain('survival');
+    expect(result.categories).toContain('growth');
   });
-  await waitForScene(page, 'CollectionScene');
-}
 
-/** 세이브 데이터를 주입하고 CollectionScene 재시작 */
-async function injectSaveAndRestart(page, saveOverrides) {
-  await page.evaluate((overrides) => {
-    const g = window.__game;
-    const saveData = g.registry.get('saveData') || {};
-    Object.assign(saveData, overrides);
-    g.registry.set('saveData', saveData);
-    localStorage.setItem('fantasy-td-save', JSON.stringify(saveData));
-    const activeScenes = g.scene.getScenes(true);
-    if (activeScenes.length > 0) {
-      activeScenes[0].scene.start('CollectionScene');
-    }
-  }, saveOverrides);
-  await waitForScene(page, 'CollectionScene');
-}
+  test('calcGlobalUpgradeCost 공식 검증 (5 + currentLevel * 3)', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForFunction(() => window.__game?.scene?.scenes?.length > 0, { timeout: 10000 });
 
-/** 다이아몬드를 특정 값으로 설정하고 CollectionScene 재시작 */
-async function setDiamondAndRestart(page, diamond) {
-  await injectSaveAndRestart(page, { diamond });
-}
+    const costs = await page.evaluate(() => {
+      return import('/js/config.js').then(mod => {
+        return Array.from({ length: 11 }, (_, i) => mod.calcGlobalUpgradeCost(i));
+      });
+    });
 
-// ── 1. CONFIG & DATA VALIDATION ─────────────────────────────────
+    expect(costs[0]).toBe(5);   // Lv0->1
+    expect(costs[1]).toBe(8);   // Lv1->2
+    expect(costs[2]).toBe(11);  // Lv2->3
+    expect(costs[3]).toBe(14);  // Lv3->4
+    expect(costs[4]).toBe(17);  // Lv4->5
+    expect(costs[5]).toBe(20);  // Lv5->6
+    expect(costs[9]).toBe(32);  // Lv9->10
+    // 합계 검증 (0~9)
+    const sum = costs.slice(0, 10).reduce((a, b) => a + b, 0);
+    expect(sum).toBe(185);
+  });
 
-test.describe('META_UPGRADE_CONFIG 데이터 검증', () => {
+  test('10개 헬퍼 함수 정확성 검증', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForFunction(() => window.__game?.scene?.scenes?.length > 0, { timeout: 10000 });
+
+    const result = await page.evaluate(() => {
+      return import('/js/config.js').then(mod => {
+        const upgLv5 = {
+          damage: 5, fireRate: 5, range: 5,
+          startGold: 5, killGold: 5, drawDiscount: 5, mergeDiscount: 5,
+          baseHp: 5, waveBonus: 5, diamondBonus: 5,
+        };
+        const upgLv0 = {
+          damage: 0, fireRate: 0, range: 0,
+          startGold: 0, killGold: 0, drawDiscount: 0, mergeDiscount: 0,
+          baseHp: 0, waveBonus: 0, diamondBonus: 0,
+        };
+        return {
+          // Lv0 (기본값)
+          damageLv0: mod.getGlobalDamageMult(upgLv0),
+          fireRateLv0: mod.getGlobalFireRateMult(upgLv0),
+          rangeLv0: mod.getGlobalRangeMult(upgLv0),
+          startGoldLv0: mod.getGlobalStartGold(upgLv0),
+          killGoldLv0: mod.getGlobalKillGoldMult(upgLv0),
+          drawDiscountLv0: mod.getGlobalDrawDiscountMult(upgLv0),
+          mergeDiscountLv0: mod.getGlobalMergeDiscountMult(upgLv0),
+          baseHpLv0: mod.getGlobalBaseHP(upgLv0),
+          waveBonusLv0: mod.getGlobalWaveBonusMult(upgLv0),
+          diamondBonusLv0: mod.getGlobalDiamondBonusMult(upgLv0),
+          // Lv5
+          damageLv5: mod.getGlobalDamageMult(upgLv5),
+          fireRateLv5: mod.getGlobalFireRateMult(upgLv5),
+          rangeLv5: mod.getGlobalRangeMult(upgLv5),
+          startGoldLv5: mod.getGlobalStartGold(upgLv5),
+          killGoldLv5: mod.getGlobalKillGoldMult(upgLv5),
+          drawDiscountLv5: mod.getGlobalDrawDiscountMult(upgLv5),
+          mergeDiscountLv5: mod.getGlobalMergeDiscountMult(upgLv5),
+          baseHpLv5: mod.getGlobalBaseHP(upgLv5),
+          waveBonusLv5: mod.getGlobalWaveBonusMult(upgLv5),
+          diamondBonusLv5: mod.getGlobalDiamondBonusMult(upgLv5),
+          // null/undefined safety
+          damageNull: mod.getGlobalDamageMult(null),
+          damageUndefined: mod.getGlobalDamageMult(undefined),
+          baseHpEmpty: mod.getGlobalBaseHP({}),
+          INITIAL_GOLD: mod.INITIAL_GOLD,
+          BASE_HP: mod.BASE_HP,
+        };
+      });
+    });
+
+    // Lv0 = 기본값 (배율 1.0, 기본 수치)
+    expect(result.damageLv0).toBe(1.0);
+    expect(result.fireRateLv0).toBe(1.0);
+    expect(result.rangeLv0).toBe(1.0);
+    expect(result.startGoldLv0).toBe(result.INITIAL_GOLD);
+    expect(result.killGoldLv0).toBe(1.0);
+    expect(result.drawDiscountLv0).toBe(1.0);
+    expect(result.mergeDiscountLv0).toBe(1.0);
+    expect(result.baseHpLv0).toBe(result.BASE_HP);
+    expect(result.waveBonusLv0).toBe(1.0);
+    expect(result.diamondBonusLv0).toBe(1.0);
+
+    // Lv5 수치 검증
+    expect(result.damageLv5).toBeCloseTo(Math.pow(1.1, 5), 5);
+    expect(result.fireRateLv5).toBeCloseTo(Math.pow(0.9, 5), 5);
+    expect(result.rangeLv5).toBeCloseTo(Math.pow(1.1, 5), 5);
+    expect(result.startGoldLv5).toBe(result.INITIAL_GOLD + 100); // 160 + 20*5
+    expect(result.killGoldLv5).toBeCloseTo(Math.pow(1.1, 5), 5);
+    expect(result.drawDiscountLv5).toBeCloseTo(Math.pow(0.95, 5), 5);
+    expect(result.mergeDiscountLv5).toBeCloseTo(Math.pow(0.95, 5), 5);
+    expect(result.baseHpLv5).toBe(result.BASE_HP + 15); // 20 + 3*5
+    expect(result.waveBonusLv5).toBeCloseTo(Math.pow(1.1, 5), 5);
+    expect(result.diamondBonusLv5).toBeCloseTo(Math.pow(1.1, 5), 5);
+
+    // null/undefined safety
+    expect(result.damageNull).toBe(1.0);
+    expect(result.damageUndefined).toBe(1.0);
+    expect(result.baseHpEmpty).toBe(result.BASE_HP);
+  });
+
+  test('기존 META_UPGRADE_CONFIG, UTILITY_UPGRADES가 삭제되었는지 확인', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForFunction(() => window.__game?.scene?.scenes?.length > 0, { timeout: 10000 });
+
+    const result = await page.evaluate(() => {
+      return import('/js/config.js').then(mod => ({
+        hasMetaUpgradeConfig: 'META_UPGRADE_CONFIG' in mod,
+        hasUtilityUpgrades: 'UTILITY_UPGRADES' in mod,
+        hasCalcMetaUpgradeCost: 'calcMetaUpgradeCost' in mod,
+        hasGetMetaBaseHP: 'getMetaBaseHP' in mod,
+        hasGetMetaMaxBaseHP: 'getMetaMaxBaseHP' in mod,
+        hasGetMetaInitialGold: 'getMetaInitialGold' in mod,
+        hasGetMetaWaveBonusMultiplier: 'getMetaWaveBonusMultiplier' in mod,
+      }));
+    });
+
+    expect(result.hasMetaUpgradeConfig).toBe(false);
+    expect(result.hasUtilityUpgrades).toBe(false);
+    expect(result.hasCalcMetaUpgradeCost).toBe(false);
+    expect(result.hasGetMetaBaseHP).toBe(false);
+    expect(result.hasGetMetaMaxBaseHP).toBe(false);
+    expect(result.hasGetMetaInitialGold).toBe(false);
+    expect(result.hasGetMetaWaveBonusMultiplier).toBe(false);
+  });
+
+  test('SAVE_DATA_VERSION = 9 확인', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForFunction(() => window.__game?.scene?.scenes?.length > 0, { timeout: 10000 });
+
+    const version = await page.evaluate(() => {
+      return import('/js/config.js').then(mod => mod.SAVE_DATA_VERSION);
+    });
+    expect(version).toBe(9);
+  });
+});
+
+test.describe('세이브 마이그레이션 v8->v9', () => {
+  test('towerUpgrades + utilityUpgrades 환불 금액이 정확하다', async ({ page }) => {
+    // v8 세이브 설정: archer damage:2, fireRate:1, mage damage:1
+    // archer damage 2: 5 + 8 = 13
+    // archer fireRate 1: 5
+    // mage damage 1: 5
+    // tower total: 23
+    // utility baseHp:2 -> 8+15=23, goldBoost:1 -> 8, waveBonus:0 -> 0
+    // utility total: 31
+    // grand total refund: 23 + 31 = 54
+    const v8Save = makeV8Save({ diamond: 20 });
+
+    await page.goto('/');
+    await page.evaluate((save) => {
+      localStorage.setItem('fantasy-td-save', JSON.stringify(save));
+    }, v8Save);
+
+    // 새로고침하여 마이그레이션 실행
+    await page.reload();
+    await page.waitForFunction(() => window.__game?.scene?.scenes?.length > 0, { timeout: 10000 });
+
+    // 잠시 대기 후 세이브 데이터 확인
+    await page.waitForTimeout(2000);
+
+    // BootScene은 마이그레이션 결과를 Phaser registry에만 저장하고
+    // localStorage에는 즉시 쓰지 않으므로 registry에서 읽는다.
+    const result = await page.evaluate(() => {
+      const save = window.__game.registry.get('saveData');
+      return {
+        version: save?.saveDataVersion,
+        diamond: save?.diamond,
+        hasTowerUpgrades: save ? 'towerUpgrades' in save : null,
+        hasUtilityUpgrades: save ? 'utilityUpgrades' in save : null,
+        globalUpgrades: save?.globalUpgrades,
+        refundAmount: save?._metaRefundAmount,
+      };
+    });
+
+    expect(result.version).toBe(9);
+    expect(result.diamond).toBe(20 + 54); // 원래 20 + 환불 54
+    expect(result.hasTowerUpgrades).toBe(false);
+    expect(result.hasUtilityUpgrades).toBe(false);
+    expect(result.globalUpgrades).toEqual({
+      damage: 0, fireRate: 0, range: 0,
+      startGold: 0, killGold: 0, drawDiscount: 0, mergeDiscount: 0,
+      baseHp: 0, waveBonus: 0, diamondBonus: 0,
+    });
+  });
+
+  test('빈 v8 세이브 (업그레이드 없음) 마이그레이션 - 환불 0', async ({ page }) => {
+    const v8Save = makeV8Save({
+      diamond: 50,
+      towerUpgrades: {},
+      utilityUpgrades: { baseHp: 0, goldBoost: 0, waveBonus: 0 },
+    });
+
+    await page.goto('/');
+    await page.evaluate((save) => {
+      localStorage.setItem('fantasy-td-save', JSON.stringify(save));
+    }, v8Save);
+
+    await page.reload();
+    await page.waitForFunction(() => window.__game?.scene?.scenes?.length > 0, { timeout: 10000 });
+    await page.waitForTimeout(2000);
+
+    const result = await page.evaluate(() => {
+      const save = window.__game.registry.get('saveData');
+      return { diamond: save?.diamond, version: save?.saveDataVersion };
+    });
+
+    expect(result.version).toBe(9);
+    expect(result.diamond).toBe(50); // 환불 없음
+  });
+
+  test('defaultSaveData에 globalUpgrades 포함 확인', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForFunction(() => window.__game?.scene?.scenes?.length > 0, { timeout: 10000 });
+
+    const result = await page.evaluate(() => {
+      return import('/js/config.js').then(mod => {
+        const fresh = mod.migrateSaveData(null);
+        return {
+          hasGlobalUpgrades: 'globalUpgrades' in fresh,
+          keys: Object.keys(fresh.globalUpgrades),
+          allZero: Object.values(fresh.globalUpgrades).every(v => v === 0),
+        };
+      });
+    });
+
+    expect(result.hasGlobalUpgrades).toBe(true);
+    expect(result.keys).toHaveLength(10);
+    expect(result.allZero).toBe(true);
+  });
+});
+
+test.describe('CollectionScene UI 검증', () => {
   test.beforeEach(async ({ page }) => {
-    await enterCollectionScene(page);
+    const save = makeBaseSave({ diamond: 200 });
+    await page.goto('/');
+    await page.evaluate((s) => {
+      localStorage.setItem('fantasy-td-save', JSON.stringify(s));
+    }, save);
+    await page.reload();
+    await page.waitForFunction(() => window.__game?.scene?.scenes?.length > 0, { timeout: 10000 });
+    await page.waitForTimeout(2000);
   });
 
-  test('10개 타워별 maxLevel이 스펙과 일치한다', async ({ page }) => {
-    const config = await page.evaluate(() => {
-      // config.js에서 직접 가져온 META_UPGRADE_CONFIG
-      const scene = window.__game.scene.getScene('CollectionScene');
-      // 모듈 import된 값을 직접 접근할 수 없으므로 우회
-      return null;
-    });
-
-    // 모듈 스코프 접근을 위해 evaluate 내에서 동적 import 사용
-    const towerConfigs = await page.evaluate(async () => {
-      const module = await import('/js/config.js');
-      const cfg = module.META_UPGRADE_CONFIG;
-      return cfg.towers;
-    });
-
-    const expected = {
-      archer:    { damage: 3, fireRate: 5, range: 3 },
-      mage:      { damage: 5, fireRate: 3, range: 3 },
-      ice:       { damage: 2, fireRate: 3, range: 5 },
-      lightning: { damage: 5, fireRate: 3, range: 3 },
-      flame:     { damage: 3, fireRate: 5, range: 3 },
-      rock:      { damage: 5, fireRate: 2, range: 3 },
-      poison:    { damage: 2, fireRate: 3, range: 5 },
-      wind:      { damage: 3, fireRate: 5, range: 3 },
-      light:     { damage: 5, fireRate: 3, range: 3 },
-      dragon:    { damage: 5, fireRate: 2, range: 5 },
-    };
-
-    for (const [type, maxLevels] of Object.entries(expected)) {
-      expect(towerConfigs[type], `${type} maxLevels`).toEqual(maxLevels);
-    }
-  });
-
-  test('BONUS_PER_LEVEL = 0.10, BASE_COST = 5, COST_STEP = 3', async ({ page }) => {
-    const cfg = await page.evaluate(async () => {
-      const module = await import('/js/config.js');
-      return {
-        BONUS_PER_LEVEL: module.META_UPGRADE_CONFIG.BONUS_PER_LEVEL,
-        BASE_COST: module.META_UPGRADE_CONFIG.BASE_COST,
-        COST_STEP: module.META_UPGRADE_CONFIG.COST_STEP,
-      };
-    });
-
-    expect(cfg.BONUS_PER_LEVEL).toBe(0.10);
-    expect(cfg.BASE_COST).toBe(5);
-    expect(cfg.COST_STEP).toBe(3);
-  });
-
-  test('SAVE_DATA_VERSION = 5', async ({ page }) => {
-    const version = await page.evaluate(async () => {
-      const module = await import('/js/config.js');
-      return module.SAVE_DATA_VERSION;
-    });
-    expect(version).toBe(5);
-  });
-
-  test('META_UPGRADE_TREE가 완전히 제거되었다', async ({ page }) => {
-    const hasOldTree = await page.evaluate(async () => {
-      const module = await import('/js/config.js');
-      return 'META_UPGRADE_TREE' in module;
-    });
-    expect(hasOldTree).toBe(false);
-  });
-});
-
-// ── 2. COST FORMULA VALIDATION ──────────────────────────────────
-
-test.describe('calcMetaUpgradeCost 비용 공식 검증', () => {
-  test('Lv1=5, Lv2=8, Lv3=11, Lv4=14, Lv5=17', async ({ page }) => {
-    await enterCollectionScene(page);
-
-    const costs = await page.evaluate(async () => {
-      const module = await import('/js/config.js');
-      const fn = module.calcMetaUpgradeCost;
-      return {
-        lv0to1: fn(0),
-        lv1to2: fn(1),
-        lv2to3: fn(2),
-        lv3to4: fn(3),
-        lv4to5: fn(4),
-      };
-    });
-
-    expect(costs.lv0to1).toBe(5);
-    expect(costs.lv1to2).toBe(8);
-    expect(costs.lv2to3).toBe(11);
-    expect(costs.lv3to4).toBe(14);
-    expect(costs.lv4to5).toBe(17);
-  });
-
-  test('고레벨 비용도 선형으로 증가한다 (Lv10=32)', async ({ page }) => {
-    await enterCollectionScene(page);
-
-    const cost = await page.evaluate(async () => {
-      const module = await import('/js/config.js');
-      return module.calcMetaUpgradeCost(9); // 현재 레벨 9 -> 다음 레벨 10
-    });
-    // 5 + (10-1)*3 = 5 + 27 = 32
-    expect(cost).toBe(32);
-  });
-});
-
-// ── 3. SAVE DATA MIGRATION ──────────────────────────────────────
-
-test.describe('v4 -> v5 마이그레이션 검증', () => {
-  test('v4 세이브 데이터의 towerUpgrades가 리셋된다', async ({ page }) => {
-    await waitForGame(page);
-
-    const result = await page.evaluate(async () => {
-      const module = await import('/js/config.js');
-      const oldSave = {
-        saveDataVersion: 4,
-        diamond: 100,
-        totalDiamondEarned: 200,
-        towerUpgrades: {
-          archer: { tier1: 'a', tier2: 'b', tier3: null },
-          mage: { tier1: 'a' },
-        },
-        utilityUpgrades: { baseHp: 1, goldBoost: 0, waveBonus: 0 },
-        unlockedTowers: ['archer'],
-        discoveredMerges: [],
-        stats: {
-          totalGamesPlayed: 0, bestRound: 0, bestKills: 0,
-          totalKills: 0, totalDamageDealt: 0, killsByTower: {},
-          towerStats: {}, gameHistory: [],
-        },
-        worldProgress: {},
-        endlessUnlocked: false,
-        campaignStats: { totalStars: 0, mapsCleared: 0, worldsCleared: 0 },
-      };
-
-      const migrated = module.migrateSaveData(oldSave);
-      return {
-        version: migrated.saveDataVersion,
-        towerUpgrades: migrated.towerUpgrades,
-        diamond: migrated.diamond,
-        utilityUpgrades: migrated.utilityUpgrades,
-      };
-    });
-
-    expect(result.version).toBe(5);
-    expect(result.towerUpgrades).toEqual({});
-    // diamond은 보존되어야 함
-    expect(result.diamond).toBe(100);
-    // utilityUpgrades도 보존되어야 함
-    expect(result.utilityUpgrades).toEqual({ baseHp: 1, goldBoost: 0, waveBonus: 0 });
-  });
-
-  test('null 세이브 (신규) -> v5로 생성된다', async ({ page }) => {
-    await waitForGame(page);
-
-    const result = await page.evaluate(async () => {
-      const module = await import('/js/config.js');
-      const freshSave = module.migrateSaveData(null);
-      return {
-        version: freshSave.saveDataVersion,
-        towerUpgrades: freshSave.towerUpgrades,
-      };
-    });
-
-    expect(result.version).toBe(5);
-    expect(result.towerUpgrades).toEqual({});
-  });
-});
-
-// ── 4. COLLECTION SCENE UI ──────────────────────────────────────
-
-test.describe('CollectionScene 메타 업그레이드 UI', () => {
-  test('타워 카드 클릭 시 3개 슬롯 카드가 표시된다', async ({ page }) => {
-    await enterCollectionScene(page);
-
-    // archer 타워 카드 클릭 (첫 번째 타워)
-    const slotInfo = await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
-      // _showTowerDetailView를 직접 호출
-      scene._showTowerDetailView('archer');
-      return true;
-    });
-
-    await page.waitForTimeout(300);
-
-    // 오버레이가 존재하는지 확인
-    const overlayExists = await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
-      return scene.overlay !== null && scene.overlay !== undefined;
-    });
-    expect(overlayExists).toBe(true);
-
-    // 스크린샷 캡처
-    await page.screenshot({
-      path: 'tests/screenshots/meta-upgrade-archer-detail.png',
-    });
-
-    // 오버레이 내에서 3개 슬롯 텍스트 확인
-    const slotTexts = await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
-      if (!scene.overlay) return [];
-
-      const texts = [];
-      scene.overlay.list.forEach(obj => {
-        if (obj.type === 'Text' && obj.text) {
-          texts.push(obj.text);
-        }
-      });
-      return texts;
-    });
-
-    // 슬롯 이름이 포함되어야 함 (한국어 기본)
-    const hasAttack = slotTexts.some(t => t.includes('공격력') || t.includes('Attack'));
-    const hasAtkSpd = slotTexts.some(t => t.includes('공격속도') || t.includes('Attack Speed'));
-    const hasRange = slotTexts.some(t => t.includes('사거리') || t.includes('Range'));
-
-    expect(hasAttack, '공격력 슬롯 존재').toBe(true);
-    expect(hasAtkSpd, '공격속도 슬롯 존재').toBe(true);
-    expect(hasRange, '사거리 슬롯 존재').toBe(true);
-  });
-
-  test('슬롯 카드에 레벨, 보너스, 진행바가 표시된다', async ({ page }) => {
-    await enterCollectionScene(page);
-
+  test('CollectionScene 진입 및 렌더링 + 스크린샷', async ({ page }) => {
+    // MenuScene에서 CollectionScene으로 이동
     await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
-      scene._showTowerDetailView('archer');
+      const game = window.__game;
+      game.scene.start('CollectionScene');
     });
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(1500);
 
-    // 레벨 텍스트 확인 (archer: damage max 3, fireRate max 5, range max 3)
-    const levelTexts = await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
-      if (!scene.overlay) return [];
+    await page.screenshot({ path: 'tests/screenshots/collection-meta-tab.png' });
 
-      const texts = [];
-      scene.overlay.list.forEach(obj => {
-        if (obj.type === 'Text' && obj.text && obj.text.includes('Lv.')) {
-          texts.push(obj.text);
-        }
-      });
-      return texts;
+    // 씬이 활성 상태인지 확인
+    const isActive = await page.evaluate(() => {
+      return window.__game.scene.isActive('CollectionScene');
     });
-
-    // 초기 상태: 모두 Lv.0
-    expect(levelTexts.length).toBeGreaterThanOrEqual(3);
-    expect(levelTexts.some(t => t.includes('0') && t.includes('3'))).toBe(true); // damage: Lv.0 / 3
-    expect(levelTexts.some(t => t.includes('0') && t.includes('5'))).toBe(true); // fireRate: Lv.0 / 5
+    expect(isActive).toBe(true);
   });
 
-  test('초기 상태에서 보너스가 +0%이다', async ({ page }) => {
-    await enterCollectionScene(page);
-
+  test('강화 버튼 클릭 시 다이아 차감 및 레벨 증가', async ({ page }) => {
     await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
-      scene._showTowerDetailView('archer');
+      window.__game.scene.start('CollectionScene');
     });
-    await page.waitForTimeout(300);
+    await page.waitForTimeout(1500);
 
-    const bonusTexts = await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
-      if (!scene.overlay) return [];
-
-      const texts = [];
-      scene.overlay.list.forEach(obj => {
-        if (obj.type === 'Text' && obj.text && (obj.text.includes('+0%') || obj.text.includes('+') && obj.text.includes('%'))) {
-          texts.push(obj.text);
-        }
-      });
-      return texts;
-    });
-
-    // 초기 상태에서는 모두 +0%
-    const zeroBonus = bonusTexts.filter(t => t === '+0%');
-    expect(zeroBonus.length).toBe(3);
-  });
-
-  test('No bonuses yet 요약 텍스트가 표시된다', async ({ page }) => {
-    await enterCollectionScene(page);
-
-    await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
-      scene._showTowerDetailView('archer');
-    });
-    await page.waitForTimeout(300);
-
-    const summary = await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
-      if (!scene.overlay) return '';
-
-      let result = '';
-      scene.overlay.list.forEach(obj => {
-        if (obj.type === 'Text' && obj.text && obj.text.includes('No bonuses')) {
-          result = obj.text;
-        }
-      });
-      return result;
-    });
-
-    expect(summary).toBe('No bonuses yet');
-  });
-});
-
-// ── 5. UPGRADE PURCHASE ─────────────────────────────────────────
-
-test.describe('업그레이드 구매 로직', () => {
-  test('다이아몬드 충분 시 구매 성공, 레벨 +1, 다이아몬드 차감', async ({ page }) => {
-    await enterCollectionScene(page);
-    // 다이아몬드 100으로 설정
-    await injectSaveAndRestart(page, { diamond: 100 });
-
-    // archer detail view 열기
-    await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
-      scene._showTowerDetailView('archer');
-    });
-    await page.waitForTimeout(300);
-
-    // 스크린샷: 구매 전
-    await page.screenshot({
-      path: 'tests/screenshots/meta-upgrade-before-purchase.png',
-    });
-
-    // damage 슬롯 구매 (cost=5)
-    const beforeDiamond = await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
-      return scene.saveData.diamond;
-    });
-
-    await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
-      scene._purchaseTowerUpgrade('archer', 'damage', 5);
-    });
-    await page.waitForTimeout(300);
-
-    const result = await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
-      return {
-        diamond: scene.saveData.diamond,
-        damageLv: scene.saveData.towerUpgrades?.archer?.damage || 0,
-      };
-    });
-
-    expect(result.diamond).toBe(beforeDiamond - 5);
-    expect(result.damageLv).toBe(1);
-
-    // 스크린샷: 구매 후
-    await page.screenshot({
-      path: 'tests/screenshots/meta-upgrade-after-purchase.png',
-    });
-  });
-
-  test('구매 후 UI가 즉시 갱신된다 (레벨, 보너스, 비용 변경)', async ({ page }) => {
-    await enterCollectionScene(page);
-    await injectSaveAndRestart(page, { diamond: 100 });
-
-    await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
-      scene._showTowerDetailView('archer');
-    });
-    await page.waitForTimeout(300);
-
-    // damage 구매
-    await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
-      scene._purchaseTowerUpgrade('archer', 'damage', 5);
-    });
-    await page.waitForTimeout(300);
-
-    // 업데이트된 레벨 텍스트 확인
-    const overlayTexts = await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
-      if (!scene.overlay) return [];
-      const texts = [];
-      scene.overlay.list.forEach(obj => {
-        if (obj.type === 'Text' && obj.text) {
-          texts.push(obj.text);
-        }
-      });
-      return texts;
-    });
-
-    // damage Lv.1 / 3 이 있어야 함
-    const hasLv1 = overlayTexts.some(t => t.includes('Lv.1') && t.includes('3'));
-    expect(hasLv1, 'damage 레벨이 1로 갱신됨').toBe(true);
-
-    // 보너스 +10% (1.1^1 - 1 = 0.1 = 10%) 이 있어야 함
-    const has10pct = overlayTexts.some(t => t === '+10%');
-    expect(has10pct, '+10% 보너스 표시').toBe(true);
-  });
-
-  test('다이아몬드 부족 시 구매 불가, 버튼 비활성', async ({ page }) => {
-    await enterCollectionScene(page);
-    await injectSaveAndRestart(page, { diamond: 0 });
-
-    await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
-      scene._showTowerDetailView('archer');
-    });
-    await page.waitForTimeout(300);
-
-    // 스크린샷: 다이아몬드 0
-    await page.screenshot({
-      path: 'tests/screenshots/meta-upgrade-no-diamond.png',
-    });
-
-    // 비용이 빨간색(ff4757)으로 표시되는지 확인
-    const costColors = await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
-      if (!scene.overlay) return [];
-      const colors = [];
-      scene.overlay.list.forEach(obj => {
-        if (obj.type === 'Text' && obj.text && obj.text.includes('\u25C6')) {
-          colors.push(obj.style?.color || '');
-        }
-      });
-      return colors;
-    });
-
-    // 모든 비용 텍스트가 빨간색이어야 함
-    costColors.forEach(color => {
-      expect(color).toBe('#ff4757');
-    });
-
-    // 구매 시도 - 실패해야 함
-    const diamondBefore = await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
-      return scene.saveData.diamond;
-    });
-
-    await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
-      scene._purchaseTowerUpgrade('archer', 'damage', 5);
-    });
-
-    const diamondAfter = await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
-      return scene.saveData.diamond;
-    });
-
-    expect(diamondAfter).toBe(diamondBefore);
-  });
-
-  test('MAX 레벨 도달 시 MAX 표시, 더 이상 강화 불가', async ({ page }) => {
-    await enterCollectionScene(page);
-    // archer damage maxLevel = 3. 미리 레벨 3으로 설정
-    await injectSaveAndRestart(page, {
-      diamond: 100,
-      towerUpgrades: {
-        archer: { damage: 3, fireRate: 0, range: 0 },
-      },
-    });
-
-    await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
-      scene._showTowerDetailView('archer');
-    });
-    await page.waitForTimeout(300);
-
-    // 스크린샷: MAX 상태
-    await page.screenshot({
-      path: 'tests/screenshots/meta-upgrade-max-level.png',
-    });
-
-    // MAX 텍스트가 있는지 확인
-    const hasMaxText = await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
-      if (!scene.overlay) return false;
-      return scene.overlay.list.some(obj =>
-        obj.type === 'Text' && obj.text === 'MAX'
-      );
-    });
-    expect(hasMaxText).toBe(true);
-
-    // damage 슬롯에 UP 버튼이 없어야 함 (MAX 상태)
-    // - 비용 텍스트 개수가 2개(fireRate, range)만 있어야 함
-    const costTexts = await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
-      if (!scene.overlay) return [];
-      const texts = [];
-      scene.overlay.list.forEach(obj => {
-        if (obj.type === 'Text' && obj.text && obj.text.includes('\u25C6')) {
-          texts.push(obj.text);
-        }
-      });
-      return texts;
-    });
-    expect(costTexts.length).toBe(2); // fireRate, range만
-  });
-
-  test('모든 슬롯 MAX 도달 시 UP 버튼이 없다', async ({ page }) => {
-    await enterCollectionScene(page);
-    // archer: damage=3(max), fireRate=5(max), range=3(max)
-    await injectSaveAndRestart(page, {
-      diamond: 1000,
-      towerUpgrades: {
-        archer: { damage: 3, fireRate: 5, range: 3 },
-      },
-    });
-
-    await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
-      scene._showTowerDetailView('archer');
-    });
-    await page.waitForTimeout(300);
-
-    // 스크린샷: 모든 MAX
-    await page.screenshot({
-      path: 'tests/screenshots/meta-upgrade-all-max.png',
-    });
-
-    // MAX 텍스트가 3개
-    const maxCount = await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
-      if (!scene.overlay) return 0;
-      return scene.overlay.list.filter(obj =>
-        obj.type === 'Text' && obj.text === 'MAX'
-      ).length;
-    });
-    expect(maxCount).toBe(3);
-
-    // UP 텍스트 없음
-    const upCount = await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
-      if (!scene.overlay) return 0;
-      return scene.overlay.list.filter(obj =>
-        obj.type === 'Text' && obj.text === 'UP'
-      ).length;
-    });
-    expect(upCount).toBe(0);
-
-    // 비용(다이아몬드) 텍스트 없음
-    const costCount = await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
-      if (!scene.overlay) return 0;
-      return scene.overlay.list.filter(obj =>
-        obj.type === 'Text' && obj.text && obj.text.includes('\u25C6')
-      ).length;
-    });
-    expect(costCount).toBe(0);
-  });
-});
-
-// ── 6. BONUS CALCULATION ACCURACY ───────────────────────────────
-
-test.describe('보너스 계산 정확성', () => {
-  test('damage Lv.3 보너스: (1.1^3 - 1)*100 = 33%', async ({ page }) => {
-    await enterCollectionScene(page);
-    await injectSaveAndRestart(page, {
-      diamond: 100,
-      towerUpgrades: {
-        archer: { damage: 3, fireRate: 0, range: 0 },
-      },
-    });
-
-    await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
-      scene._showTowerDetailView('archer');
-    });
-    await page.waitForTimeout(300);
-
-    const bonusTexts = await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
-      if (!scene.overlay) return [];
-      const texts = [];
-      scene.overlay.list.forEach(obj => {
-        if (obj.type === 'Text' && obj.text && obj.text.startsWith('+') && obj.text.endsWith('%')) {
-          texts.push(obj.text);
-        }
-      });
-      return texts;
-    });
-
-    // 1.1^3 = 1.331 -> 33.1% -> Math.round = 33%
-    expect(bonusTexts).toContain('+33%');
-  });
-
-  test('fireRate Lv.5 보너스: (1-0.9^5)*100 = 41%', async ({ page }) => {
-    await enterCollectionScene(page);
-    await injectSaveAndRestart(page, {
-      diamond: 100,
-      towerUpgrades: {
-        archer: { damage: 0, fireRate: 5, range: 0 },
-      },
-    });
-
-    await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
-      scene._showTowerDetailView('archer');
-    });
-    await page.waitForTimeout(300);
-
-    const bonusTexts = await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
-      if (!scene.overlay) return [];
-      const texts = [];
-      scene.overlay.list.forEach(obj => {
-        if (obj.type === 'Text' && obj.text && obj.text.startsWith('+') && obj.text.endsWith('%')) {
-          texts.push(obj.text);
-        }
-      });
-      return texts;
-    });
-
-    // 0.9^5 = 0.59049 -> 1 - 0.59049 = 0.40951 -> 41%
-    expect(bonusTexts).toContain('+41%');
-  });
-
-  test('range Lv.5 보너스: (1.1^5 - 1)*100 = 61%', async ({ page }) => {
-    await enterCollectionScene(page);
-    await injectSaveAndRestart(page, {
-      diamond: 100,
-      towerUpgrades: {
-        ice: { damage: 0, fireRate: 0, range: 5 },
-      },
-    });
-
-    await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
-      scene._showTowerDetailView('ice');
-    });
-    await page.waitForTimeout(300);
-
-    const bonusTexts = await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
-      if (!scene.overlay) return [];
-      const texts = [];
-      scene.overlay.list.forEach(obj => {
-        if (obj.type === 'Text' && obj.text && obj.text.startsWith('+') && obj.text.endsWith('%')) {
-          texts.push(obj.text);
-        }
-      });
-      return texts;
-    });
-
-    // 1.1^5 = 1.61051 -> 61.051% -> 61%
-    expect(bonusTexts).toContain('+61%');
-  });
-
-  test('보너스 요약(Current Bonuses)이 올바르게 표시된다', async ({ page }) => {
-    await enterCollectionScene(page);
-    await injectSaveAndRestart(page, {
-      diamond: 100,
-      towerUpgrades: {
-        archer: { damage: 2, fireRate: 3, range: 1 },
-      },
-    });
-
-    await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
-      scene._showTowerDetailView('archer');
-    });
-    await page.waitForTimeout(300);
-
-    const summary = await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
-      if (!scene.overlay) return '';
-
-      // 요약 텍스트는 슬롯 카드 아래에 있음
-      let result = '';
-      scene.overlay.list.forEach(obj => {
-        if (obj.type === 'Text' && obj.text && obj.text.includes('|')) {
-          result = obj.text;
-        }
-      });
-      return result;
-    });
-
-    // damage Lv2: Math.round((1.1^2 - 1)*100) = 21%
-    // fireRate Lv3: Math.round((1 - 0.9^3)*100) = 27%
-    // range Lv1: Math.round((1.1^1 - 1)*100) = 10%
-    expect(summary).toContain('+21%');
-    expect(summary).toContain('+27%');
-    expect(summary).toContain('+10%');
-  });
-});
-
-// ── 7. GAMESCENE BONUS APPLICATION ──────────────────────────────
-
-test.describe('GameScene 메타 보너스 적용', () => {
-  test('메타 업그레이드가 타워 스탯에 정확히 적용된다', async ({ page }) => {
-    await enterCollectionScene(page);
-
-    // 세이브 데이터에 archer 업그레이드 설정
-    await page.evaluate(() => {
-      const g = window.__game;
-      const saveData = g.registry.get('saveData') || {};
-      saveData.diamond = 100;
-      saveData.towerUpgrades = {
-        archer: { damage: 2, fireRate: 3, range: 1 },
-      };
-      g.registry.set('saveData', saveData);
-      localStorage.setItem('fantasy-td-save', JSON.stringify(saveData));
-    });
-
-    // _applyMetaUpgradesToTower 로직을 직접 검증
-    // TOWER_STATS는 levels.1 에 실제 스탯이 있으므로 이를 참조
-    const result = await page.evaluate(async () => {
-      const module = await import('/js/config.js');
-      const BONUS_PER_LEVEL = module.META_UPGRADE_CONFIG.BONUS_PER_LEVEL;
-      const archerBaseStats = module.TOWER_STATS.archer.levels[1];
-
-      const upgrades = { damage: 2, fireRate: 3, range: 1 };
-
-      // damage: 1.1^2
-      const origDamage = archerBaseStats.damage;
-      const expectedDamage = Math.round(origDamage * Math.pow(1 + BONUS_PER_LEVEL, 2));
-
-      // fireRate: 0.9^3
-      const origFireRate = archerBaseStats.fireRate;
-      const expectedFireRate = origFireRate * Math.pow(1 - BONUS_PER_LEVEL, 3);
-
-      // range: 1.1^1
-      const origRange = archerBaseStats.range;
-      const expectedRange = Math.round(origRange * Math.pow(1 + BONUS_PER_LEVEL, 1));
-
-      return {
-        origDamage, expectedDamage,
-        origFireRate, expectedFireRate: Math.round(expectedFireRate * 1000) / 1000,
-        origRange, expectedRange,
-      };
-    });
-
-    // archer: damage=10, fireRate=0.8, range=120
-    expect(result.expectedDamage).toBe(Math.round(result.origDamage * 1.21));
-    expect(result.expectedRange).toBe(Math.round(result.origRange * 1.1));
-    // fireRate: 0.8 * 0.729 = 0.5832
-    expect(result.expectedFireRate).toBeCloseTo(result.origFireRate * 0.729, 2);
-  });
-});
-
-// ── 8. MERGE CODEX SCENE ────────────────────────────────────────
-
-test.describe('MergeCodexScene 메타 보너스 미리보기', () => {
-  test('_applyMetaUpgradesToStats가 올바르게 동작한다', async ({ page }) => {
-    await waitForGame(page);
-
-    const upgradeData = { mage: { damage: 3, fireRate: 2, range: 1 } };
-
-    // 세이브 데이터 설정 - 두 개의 localStorage 키 모두 설정
-    // NOTE: MergeCodexScene은 'fantasyDefenceSave' 키를 사용함 (잠재적 버그)
-    await page.evaluate((upgrades) => {
-      const g = window.__game;
-      const saveData = g.registry.get('saveData') || {};
-      saveData.towerUpgrades = upgrades;
-      g.registry.set('saveData', saveData);
-      localStorage.setItem('fantasy-td-save', JSON.stringify(saveData));
-      // MergeCodexScene이 읽는 키도 함께 설정
-      localStorage.setItem('fantasyDefenceSave', JSON.stringify(saveData));
-    }, upgradeData);
-
-    // MergeCodexScene으로 전환
-    await page.evaluate(() => {
-      const g = window.__game;
-      const activeScenes = g.scene.getScenes(true);
-      if (activeScenes.length > 0) {
-        activeScenes[0].scene.start('MergeCodexScene', { fromScene: 'CollectionScene' });
-      }
-    });
-    await waitForScene(page, 'MergeCodexScene');
-
-    // _applyMetaUpgradesToStats 동작 확인 (levels[1] 구조 사용)
-    const result = await page.evaluate(async () => {
-      const module = await import('/js/config.js');
-      const scene = window.__game.scene.getScene('MergeCodexScene');
-      if (!scene || !scene._applyMetaUpgradesToStats) return null;
-
-      // TOWER_STATS.mage.levels[1] 에서 실제 스탯 가져오기
-      const mageBase = module.TOWER_STATS.mage.levels[1];
-      const stats = { damage: mageBase.damage, fireRate: mageBase.fireRate, range: mageBase.range };
-      const origDamage = stats.damage;
-      const origFireRate = stats.fireRate;
-      const origRange = stats.range;
-
-      scene._applyMetaUpgradesToStats('mage', stats);
-
-      return {
-        origDamage, newDamage: stats.damage,
-        origFireRate, newFireRate: stats.fireRate,
-        origRange, newRange: stats.range,
-      };
-    });
-
-    if (result) {
-      // damage Lv3: 1.1^3 = 1.331
-      expect(result.newDamage).toBe(Math.round(result.origDamage * 1.331));
-      // fireRate Lv2: 0.9^2 = 0.81
-      expect(result.newFireRate).toBeCloseTo(result.origFireRate * 0.81, 3);
-      // range Lv1: 1.1^1 = 1.1
-      expect(result.newRange).toBe(Math.round(result.origRange * 1.1));
-    }
-  });
-
-  test('[BUG] MergeCodexScene이 잘못된 localStorage 키를 사용한다', async ({ page }) => {
-    // MergeCodexScene은 'fantasyDefenceSave'를 읽지만
-    // 나머지 시스템은 'fantasy-td-save'를 사용한다.
-    // 이는 메타 보너스가 MergeCodexScene 미리보기에 반영되지 않는 버그를 유발한다.
-    await waitForGame(page);
-
-    // 'fantasy-td-save'에만 업그레이드 데이터 저장 (정상적인 게임 동작)
-    await page.evaluate(() => {
-      const g = window.__game;
-      const saveData = g.registry.get('saveData') || {};
-      saveData.towerUpgrades = { archer: { damage: 3, fireRate: 0, range: 0 } };
-      g.registry.set('saveData', saveData);
-      localStorage.setItem('fantasy-td-save', JSON.stringify(saveData));
-      // 'fantasyDefenceSave' 키는 설정하지 않음
-      localStorage.removeItem('fantasyDefenceSave');
-    });
-
-    await page.evaluate(() => {
-      const g = window.__game;
-      const activeScenes = g.scene.getScenes(true);
-      if (activeScenes.length > 0) {
-        activeScenes[0].scene.start('MergeCodexScene', { fromScene: 'CollectionScene' });
-      }
+    // 강화 전 상태
+    const before = await page.evaluate(() => {
+      const save = JSON.parse(localStorage.getItem('fantasy-td-save') || '{}');
+      return { diamond: save.diamond, damageLevel: save.globalUpgrades?.damage || 0 };
     });
-    await waitForScene(page, 'MergeCodexScene');
 
-    // MergeCodexScene의 _towerMetaUpgrades가 비어있는지 확인
-    const metaUpgrades = await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('MergeCodexScene');
-      return scene._towerMetaUpgrades;
-    });
-
-    // BUG 확인: 잘못된 키에서 읽으므로 업그레이드가 비어있음
-    expect(metaUpgrades).toEqual({});
-  });
-});
-
-// ── 9. I18N KEYS ────────────────────────────────────────────────
-
-test.describe('i18n 키 존재 검증', () => {
-  test('한국어와 영어 모두 meta 관련 키가 존재한다', async ({ page }) => {
-    await waitForGame(page);
-
-    const i18nResult = await page.evaluate(async () => {
-      const module = await import('/js/i18n.js');
-      const keys = [
-        'meta.slot.damage',
-        'meta.slot.fireRate',
-        'meta.slot.range',
-        'meta.level',
-        'meta.bonus',
-        'meta.max',
-        'meta.total.level',
-      ];
-
-      // 한국어 확인
-      const results = {};
-      for (const key of keys) {
-        const val = module.t(key);
-        // t(key)가 key 자체를 반환하면 키가 없는 것
-        results[key] = val !== key ? val : null;
-      }
-      return results;
-    });
-
-    for (const [key, val] of Object.entries(i18nResult)) {
-      expect(val, `i18n key "${key}" should exist`).not.toBeNull();
-    }
-  });
-});
-
-// ── 10. TOTAL UPGRADE LEVELS DISPLAY ────────────────────────────
-
-test.describe('총 강화 레벨 표시', () => {
-  test('타워 카드에 총 강화 레벨이 표시된다', async ({ page }) => {
-    await enterCollectionScene(page);
-    await injectSaveAndRestart(page, {
-      towerUpgrades: {
-        archer: { damage: 2, fireRate: 3, range: 1 },
-      },
-    });
-
-    const totalLevel = await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
-      return scene._getTotalUpgradeLevels('archer');
-    });
-
-    expect(totalLevel).toBe(6); // 2 + 3 + 1
-
-    // 타워 카드에 "총 강화 6" 또는 "Total Lv.6"이 표시되는지
-    const hasTotalText = await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
-      if (!scene.tabContent) return false;
-      return scene.tabContent.list.some(obj =>
-        obj.type === 'Text' && obj.text && (obj.text.includes('6'))
-      );
-    });
-    expect(hasTotalText).toBe(true);
-  });
-
-  test('업그레이드 없는 타워의 총 레벨은 0', async ({ page }) => {
-    await enterCollectionScene(page);
-
-    const totalLevel = await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
-      return scene._getTotalUpgradeLevels('mage');
-    });
-
-    expect(totalLevel).toBe(0);
-  });
-});
-
-// ── 11. EDGE CASES ──────────────────────────────────────────────
-
-test.describe('엣지케이스', () => {
-  test('연속 구매 (더블클릭 시뮬레이션): 두 번째 비용 정상 증가', async ({ page }) => {
-    await enterCollectionScene(page);
-    await injectSaveAndRestart(page, { diamond: 100 });
+    expect(before.diamond).toBe(200);
+    expect(before.damageLevel).toBe(0);
 
-    await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
-      scene._showTowerDetailView('archer');
-    });
-    await page.waitForTimeout(200);
-
-    // 첫 구매: Lv0->1, cost=5
-    await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
-      scene._purchaseTowerUpgrade('archer', 'damage', 5);
-    });
-    await page.waitForTimeout(100);
-
-    // 두 번째 구매: Lv1->2, cost=8
-    await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
-      scene._purchaseTowerUpgrade('archer', 'damage', 8);
-    });
-    await page.waitForTimeout(100);
-
-    const result = await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
-      return {
-        diamond: scene.saveData.diamond,
-        damageLv: scene.saveData.towerUpgrades?.archer?.damage || 0,
-      };
-    });
-
-    expect(result.diamond).toBe(100 - 5 - 8); // 87
-    expect(result.damageLv).toBe(2);
-  });
-
-  test('maxLevel 초과 시도: _purchaseTowerUpgrade는 maxLevel 검증하는지', async ({ page }) => {
-    await enterCollectionScene(page);
-    // archer damage maxLevel = 3
-    await injectSaveAndRestart(page, {
-      diamond: 1000,
-      towerUpgrades: {
-        archer: { damage: 3, fireRate: 0, range: 0 },
-      },
-    });
-
-    // maxLevel에서 추가 구매 시도 (UI에서는 버튼이 없지만 직접 호출)
-    const beforeDiamond = await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
-      return scene.saveData.diamond;
-    });
-
-    // _purchaseTowerUpgrade 직접 호출 (UI에서는 버튼 없음, 직접 API 호출 공격)
-    await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
-      scene._purchaseTowerUpgrade('archer', 'damage', 14);
-    });
-
-    const afterResult = await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
-      return {
-        diamond: scene.saveData.diamond,
-        damageLv: scene.saveData.towerUpgrades?.archer?.damage || 0,
-      };
-    });
-
-    // NOTE: 현재 _purchaseTowerUpgrade는 maxLevel 검증이 없을 수 있음.
-    // 이는 잠재적 이슈 - UI가 버튼을 숨기므로 정상 사용에서는 문제가 없지만
-    // 직접 호출 시 레벨이 maxLevel을 초과할 수 있다.
-    // 테스트에서는 현재 동작을 기록한다.
-    if (afterResult.damageLv > 3) {
-      console.warn('ISSUE: _purchaseTowerUpgrade does not check maxLevel limit');
-    }
-
-    // 실제 기록
-    expect(afterResult.damageLv).toBeGreaterThanOrEqual(3);
-  });
-
-  test('존재하지 않는 타워 타입으로 _showTowerDetailView 호출 시 에러 없음', async ({ page }) => {
-    await enterCollectionScene(page);
-
-    const errors = [];
-    page.on('pageerror', err => errors.push(err.message));
-
-    // 존재하지 않는 타워 타입
-    await page.evaluate(() => {
-      try {
-        const scene = window.__game.scene.getScene('CollectionScene');
-        scene._showTowerDetailView('nonexistent_tower');
-      } catch (e) {
-        // catch in evaluate
-      }
-    });
+    // 강화 버튼 클릭 (Phaser canvas 내부이므로 좌표로 클릭)
+    // btnX = GAME_WIDTH - PADDING_X - 38 = 360 - 12 - 38 = 310
+    // cy = LIST_START_Y(92) + CATEGORY_H(28) + ITEM_H/2(28) = 148
+    // btn y = cy + 8 = 156
+    await page.click('canvas', { position: { x: 310, y: 156 } });
     await page.waitForTimeout(500);
 
-    // 에러가 발생해도 게임이 크래시하지 않아야 함
-    // (이 경우 에러가 발생할 수 있지만, 앱이 죽지 않는 것이 중요)
-  });
-
-  test('다이아몬드가 정확히 비용과 같을 때 구매 가능', async ({ page }) => {
-    await enterCollectionScene(page);
-    await injectSaveAndRestart(page, { diamond: 5 }); // 정확히 Lv1 비용
-
-    await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
-      scene._purchaseTowerUpgrade('archer', 'damage', 5);
+    const after = await page.evaluate(() => {
+      const save = JSON.parse(localStorage.getItem('fantasy-td-save') || '{}');
+      return { diamond: save.diamond, damageLevel: save.globalUpgrades?.damage || 0 };
     });
 
+    expect(after.damageLevel).toBe(1);
+    expect(after.diamond).toBe(200 - 5); // 비용 5 차감
+
+    await page.screenshot({ path: 'tests/screenshots/collection-after-upgrade.png' });
+  });
+
+  test('다이아 부족 시 강화 불가', async ({ page }) => {
+    // 다이아 0으로 재설정
+    await page.evaluate(() => {
+      const save = JSON.parse(localStorage.getItem('fantasy-td-save') || '{}');
+      save.diamond = 0;
+      localStorage.setItem('fantasy-td-save', JSON.stringify(save));
+    });
+    await page.reload();
+    await page.waitForFunction(() => window.__game?.scene?.scenes?.length > 0, { timeout: 10000 });
+    await page.waitForTimeout(1000);
+
+    await page.evaluate(() => {
+      window.__game.scene.start('CollectionScene');
+    });
+    await page.waitForTimeout(1500);
+
+    await page.screenshot({ path: 'tests/screenshots/collection-no-diamond.png' });
+
+    // 강화 버튼 클릭 시도
+    await page.click('canvas', { position: { x: 310, y: 156 } });
+    await page.waitForTimeout(500);
+
     const result = await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
-      return {
-        diamond: scene.saveData.diamond,
-        damageLv: scene.saveData.towerUpgrades?.archer?.damage || 0,
-      };
+      const save = JSON.parse(localStorage.getItem('fantasy-td-save') || '{}');
+      return { diamond: save.diamond, damageLevel: save.globalUpgrades?.damage || 0 };
     });
 
     expect(result.diamond).toBe(0);
-    expect(result.damageLv).toBe(1);
+    expect(result.damageLevel).toBe(0); // 변화 없음
   });
 
-  test('다이아몬드 = 비용 - 1 일 때 구매 불가', async ({ page }) => {
-    await enterCollectionScene(page);
-    await injectSaveAndRestart(page, { diamond: 4 }); // Lv1 비용(5)보다 1 적음
+  test('MAX 레벨 도달 시 강화 불가', async ({ page }) => {
+    // range를 maxLevel(5)로 설정
+    await page.evaluate(() => {
+      const save = JSON.parse(localStorage.getItem('fantasy-td-save') || '{}');
+      save.globalUpgrades.range = 5;
+      save.diamond = 100;
+      localStorage.setItem('fantasy-td-save', JSON.stringify(save));
+    });
+    await page.reload();
+    await page.waitForFunction(() => window.__game?.scene?.scenes?.length > 0, { timeout: 10000 });
+    await page.waitForTimeout(1000);
 
     await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
-      scene._purchaseTowerUpgrade('archer', 'damage', 5);
+      window.__game.scene.start('CollectionScene');
+    });
+    await page.waitForTimeout(1500);
+
+    await page.screenshot({ path: 'tests/screenshots/collection-max-level.png' });
+
+    const beforeDiamond = await page.evaluate(() => {
+      return JSON.parse(localStorage.getItem('fantasy-td-save') || '{}').diamond;
     });
 
+    // range 항목 위치: 92(start) + 28(catHeader) + 56*2 + 4*2 + 28(half) = 268, btn=276
+    await page.click('canvas', { position: { x: 310, y: 276 } });
+    await page.waitForTimeout(500);
+
+    const afterDiamond = await page.evaluate(() => {
+      return JSON.parse(localStorage.getItem('fantasy-td-save') || '{}').diamond;
+    });
+
+    expect(afterDiamond).toBe(beforeDiamond); // 변화 없음
+  });
+});
+
+test.describe('콘솔 에러 및 예외 감시', () => {
+  test('CollectionScene 진입 시 콘솔 에러 없음', async ({ page }) => {
+    const errors = [];
+    page.on('pageerror', err => errors.push(err.message));
+
+    const save = makeBaseSave({ diamond: 50 });
+    await page.goto('/');
+    await page.evaluate((s) => {
+      localStorage.setItem('fantasy-td-save', JSON.stringify(s));
+    }, save);
+    await page.reload();
+    await page.waitForFunction(() => window.__game?.scene?.scenes?.length > 0, { timeout: 10000 });
+    await page.waitForTimeout(1000);
+
+    // CollectionScene 진입
+    await page.evaluate(() => {
+      window.__game.scene.start('CollectionScene');
+    });
+    await page.waitForTimeout(2000);
+
+    expect(errors).toEqual([]);
+  });
+
+  test('v8 마이그레이션 후 CollectionScene 진입 시 에러 없음', async ({ page }) => {
+    const errors = [];
+    page.on('pageerror', err => errors.push(err.message));
+
+    const v8Save = makeV8Save();
+    await page.goto('/');
+    await page.evaluate((s) => {
+      localStorage.setItem('fantasy-td-save', JSON.stringify(s));
+    }, v8Save);
+    await page.reload();
+    await page.waitForFunction(() => window.__game?.scene?.scenes?.length > 0, { timeout: 10000 });
+    await page.waitForTimeout(2000);
+
+    // CollectionScene 진입
+    await page.evaluate(() => {
+      window.__game.scene.start('CollectionScene');
+    });
+    await page.waitForTimeout(2000);
+
+    await page.screenshot({ path: 'tests/screenshots/collection-after-migration.png' });
+
+    expect(errors).toEqual([]);
+  });
+
+  test('게임 부팅 시 콘솔 에러 없음 (v9 세이브)', async ({ page }) => {
+    const errors = [];
+    page.on('pageerror', err => errors.push(err.message));
+
+    const save = makeBaseSave();
+    await page.goto('/');
+    await page.evaluate((s) => {
+      localStorage.setItem('fantasy-td-save', JSON.stringify(s));
+    }, save);
+    await page.reload();
+    await page.waitForFunction(() => window.__game?.scene?.scenes?.length > 0, { timeout: 10000 });
+    await page.waitForTimeout(3000);
+
+    expect(errors).toEqual([]);
+  });
+
+  test('신규 유저 (세이브 없음) 부팅 시 에러 없음', async ({ page }) => {
+    const errors = [];
+    page.on('pageerror', err => errors.push(err.message));
+
+    await page.goto('/');
+    await page.evaluate(() => {
+      localStorage.removeItem('fantasy-td-save');
+    });
+    await page.reload();
+    await page.waitForFunction(() => window.__game?.scene?.scenes?.length > 0, { timeout: 10000 });
+    await page.waitForTimeout(3000);
+
+    expect(errors).toEqual([]);
+  });
+});
+
+test.describe('i18n 키 완전성 검증', () => {
+  test('10개 업그레이드 이름/설명 키 + 카테고리 키 + UI 키 (ko + en) 존재', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForFunction(() => window.__game?.scene?.scenes?.length > 0, { timeout: 10000 });
+
     const result = await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
+      return import('/js/i18n.js').then(mod => {
+        const keys = [
+          'damage', 'fireRate', 'range', 'startGold', 'killGold',
+          'drawDiscount', 'mergeDiscount', 'baseHp', 'waveBonus', 'diamondBonus',
+        ];
+        const nameResults = {};
+        const descResults = {};
+        for (const key of keys) {
+          nameResults[key] = mod.t(`meta.upgrade.${key}`);
+          descResults[key] = mod.t(`meta.desc.${key}`);
+        }
+
+        const catResults = {};
+        for (const cat of ['combat', 'economy', 'survival', 'growth']) {
+          catResults[cat] = mod.t(`meta.category.${cat}`);
+        }
+
+        const uiResults = {
+          level: mod.t('meta.level'),
+          bonusPercent: mod.t('meta.bonus.percent'),
+          bonusFlat: mod.t('meta.bonus.flat'),
+          bonusDiscount: mod.t('meta.bonus.discount'),
+          max: mod.t('meta.max'),
+          upgradeButton: mod.t('meta.upgrade.button'),
+          refundToast: mod.t('meta.refund.toast'),
+        };
+
+        return { nameResults, descResults, catResults, uiResults };
+      });
+    });
+
+    // 이름 키 검증
+    const nameKeys = Object.keys(result.nameResults);
+    expect(nameKeys).toHaveLength(10);
+    for (const key of nameKeys) {
+      expect(result.nameResults[key]).toBeTruthy();
+      expect(result.nameResults[key]).not.toBe(`meta.upgrade.${key}`);
+    }
+
+    // 설명 키 검증
+    for (const key of nameKeys) {
+      expect(result.descResults[key]).toBeTruthy();
+      expect(result.descResults[key]).not.toBe(`meta.desc.${key}`);
+    }
+
+    // 카테고리 키 검증
+    expect(Object.keys(result.catResults)).toHaveLength(4);
+    for (const cat of ['combat', 'economy', 'survival', 'growth']) {
+      expect(result.catResults[cat]).toBeTruthy();
+    }
+
+    // UI 키 검증
+    expect(result.uiResults.level).toContain('{cur}');
+    expect(result.uiResults.bonusPercent).toContain('{pct}');
+    expect(result.uiResults.bonusFlat).toContain('{val}');
+    expect(result.uiResults.bonusDiscount).toContain('{pct}');
+    expect(result.uiResults.max).toBeTruthy();
+    expect(result.uiResults.upgradeButton).toBeTruthy();
+    expect(result.uiResults.refundToast).toContain('{amount}');
+  });
+});
+
+test.describe('엣지케이스 및 예외 시나리오', () => {
+  test('globalUpgrades가 undefined/null일 때 헬퍼가 안전하게 동작', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForFunction(() => window.__game?.scene?.scenes?.length > 0, { timeout: 10000 });
+
+    const result = await page.evaluate(() => {
+      return import('/js/config.js').then(mod => ({
+        dmg_null: mod.getGlobalDamageMult(null),
+        dmg_undef: mod.getGlobalDamageMult(undefined),
+        dmg_empty: mod.getGlobalDamageMult({}),
+        fr_null: mod.getGlobalFireRateMult(null),
+        rng_null: mod.getGlobalRangeMult(null),
+        sg_null: mod.getGlobalStartGold(null),
+        kg_null: mod.getGlobalKillGoldMult(null),
+        dd_null: mod.getGlobalDrawDiscountMult(null),
+        md_null: mod.getGlobalMergeDiscountMult(null),
+        bh_null: mod.getGlobalBaseHP(null),
+        wb_null: mod.getGlobalWaveBonusMult(null),
+        db_null: mod.getGlobalDiamondBonusMult(null),
+      }));
+    });
+
+    expect(result.dmg_null).toBe(1.0);
+    expect(result.dmg_undef).toBe(1.0);
+    expect(result.dmg_empty).toBe(1.0);
+    expect(result.fr_null).toBe(1.0);
+    expect(result.rng_null).toBe(1.0);
+    expect(result.kg_null).toBe(1.0);
+    expect(result.dd_null).toBe(1.0);
+    expect(result.md_null).toBe(1.0);
+    expect(result.wb_null).toBe(1.0);
+    expect(result.db_null).toBe(1.0);
+  });
+
+  test('연속 강화 클릭 (빠른 연타) 시 정상 처리', async ({ page }) => {
+    const save = makeBaseSave({ diamond: 500 });
+    await page.goto('/');
+    await page.evaluate((s) => {
+      localStorage.setItem('fantasy-td-save', JSON.stringify(s));
+    }, save);
+    await page.reload();
+    await page.waitForFunction(() => window.__game?.scene?.scenes?.length > 0, { timeout: 10000 });
+    await page.waitForTimeout(1500);
+
+    await page.evaluate(() => {
+      window.__game.scene.start('CollectionScene');
+    });
+    await page.waitForTimeout(1500);
+
+    // 빠르게 5번 연타 (damage 강화 버튼)
+    for (let i = 0; i < 5; i++) {
+      await page.click('canvas', { position: { x: 310, y: 156 } });
+      await page.waitForTimeout(100);
+    }
+    await page.waitForTimeout(500);
+
+    const result = await page.evaluate(() => {
+      const save = JSON.parse(localStorage.getItem('fantasy-td-save') || '{}');
       return {
-        diamond: scene.saveData.diamond,
-        damageLv: scene.saveData.towerUpgrades?.archer?.damage || 0,
+        diamond: save.diamond,
+        damageLevel: save.globalUpgrades?.damage || 0,
       };
     });
 
-    expect(result.diamond).toBe(4);
-    expect(result.damageLv).toBe(0);
+    // 5회 강화 비용: 5+8+11+14+17 = 55
+    expect(result.damageLevel).toBe(5);
+    expect(result.diamond).toBe(500 - 55);
   });
-});
 
-// ── 12. CONSOLE ERRORS ──────────────────────────────────────────
+  test('마이그레이션: towerUpgrades에 이상한 데이터가 있어도 안전', async ({ page }) => {
+    const weirdSave = makeV8Save({
+      diamond: 10,
+      towerUpgrades: {
+        archer: { damage: 0, fireRate: null, range: undefined },
+        nonexistent: 'garbage',
+        mage: null,
+      },
+      utilityUpgrades: { baseHp: 0, goldBoost: 0, waveBonus: 0 },
+    });
 
-test.describe('안정성 검증', () => {
-  test('CollectionScene에서 메타 업그레이드 UI 사용 시 콘솔 에러가 없다', async ({ page }) => {
     const errors = [];
     page.on('pageerror', err => errors.push(err.message));
 
-    await enterCollectionScene(page);
+    await page.goto('/');
+    await page.evaluate((s) => {
+      localStorage.setItem('fantasy-td-save', JSON.stringify(s));
+    }, weirdSave);
+    await page.reload();
+    await page.waitForFunction(() => window.__game?.scene?.scenes?.length > 0, { timeout: 10000 });
+    await page.waitForTimeout(2000);
 
-    // 여러 타워의 상세 뷰 열고 닫기
-    for (const type of ['archer', 'mage', 'ice', 'lightning', 'flame']) {
-      await page.evaluate((t) => {
-        const scene = window.__game.scene.getScene('CollectionScene');
-        scene._showTowerDetailView(t);
-      }, type);
-      await page.waitForTimeout(200);
-    }
+    const result = await page.evaluate(() => {
+      const save = window.__game.registry.get('saveData');
+      return {
+        version: save?.saveDataVersion,
+        diamond: save?.diamond,
+        hasGlobalUpgrades: !!save?.globalUpgrades,
+      };
+    });
 
+    expect(result.version).toBe(9);
+    expect(result.diamond).toBe(10);
+    expect(result.hasGlobalUpgrades).toBe(true);
     expect(errors).toEqual([]);
   });
 
-  test('10개 타워 모두 상세 뷰를 열 수 있다', async ({ page }) => {
-    const errors = [];
-    page.on('pageerror', err => errors.push(err.message));
+  test('모바일 뷰포트(375x667)에서 CollectionScene 렌더링', async ({ page }) => {
+    await page.setViewportSize({ width: 375, height: 667 });
+    const save = makeBaseSave({ diamond: 100 });
+    await page.goto('/');
+    await page.evaluate((s) => {
+      localStorage.setItem('fantasy-td-save', JSON.stringify(s));
+    }, save);
+    await page.reload();
+    await page.waitForFunction(() => window.__game?.scene?.scenes?.length > 0, { timeout: 10000 });
+    await page.waitForTimeout(1500);
 
-    await enterCollectionScene(page);
+    await page.evaluate(() => {
+      window.__game.scene.start('CollectionScene');
+    });
+    await page.waitForTimeout(1500);
 
-    const allTowers = ['archer', 'mage', 'ice', 'lightning', 'flame', 'rock', 'poison', 'wind', 'light', 'dragon'];
+    await page.screenshot({ path: 'tests/screenshots/collection-mobile-viewport.png' });
 
-    for (const type of allTowers) {
-      await page.evaluate((t) => {
-        const scene = window.__game.scene.getScene('CollectionScene');
-        scene._showTowerDetailView(t);
-      }, type);
-      await page.waitForTimeout(200);
-
-      const overlayExists = await page.evaluate(() => {
-        const scene = window.__game.scene.getScene('CollectionScene');
-        return scene.overlay !== null;
-      });
-      expect(overlayExists, `${type} overlay should exist`).toBe(true);
-    }
-
-    expect(errors).toEqual([]);
+    const isActive = await page.evaluate(() => {
+      return window.__game.scene.isActive('CollectionScene');
+    });
+    expect(isActive).toBe(true);
   });
 });
 
-// ── 13. VISUAL VERIFICATION ─────────────────────────────────────
+test.describe('크로스 참조: 기존 시스템 잔재 확인', () => {
+  test('config.js에서 GLOBAL_META 관련 export가 모두 정상', async ({ page }) => {
+    await page.goto('/');
+    await page.waitForFunction(() => window.__game?.scene?.scenes?.length > 0, { timeout: 10000 });
 
-test.describe('시각적 검증', () => {
-  test('dragon 타워 상세 뷰 (모든 슬롯 부분 강화)', async ({ page }) => {
-    await enterCollectionScene(page);
-    await injectSaveAndRestart(page, {
-      diamond: 50,
-      towerUpgrades: {
-        dragon: { damage: 3, fireRate: 1, range: 4 },
-      },
+    const result = await page.evaluate(() => {
+      return import('/js/config.js').then(mod => ({
+        hasGlobalMeta: 'GLOBAL_META' in mod,
+        hasCalcGlobalUpgradeCost: typeof mod.calcGlobalUpgradeCost === 'function',
+        hasGetGlobalDamageMult: typeof mod.getGlobalDamageMult === 'function',
+        hasGetGlobalFireRateMult: typeof mod.getGlobalFireRateMult === 'function',
+        hasGetGlobalRangeMult: typeof mod.getGlobalRangeMult === 'function',
+        hasGetGlobalStartGold: typeof mod.getGlobalStartGold === 'function',
+        hasGetGlobalKillGoldMult: typeof mod.getGlobalKillGoldMult === 'function',
+        hasGetGlobalDrawDiscountMult: typeof mod.getGlobalDrawDiscountMult === 'function',
+        hasGetGlobalMergeDiscountMult: typeof mod.getGlobalMergeDiscountMult === 'function',
+        hasGetGlobalBaseHP: typeof mod.getGlobalBaseHP === 'function',
+        hasGetGlobalWaveBonusMult: typeof mod.getGlobalWaveBonusMult === 'function',
+        hasGetGlobalDiamondBonusMult: typeof mod.getGlobalDiamondBonusMult === 'function',
+      }));
     });
 
-    await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
-      scene._showTowerDetailView('dragon');
-    });
-    await page.waitForTimeout(300);
-
-    await page.screenshot({
-      path: 'tests/screenshots/meta-upgrade-dragon-partial.png',
-    });
-  });
-
-  test('ice 타워 (range 특화, MAX 상태)', async ({ page }) => {
-    await enterCollectionScene(page);
-    await injectSaveAndRestart(page, {
-      diamond: 50,
-      towerUpgrades: {
-        ice: { damage: 2, fireRate: 3, range: 5 },
-      },
-    });
-
-    await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
-      scene._showTowerDetailView('ice');
-    });
-    await page.waitForTimeout(300);
-
-    await page.screenshot({
-      path: 'tests/screenshots/meta-upgrade-ice-all-max.png',
-    });
-  });
-
-  test('초기 상태 메타 탭 전체 화면', async ({ page }) => {
-    await enterCollectionScene(page);
-
-    await page.screenshot({
-      path: 'tests/screenshots/meta-upgrade-tab-overview.png',
-    });
-  });
-});
-
-// ── 14. PROGRESS BAR ACCURACY ───────────────────────────────────
-
-test.describe('진행 바 검증', () => {
-  test('진행 바가 레벨에 비례하여 채워진다', async ({ page }) => {
-    await enterCollectionScene(page);
-    await injectSaveAndRestart(page, {
-      diamond: 100,
-      towerUpgrades: {
-        archer: { damage: 1, fireRate: 3, range: 0 },
-      },
-    });
-
-    await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
-      scene._showTowerDetailView('archer');
-    });
-    await page.waitForTimeout(300);
-
-    // 진행 바(Rectangle) 정보 추출
-    const barInfo = await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
-      if (!scene.overlay) return [];
-
-      // 배경 바는 width가 약 256(cardW-24=280-24=256) 정도
-      // 실제 채우기 바는 더 작음
-      const bars = [];
-      scene.overlay.list.forEach(obj => {
-        if (obj.type === 'Rectangle' && obj.height === 6) {
-          bars.push({
-            x: obj.x,
-            y: obj.y,
-            width: obj.width,
-            fillColor: obj.fillColor,
-          });
-        }
-      });
-      return bars;
-    });
-
-    // 각 슬롯당 배경 바(1) + 채우기 바(1) = 총 6개 (3슬롯)
-    // damage Lv1/3 -> fillW = (1/3) * barW
-    // fireRate Lv3/5 -> fillW = (3/5) * barW
-    // range Lv0/3 -> fillW = max(1, (0/3)*barW) = 1
-    expect(barInfo.length).toBeGreaterThanOrEqual(6);
-  });
-});
-
-// ── 15. SAVE PERSISTENCE ────────────────────────────────────────
-
-test.describe('세이브 영속성', () => {
-  test('구매 후 localStorage에 저장되고 재시작 시 유지된다', async ({ page }) => {
-    await enterCollectionScene(page);
-    await injectSaveAndRestart(page, { diamond: 100 });
-
-    // 구매
-    await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
-      scene._showTowerDetailView('archer');
-    });
-    await page.waitForTimeout(200);
-    await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
-      scene._purchaseTowerUpgrade('archer', 'fireRate', 5);
-    });
-    await page.waitForTimeout(200);
-
-    // localStorage 확인
-    const savedData = await page.evaluate(() => {
-      const raw = localStorage.getItem('fantasy-td-save');
-      return raw ? JSON.parse(raw) : null;
-    });
-
-    expect(savedData).not.toBeNull();
-    expect(savedData.towerUpgrades.archer.fireRate).toBe(1);
-
-    // CollectionScene 재시작
-    await page.evaluate(() => {
-      const g = window.__game;
-      const activeScenes = g.scene.getScenes(true);
-      if (activeScenes.length > 0) {
-        activeScenes[0].scene.start('CollectionScene');
-      }
-    });
-    await waitForScene(page, 'CollectionScene');
-
-    // 재시작 후에도 데이터 유지
-    const afterRestart = await page.evaluate(() => {
-      const scene = window.__game.scene.getScene('CollectionScene');
-      return scene.saveData.towerUpgrades?.archer?.fireRate || 0;
-    });
-    expect(afterRestart).toBe(1);
+    expect(result.hasGlobalMeta).toBe(true);
+    expect(result.hasCalcGlobalUpgradeCost).toBe(true);
+    expect(result.hasGetGlobalDamageMult).toBe(true);
+    expect(result.hasGetGlobalFireRateMult).toBe(true);
+    expect(result.hasGetGlobalRangeMult).toBe(true);
+    expect(result.hasGetGlobalStartGold).toBe(true);
+    expect(result.hasGetGlobalKillGoldMult).toBe(true);
+    expect(result.hasGetGlobalDrawDiscountMult).toBe(true);
+    expect(result.hasGetGlobalMergeDiscountMult).toBe(true);
+    expect(result.hasGetGlobalBaseHP).toBe(true);
+    expect(result.hasGetGlobalWaveBonusMult).toBe(true);
+    expect(result.hasGetGlobalDiamondBonusMult).toBe(true);
   });
 });
