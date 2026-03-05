@@ -16,10 +16,32 @@ android {
             ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+
+    // CI 환경에서 고정 keystore로 서명 (debug keystore 대체)
+    signingConfigs {
+        release {
+            def ksFile = file("${rootProject.projectDir}/release.keystore")
+            if (ksFile.exists()) {
+                storeFile ksFile
+                storePassword System.getenv("KEYSTORE_PASSWORD") ?: "fantasytd123"
+                keyAlias System.getenv("KEY_ALIAS") ?: "fantasytd"
+                keyPassword System.getenv("KEY_PASSWORD") ?: "fantasytd123"
+            }
+        }
+    }
+
     buildTypes {
+        debug {
+            // CI에서 고정 keystore가 있으면 사용, 없으면 기본 debug keystore
+            def ksFile = file("${rootProject.projectDir}/release.keystore")
+            if (ksFile.exists()) {
+                signingConfig signingConfigs.release
+            }
+        }
         release {
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
         }
     }
 }

@@ -13,3 +13,7 @@ Thumbs.db
 test-results/
 tests/screenshots/
 sim/
+
+# Keystore (GitHub Secrets로 관리)
+*.keystore
+*.keystore.b64
