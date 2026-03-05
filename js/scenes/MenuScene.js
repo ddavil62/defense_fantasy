@@ -390,6 +390,9 @@ export class MenuScene extends Phaser.Scene {
           if (this._diamondText) {
             this._diamondText.setText(`\u25C6 ${saveData.diamond}`);
           }
+
+          // 다이아몬드 획득 효과 + 사운드
+          this._showDiamondRewardToast(AD_REWARD_DIAMOND);
         }
 
         // 일일 카운터 증가
@@ -836,6 +839,70 @@ export class MenuScene extends Phaser.Scene {
       rect.setInteractive({ useHandCursor: true });
     }
     return rect;
+  }
+
+  // ── 다이아몬드 획득 효과 ──────────────────────────────────────
+
+  /**
+   * 다이아몬드 획득 토스트를 화면 중앙에 표시한다.
+   * 배경 박스 + 다이아 아이콘 + 텍스트가 스케일업 후 위로 떠오르며 페이드아웃된다.
+   * 동시에 sfx_diamond_reward 효과음을 재생한다.
+   * @param {number} amount - 획득한 다이아몬드 수량
+   * @private
+   */
+  _showDiamondRewardToast(amount) {
+    // 효과음 재생
+    const soundManager = this.registry.get('soundManager');
+    if (soundManager) {
+      soundManager.playSfx('sfx_diamond_reward');
+    }
+
+    const cx = GAME_WIDTH / 2;
+    const cy = GAME_HEIGHT / 2;
+    const depth = 200;
+
+    // 반투명 배경 박스
+    const bg = this.add.graphics().setDepth(depth);
+    bg.fillStyle(0x1a1a2e, 0.9);
+    bg.fillRoundedRect(cx - 70, cy - 28, 140, 56, 12);
+    bg.lineStyle(2, 0x9b59b6, 1);
+    bg.strokeRoundedRect(cx - 70, cy - 28, 140, 56, 12);
+
+    // 다이아 아이콘 + 텍스트
+    const label = this.add.text(cx, cy, `\u25C6 +${amount}`, {
+      fontSize: '24px',
+      fontFamily: 'Galmuri11, Arial, sans-serif',
+      color: '#d4a5ff',
+      fontStyle: 'bold',
+      stroke: '#1a1a2e',
+      strokeThickness: 4,
+    }).setOrigin(0.5).setDepth(depth + 1);
+
+    // 컨테이너로 묶어서 함께 애니메이션
+    const container = this.add.container(0, 0, [bg, label]).setDepth(depth);
+
+    // 등장 애니메이션: 스케일 0 → 1 (바운스)
+    container.setScale(0);
+    this.tweens.add({
+      targets: container,
+      scaleX: 1,
+      scaleY: 1,
+      duration: 300,
+      ease: 'Back.easeOut',
+    });
+
+    // 1초 유지 후 위로 떠오르며 페이드아웃
+    this.tweens.add({
+      targets: container,
+      y: -40,
+      alpha: 0,
+      delay: 1000,
+      duration: 600,
+      ease: 'Power2',
+      onComplete: () => {
+        container.destroy();
+      },
+    });
   }
 
   // ── 엔드리스 해금 판정 ────────────────────────────────────────
