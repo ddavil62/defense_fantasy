@@ -38,13 +38,13 @@ const PROGRESS_Y = 82;
 /** @const {number} 도감 카드 그리드 시작 Y 좌표 */
 const CODEX_GRID_Y = 104;
 /** @const {number} 도감 카드 너비 */
-const CODEX_CARD_W = 62;
+const CODEX_CARD_W = 78;
 /** @const {number} 도감 카드 높이 — 발견/미발견 모두 동일 높이 적용 */
-const CODEX_CARD_H = 88;
+const CODEX_CARD_H = 105;
 /** @const {number} 도감 그리드 열 수 */
-const CODEX_COLS = 5;
+const CODEX_COLS = 4;
 /** @const {number} 도감 카드 간 간격 */
-const CODEX_CARD_GAP = 6;
+const CODEX_CARD_GAP = 8;
 /** @const {number} 도감 그리드 시작 X 좌표 (가운데 정렬) */
 const CODEX_GRID_X = (GAME_WIDTH - (CODEX_COLS * CODEX_CARD_W + (CODEX_COLS - 1) * CODEX_CARD_GAP)) / 2;
 
@@ -266,7 +266,7 @@ export class MergeCodexScene extends Phaser.Scene {
 
       data[tier].push({
         id: recipe.id,
-        displayName: recipe.displayName,
+        displayName: t(`tower.${recipe.id}.name`) || recipe.displayName,
         color: recipe.color,
         attackType: mergedStats ? mergedStats.attackType : 'unknown',
         recipeKey: recipeKey,
@@ -502,44 +502,48 @@ export class MergeCodexScene extends Phaser.Scene {
       // ── 발견된 타워: 컬러 아이콘 + 이름 + 배지 ──
       const codexTexKey = `tower_${entry.id}`;
       if (this.textures.exists(codexTexKey)) {
-        const iconImg = this.add.image(cx, y + 20, codexTexKey)
-          .setDisplaySize(32, 32);
+        const iconImg = this.add.image(cx, y + 24, codexTexKey)
+          .setDisplaySize(36, 36);
         this.codexScrollContainer.add(iconImg);
       } else {
         const circleG = this.add.graphics();
         circleG.fillStyle(entry.color, 1);
-        circleG.fillCircle(cx, y + 20, 14);
+        circleG.fillCircle(cx, y + 24, 16);
         this.codexScrollContainer.add(circleG);
       }
 
-      // 타워 이름 (6자 초과 시 5자+'..' 로 말줄임)
-      const displayName = entry.displayName.length > 6
-        ? entry.displayName.substring(0, 5) + '..'
+      // 타워 이름 (8자 초과 시 7자+'..' 로 말줄임)
+      const displayName = entry.displayName.length > 8
+        ? entry.displayName.substring(0, 7) + '..'
         : entry.displayName;
-      const nameText = this.add.text(cx, y + 40, displayName, {
-        fontSize: '9px',
+      const nameText = this.add.text(cx, y + 48, displayName, {
+        fontSize: '11px',
         fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#ffffff',
+        stroke: '#000000',
+        strokeThickness: 2,
       }).setOrigin(0.5);
       this.codexScrollContainer.add(nameText);
 
       // 공격 유형 배지 (유형별 고유 색상 적용)
       const badgeStr = this._getAttackTypeBadge(entry.attackType);
       const badgeColor = ATTACK_TYPE_COLORS_CSS[entry.attackType] || '#81ecec';
-      const badgeText = this.add.text(cx, y + 54, badgeStr, {
-        fontSize: '8px',
+      const badgeText = this.add.text(cx, y + 65, badgeStr, {
+        fontSize: '9px',
         fontFamily: 'Galmuri11, Arial, sans-serif',
         color: badgeColor,
         backgroundColor: '#0d1117',
-        padding: { x: 2, y: 1 },
+        padding: { x: 3, y: 1 },
       }).setOrigin(0.5);
       this.codexScrollContainer.add(badgeText);
 
       // 티어 배지
-      const tierBadge = this.add.text(cx, y + 67, `T${entry.tier}`, {
-        fontSize: '8px',
+      const tierBadge = this.add.text(cx, y + 82, `T${entry.tier}`, {
+        fontSize: '9px',
         fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#ffd700',
+        stroke: '#000000',
+        strokeThickness: 2,
       }).setOrigin(0.5);
       this.codexScrollContainer.add(tierBadge);
 
@@ -556,12 +560,12 @@ export class MergeCodexScene extends Phaser.Scene {
       // ── 미발견 타워: 실루엣 + ??? ──
       const circleG = this.add.graphics();
       circleG.fillStyle(0x222222, 1);
-      circleG.fillCircle(cx, y + 20, 14);
+      circleG.fillCircle(cx, y + 24, 16);
       this.codexScrollContainer.add(circleG);
 
       // "?" 텍스트
-      const qMark = this.add.text(cx, y + 20, '?', {
-        fontSize: '16px',
+      const qMark = this.add.text(cx, y + 24, '?', {
+        fontSize: '18px',
         fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#444444',
         fontStyle: 'bold',
@@ -569,18 +573,22 @@ export class MergeCodexScene extends Phaser.Scene {
       this.codexScrollContainer.add(qMark);
 
       // ??? 이름
-      const nameText = this.add.text(cx, y + 40, t('discovery.undiscovered'), {
-        fontSize: '9px',
+      const nameText = this.add.text(cx, y + 48, t('discovery.undiscovered'), {
+        fontSize: '11px',
         fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#636e72',
+        stroke: '#000000',
+        strokeThickness: 2,
       }).setOrigin(0.5);
       this.codexScrollContainer.add(nameText);
 
       // 티어 배지
-      const tierBadge = this.add.text(cx, y + 54, `T${entry.tier}`, {
-        fontSize: '8px',
+      const tierBadge = this.add.text(cx, y + 65, `T${entry.tier}`, {
+        fontSize: '9px',
         fontFamily: 'Galmuri11, Arial, sans-serif',
         color: '#636e72',
+        stroke: '#000000',
+        strokeThickness: 2,
       }).setOrigin(0.5);
       this.codexScrollContainer.add(tierBadge);
 
@@ -588,11 +596,13 @@ export class MergeCodexScene extends Phaser.Scene {
       if (entry.recipeKey) {
         const hintStr = this._buildHintString(entry.recipeKey);
         if (hintStr) {
-          const hintText = this.add.text(cx, y + 68, hintStr, {
-            fontSize: '7px',
+          const hintText = this.add.text(cx, y + 82, hintStr, {
+            fontSize: '8px',
             fontFamily: 'Galmuri11, Arial, sans-serif',
-            color: '#555555',
-            wordWrap: { width: CODEX_CARD_W - 4 },
+            color: '#777777',
+            stroke: '#000000',
+            strokeThickness: 1,
+            wordWrap: { width: CODEX_CARD_W - 6 },
             align: 'center',
           }).setOrigin(0.5, 0);
           this.codexScrollContainer.add(hintText);
@@ -645,7 +655,7 @@ export class MergeCodexScene extends Phaser.Scene {
     // T2+ 합성 타워
     for (const [, recipe] of Object.entries(MERGE_RECIPES)) {
       if (recipe.id === towerId) {
-        return recipe.displayName;
+        return t(`tower.${recipe.id}.name`) || recipe.displayName;
       }
     }
     return towerId;
