@@ -20,7 +20,7 @@ const W = 4; // CELL_WALL  (설치/이동 불가)
 export const D2_M1 = {
   id: 'd2_m1',
   worldId: 'desert',
-  meta: { nameKey: 'map.d2_m1.name', descKey: 'map.d2_m1.desc', difficulty: 1 },
+  meta: { nameKey: 'map.d2_m1.name', descKey: 'map.d2_m1.desc', difficulty: 2 },
   grid: [
     [S, P, P, P, E, E, E, E, W],
     [E, E, E, P, E, E, E, E, E],
@@ -51,7 +51,7 @@ export const D2_M1 = {
   ],
   spawnPos: { col: 0, row: 0 },
   basePos: { col: 2, row: 11 },
-  totalWaves: 10,
+  totalWaves: 13,
   waveOverrides: null,
   theme: THEME_DESERT,
 };
@@ -62,7 +62,7 @@ export const D2_M1 = {
 export const D2_M2 = {
   id: 'd2_m2',
   worldId: 'desert',
-  meta: { nameKey: 'map.d2_m2.name', descKey: 'map.d2_m2.desc', difficulty: 1 },
+  meta: { nameKey: 'map.d2_m2.name', descKey: 'map.d2_m2.desc', difficulty: 3 },
   grid: [
     [W, W, W, W, S, W, W, W, W],
     [E, E, E, E, P, E, E, E, E],
@@ -90,7 +90,7 @@ export const D2_M2 = {
   ],
   spawnPos: { col: 4, row: 0 },
   basePos: { col: 4, row: 11 },
-  totalWaves: 11,
+  totalWaves: 14,
   waveOverrides: null,
   theme: THEME_DESERT,
 };
@@ -101,7 +101,7 @@ export const D2_M2 = {
 export const D2_M3 = {
   id: 'd2_m3',
   worldId: 'desert',
-  meta: { nameKey: 'map.d2_m3.name', descKey: 'map.d2_m3.desc', difficulty: 2 },
+  meta: { nameKey: 'map.d2_m3.name', descKey: 'map.d2_m3.desc', difficulty: 3 },
   grid: [
     [W, W, S, W, W, W, W, W, W],
     [E, E, P, E, E, E, E, E, E],
@@ -127,7 +127,7 @@ export const D2_M3 = {
   ],
   spawnPos: { col: 2, row: 0 },
   basePos: { col: 2, row: 11 },
-  totalWaves: 12,
+  totalWaves: 15,
   waveOverrides: null,
   theme: THEME_DESERT,
 };
@@ -138,7 +138,7 @@ export const D2_M3 = {
 export const D2_M4 = {
   id: 'd2_m4',
   worldId: 'desert',
-  meta: { nameKey: 'map.d2_m4.name', descKey: 'map.d2_m4.desc', difficulty: 2 },
+  meta: { nameKey: 'map.d2_m4.name', descKey: 'map.d2_m4.desc', difficulty: 1 },
   grid: [
     [W, W, W, W, W, W, W, S, W],
     [E, E, E, E, E, E, E, P, E],
@@ -166,7 +166,7 @@ export const D2_M4 = {
   ],
   spawnPos: { col: 7, row: 0 },
   basePos: { col: 1, row: 11 },
-  totalWaves: 13,
+  totalWaves: 11,
   waveOverrides: null,
   theme: THEME_DESERT,
 };
@@ -177,7 +177,7 @@ export const D2_M4 = {
 export const D2_M5 = {
   id: 'd2_m5',
   worldId: 'desert',
-  meta: { nameKey: 'map.d2_m5.name', descKey: 'map.d2_m5.desc', difficulty: 3 },
+  meta: { nameKey: 'map.d2_m5.name', descKey: 'map.d2_m5.desc', difficulty: 1 },
   grid: [
     [S, W, W, W, W, W, W, W, W],
     [P, E, E, E, E, E, E, E, E],
@@ -205,7 +205,7 @@ export const D2_M5 = {
   ],
   spawnPos: { col: 0, row: 0 },
   basePos: { col: 7, row: 11 },
-  totalWaves: 14,
+  totalWaves: 10,
   waveOverrides: null,
   theme: THEME_DESERT,
 };
@@ -216,7 +216,7 @@ export const D2_M5 = {
 export const D2_M6 = {
   id: 'd2_m6',
   worldId: 'desert',
-  meta: { nameKey: 'map.d2_m6.name', descKey: 'map.d2_m6.desc', difficulty: 3 },
+  meta: { nameKey: 'map.d2_m6.name', descKey: 'map.d2_m6.desc', difficulty: 2 },
   grid: [
     [W, S, W, W, W, W, W, W, W],
     [E, P, E, E, E, E, E, E, E],
@@ -246,7 +246,7 @@ export const D2_M6 = {
   ],
   spawnPos: { col: 1, row: 0 },
   basePos: { col: 3, row: 11 },
-  totalWaves: 15,
+  totalWaves: 12,
   waveOverrides: null,
   theme: THEME_DESERT,
 };

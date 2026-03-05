@@ -11,6 +11,28 @@ import {
 } from '../config.js';
 
 /**
+ * R21+ 생성 웨이브에서 적 정렬용 난이도 순서.
+ * 낮은 값이 먼저 스폰된다 (약한 적 → 강한 적).
+ * @const {Object<string, number>}
+ */
+const ENEMY_DIFFICULTY_ORDER = {
+  normal: 0,
+  fast: 1,
+  swarm: 2,
+  tank: 3,
+  splitter: 4,
+  armored: 5,
+};
+
+/**
+ * 동적 스폰 수량 임계값.
+ * 웨이브 총 적 수에 따라 후반부 동시 스폰 수를 결정한다.
+ * @const {number}
+ */
+const MULTI_SPAWN_THRESHOLD_MEDIUM = 8;   // 8마리 이상: 후반 2마리 동시 스폰
+const MULTI_SPAWN_THRESHOLD_LARGE = 16;   // 16마리 이상: 후반 3마리 동시 스폰
+
+/**
  * 웨이브 상태 열거형.
  * @enum {string}
  */
@@ -71,6 +93,12 @@ export class WaveManager {
 
     /** @type {number} 이번 게임에서의 총 처치 수 */
     this.totalKills = 0;
+
+    /** @type {number} 현재 웨이브의 총 적 수 (동적 간격 계산용) */
+    this._totalEnemyCount = 0;
+
+    /** @type {number} 현재 웨이브에서 스폰된 적 수 (동적 간격 계산용) */
+    this._spawnedCount = 0;
   }
 
   // ── 웨이브 시작 ────────────────────────────────────────────────
@@ -134,6 +162,10 @@ export class WaveManager {
     this.isBossRound = waveData.bossRound || false;
     this.bossDelayActive = false;
     this.bossDelayTimer = waveData.bossDelay || 0;
+
+    // 동적 스폰 간격을 위한 진행도 추적 초기화
+    this._totalEnemyCount = this.enemyQueue.length;
+    this._spawnedCount = 0;
 
     // 알림 텍스트 페이드아웃
     if (this.announceText) {
@@ -225,6 +257,8 @@ export class WaveManager {
   /**
    * 스폰 로직을 갱신한다.
    * 큐에서 적을 꺼내 스폰하고, 보스 타입은 스폰 후 딜레이를 적용한다.
+   * 동적 스폰 수량: 웨이브 초반은 1마리씩, 후반은 2~3마리씩 동시 스폰하여
+   * 초반 여유를 주고 후반에 물량 러시 긴장감을 높인다.
    * @param {number} delta - 프레임 델타 (초)
    * @param {Function} spawnEnemy - 적 스폰 콜백
    * @private
@@ -246,17 +280,51 @@ export class WaveManager {
 
     this.spawnTimer -= delta;
     if (this.spawnTimer <= 0) {
-      const enemyData = this.enemyQueue.shift();
-      spawnEnemy(enemyData);
+      // 진행도에 따른 동시 스폰 수량 결정
+      const progress = this._totalEnemyCount > 0
+        ? this._spawnedCount / this._totalEnemyCount
+        : 0;
+      const spawnCount = this._calcSpawnCount(progress);
 
-      // 보스 타입 스폰 후 딜레이 트리거
-      if (this.isBossRound && (enemyData.type === 'boss' || enemyData.type === 'boss_armored')) {
-        this.bossDelayActive = true;
-        this.spawnTimer = 0;
-      } else {
-        this.spawnTimer = this.spawnInterval;
+      for (let i = 0; i < spawnCount && this.enemyQueue.length > 0; i++) {
+        const enemyData = this.enemyQueue.shift();
+        spawnEnemy(enemyData);
+        this._spawnedCount++;
+
+        // 보스 타입 스폰 후 딜레이 트리거 (즉시 루프 중단)
+        if (this.isBossRound && (enemyData.type === 'boss' || enemyData.type === 'boss_armored')) {
+          this.bossDelayActive = true;
+          this.spawnTimer = 0;
+          return;
+        }
       }
+
+      this.spawnTimer = this.spawnInterval;
     }
+  }
+
+  /**
+   * 웨이브 진행도와 총 적 수에 따라 틱당 동시 스폰 수량을 반환한다.
+   * - 소규모(8마리 미만): 항상 1마리
+   * - 중규모(8~15마리): 초반 1마리, 후반(50%~) 2마리
+   * - 대규모(16마리 이상): 초반 1마리, 중후반(50%~) 2마리, 후반(75%~) 3마리
+   * @param {number} progress - 스폰 진행률 (0~1)
+   * @returns {number} 이번 틱에 스폰할 적 수
+   * @private
+   */
+  _calcSpawnCount(progress) {
+    // 소규모 웨이브: 수량이 적어 동시 스폰하면 순식간에 끝나므로 1마리 유지
+    if (this._totalEnemyCount < MULTI_SPAWN_THRESHOLD_MEDIUM) return 1;
+
+    // 대규모 웨이브: 3단계 스폰 (1 → 2 → 3)
+    if (this._totalEnemyCount >= MULTI_SPAWN_THRESHOLD_LARGE) {
+      if (progress < 0.5) return 1;
+      if (progress < 0.75) return 2;
+      return 3;
+    }
+
+    // 중규모 웨이브: 2단계 스폰 (1 → 2)
+    return progress < 0.5 ? 1 : 2;
   }
 
   // ── 웨이브 클리어 ──────────────────────────────────────────────
@@ -423,6 +491,22 @@ export class WaveManager {
         entry.resistance = baseStats.resistance;
       }
       enemies.push(entry);
+    }
+
+    // 난이도순 정렬: 약한 적(normal)이 먼저, 강한 적(armored)이 나중에 스폰
+    // 보스는 첫 번째(bossDelay와 함께)이므로 분리 후 정렬
+    if (isBossRound && enemies.length > 1) {
+      const boss = enemies[0];
+      const rest = enemies.slice(1);
+      rest.sort((a, b) =>
+        (ENEMY_DIFFICULTY_ORDER[a.type] ?? 99) - (ENEMY_DIFFICULTY_ORDER[b.type] ?? 99)
+      );
+      enemies.length = 0;
+      enemies.push(boss, ...rest);
+    } else {
+      enemies.sort((a, b) =>
+        (ENEMY_DIFFICULTY_ORDER[a.type] ?? 99) - (ENEMY_DIFFICULTY_ORDER[b.type] ?? 99)
+      );
     }
 
     return {

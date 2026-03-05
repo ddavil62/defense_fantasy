@@ -20,7 +20,7 @@ const W = 4; // CELL_WALL  (설치/이동 불가)
 export const F1_M1 = {
   id: 'f1_m1',
   worldId: 'forest',
-  meta: { nameKey: 'map.f1_m1.name', descKey: 'map.f1_m1.desc', difficulty: 1 },
+  meta: { nameKey: 'map.f1_m1.name', descKey: 'map.f1_m1.desc', difficulty: 3 },
   grid: [
     [W, W, W, W, S, W, W, W, W],
     [E, E, E, E, P, E, E, E, E],
@@ -46,7 +46,7 @@ export const F1_M1 = {
   ],
   spawnPos: { col: 4, row: 0 },
   basePos: { col: 4, row: 11 },
-  totalWaves: 8,
+  totalWaves: 12,
   waveOverrides: null,
   theme: THEME_FOREST,
 };
@@ -57,7 +57,7 @@ export const F1_M1 = {
 export const F1_M2 = {
   id: 'f1_m2',
   worldId: 'forest',
-  meta: { nameKey: 'map.f1_m2.name', descKey: 'map.f1_m2.desc', difficulty: 1 },
+  meta: { nameKey: 'map.f1_m2.name', descKey: 'map.f1_m2.desc', difficulty: 3 },
   grid: [
     [W, W, S, W, W, W, W, W, W],
     [E, E, P, E, E, E, E, E, E],
@@ -85,7 +85,7 @@ export const F1_M2 = {
   ],
   spawnPos: { col: 2, row: 0 },
   basePos: { col: 6, row: 11 },
-  totalWaves: 9,
+  totalWaves: 11,
   waveOverrides: null,
   theme: THEME_FOREST,
 };
@@ -96,7 +96,7 @@ export const F1_M2 = {
 export const F1_M3 = {
   id: 'f1_m3',
   worldId: 'forest',
-  meta: { nameKey: 'map.f1_m3.name', descKey: 'map.f1_m3.desc', difficulty: 2 },
+  meta: { nameKey: 'map.f1_m3.name', descKey: 'map.f1_m3.desc', difficulty: 1 },
   grid: [
     [W, W, W, W, W, W, W, S, W],
     [E, E, E, E, E, E, E, P, E],
@@ -124,7 +124,7 @@ export const F1_M3 = {
   ],
   spawnPos: { col: 7, row: 0 },
   basePos: { col: 1, row: 11 },
-  totalWaves: 10,
+  totalWaves: 9,
   waveOverrides: null,
   theme: THEME_FOREST,
 };
@@ -176,7 +176,7 @@ export const F1_M4 = {
 export const F1_M5 = {
   id: 'f1_m5',
   worldId: 'forest',
-  meta: { nameKey: 'map.f1_m5.name', descKey: 'map.f1_m5.desc', difficulty: 3 },
+  meta: { nameKey: 'map.f1_m5.name', descKey: 'map.f1_m5.desc', difficulty: 1 },
   grid: [
     [W, S, W, W, W, W, W, W, W],
     [E, P, E, E, E, E, E, E, E],
@@ -206,7 +206,7 @@ export const F1_M5 = {
   ],
   spawnPos: { col: 1, row: 0 },
   basePos: { col: 1, row: 11 },
-  totalWaves: 11,
+  totalWaves: 8,
   waveOverrides: null,
   theme: THEME_FOREST,
 };
@@ -217,7 +217,7 @@ export const F1_M5 = {
 export const F1_M6 = {
   id: 'f1_m6',
   worldId: 'forest',
-  meta: { nameKey: 'map.f1_m6.name', descKey: 'map.f1_m6.desc', difficulty: 3 },
+  meta: { nameKey: 'map.f1_m6.name', descKey: 'map.f1_m6.desc', difficulty: 2 },
   grid: [
     [W, W, W, W, S, W, W, W, W],
     [E, E, P, P, P, E, E, E, E],
@@ -248,7 +248,7 @@ export const F1_M6 = {
   ],
   spawnPos: { col: 4, row: 0 },
   basePos: { col: 4, row: 11 },
-  totalWaves: 12,
+  totalWaves: 10,
   waveOverrides: null,
   theme: THEME_FOREST,
 };

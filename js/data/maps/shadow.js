@@ -52,7 +52,7 @@ export const S5_M1 = {
   ],
   spawnPos: { col: 7, row: 0 },
   basePos: { col: 1, row: 11 },
-  totalWaves: 18,
+  totalWaves: 20,
   waveOverrides: null,
   theme: THEME_SHADOW,
 };
@@ -90,7 +90,7 @@ export const S5_M2 = {
   ],
   spawnPos: { col: 2, row: 0 },
   basePos: { col: 7, row: 11 },
-  totalWaves: 19,
+  totalWaves: 23,
   waveOverrides: null,
   theme: THEME_SHADOW,
 };
@@ -131,7 +131,7 @@ export const S5_M3 = {
   ],
   spawnPos: { col: 7, row: 0 },
   basePos: { col: 6, row: 11 },
-  totalWaves: 20,
+  totalWaves: 22,
   waveOverrides: null,
   theme: THEME_SHADOW,
 };
@@ -172,7 +172,7 @@ export const S5_M4 = {
   ],
   spawnPos: { col: 4, row: 0 },
   basePos: { col: 7, row: 11 },
-  totalWaves: 22,
+  totalWaves: 19,
   waveOverrides: null,
   theme: THEME_SHADOW,
 };
@@ -210,7 +210,7 @@ export const S5_M5 = {
   ],
   spawnPos: { col: 0, row: 0 },
   basePos: { col: 5, row: 11 },
-  totalWaves: 23,
+  totalWaves: 25,
   waveOverrides: null,
   theme: THEME_SHADOW,
 };
@@ -251,7 +251,7 @@ export const S5_M6 = {
   ],
   spawnPos: { col: 1, row: 0 },
   basePos: { col: 1, row: 11 },
-  totalWaves: 25,
+  totalWaves: 18,
   waveOverrides: null,
   theme: THEME_SHADOW,
 };

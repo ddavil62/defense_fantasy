@@ -68,7 +68,7 @@ export const T3_M1 = {
 export const T3_M2 = {
   id: 't3_m2',
   worldId: 'tundra',
-  meta: { nameKey: 'map.t3_m2.name', descKey: 'map.t3_m2.desc', difficulty: 1 },
+  meta: { nameKey: 'map.t3_m2.name', descKey: 'map.t3_m2.desc', difficulty: 3 },
   grid: [
     [W, W, W, S, W, W, W, W, W],
     [E, E, E, P, E, E, E, E, E],
@@ -96,7 +96,7 @@ export const T3_M2 = {
   ],
   spawnPos: { col: 3, row: 0 },
   basePos: { col: 6, row: 11 },
-  totalWaves: 13,
+  totalWaves: 16,
   waveOverrides: null,
   theme: THEME_TUNDRA,
 };
@@ -135,7 +135,7 @@ export const T3_M3 = {
   ],
   spawnPos: { col: 6, row: 0 },
   basePos: { col: 1, row: 11 },
-  totalWaves: 14,
+  totalWaves: 15,
   waveOverrides: null,
   theme: THEME_TUNDRA,
 };
@@ -146,7 +146,7 @@ export const T3_M3 = {
 export const T3_M4 = {
   id: 't3_m4',
   worldId: 'tundra',
-  meta: { nameKey: 'map.t3_m4.name', descKey: 'map.t3_m4.desc', difficulty: 2 },
+  meta: { nameKey: 'map.t3_m4.name', descKey: 'map.t3_m4.desc', difficulty: 1 },
   grid: [
     [W, S, W, W, W, W, W, W, W],
     [E, P, E, E, E, E, E, E, E],
@@ -176,7 +176,7 @@ export const T3_M4 = {
   ],
   spawnPos: { col: 1, row: 0 },
   basePos: { col: 1, row: 11 },
-  totalWaves: 15,
+  totalWaves: 13,
   waveOverrides: null,
   theme: THEME_TUNDRA,
 };
@@ -215,7 +215,7 @@ export const T3_M5 = {
   ],
   spawnPos: { col: 7, row: 0 },
   basePos: { col: 6, row: 11 },
-  totalWaves: 16,
+  totalWaves: 18,
   waveOverrides: null,
   theme: THEME_TUNDRA,
 };
@@ -226,7 +226,7 @@ export const T3_M5 = {
 export const T3_M6 = {
   id: 't3_m6',
   worldId: 'tundra',
-  meta: { nameKey: 'map.t3_m6.name', descKey: 'map.t3_m6.desc', difficulty: 3 },
+  meta: { nameKey: 'map.t3_m6.name', descKey: 'map.t3_m6.desc', difficulty: 2 },
   grid: [
     [W, W, W, W, S, W, W, W, W],
     [E, E, E, E, P, E, E, E, E],
@@ -256,7 +256,7 @@ export const T3_M6 = {
   ],
   spawnPos: { col: 4, row: 0 },
   basePos: { col: 7, row: 11 },
-  totalWaves: 18,
+  totalWaves: 14,
   waveOverrides: null,
   theme: THEME_TUNDRA,
 };

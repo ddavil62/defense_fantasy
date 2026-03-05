@@ -51,7 +51,7 @@ export const V4_M1 = {
   ],
   spawnPos: { col: 4, row: 0 },
   basePos: { col: 4, row: 11 },
-  totalWaves: 15,
+  totalWaves: 16,
   waveOverrides: null,
   theme: THEME_VOLCANO,
 };
@@ -89,7 +89,7 @@ export const V4_M2 = {
   ],
   spawnPos: { col: 2, row: 0 },
   basePos: { col: 7, row: 11 },
-  totalWaves: 16,
+  totalWaves: 17,
   waveOverrides: null,
   theme: THEME_VOLCANO,
 };
@@ -100,7 +100,7 @@ export const V4_M2 = {
 export const V4_M3 = {
   id: 'v4_m3',
   worldId: 'volcano',
-  meta: { nameKey: 'map.v4_m3.name', descKey: 'map.v4_m3.desc', difficulty: 2 },
+  meta: { nameKey: 'map.v4_m3.name', descKey: 'map.v4_m3.desc', difficulty: 3 },
   grid: [
     [W, W, W, W, W, W, W, S, W],
     [E, E, E, E, E, E, E, P, E],
@@ -126,7 +126,7 @@ export const V4_M3 = {
   ],
   spawnPos: { col: 7, row: 0 },
   basePos: { col: 7, row: 11 },
-  totalWaves: 17,
+  totalWaves: 18,
   waveOverrides: null,
   theme: THEME_VOLCANO,
 };
@@ -137,7 +137,7 @@ export const V4_M3 = {
 export const V4_M4 = {
   id: 'v4_m4',
   worldId: 'volcano',
-  meta: { nameKey: 'map.v4_m4.name', descKey: 'map.v4_m4.desc', difficulty: 3 },
+  meta: { nameKey: 'map.v4_m4.name', descKey: 'map.v4_m4.desc', difficulty: 2 },
   grid: [
     [W, S, W, W, W, W, W, W, W],
     [E, P, E, E, E, E, E, E, E],
@@ -165,7 +165,7 @@ export const V4_M4 = {
   ],
   spawnPos: { col: 1, row: 0 },
   basePos: { col: 7, row: 11 },
-  totalWaves: 18,
+  totalWaves: 15,
   waveOverrides: null,
   theme: THEME_VOLCANO,
 };
