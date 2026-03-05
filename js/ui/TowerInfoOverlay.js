@@ -361,9 +361,10 @@ export class TowerInfoOverlay {
         this._applyMetaUpgrades(entry.id, stats);
       }
       const rangeInTiles = (stats.range / CELL_SIZE).toFixed(1);
+      const spdRounded = parseFloat(stats.fireRate.toFixed(2));
       const statsStr = t('tower.statLine')
         .replace('{dmg}', stats.damage)
-        .replace('{spd}', stats.fireRate)
+        .replace('{spd}', spdRounded)
         .replace('{rng}', rangeInTiles);
       const statsText = this.scene.add.text(panelX, curY, statsStr, {
         fontSize: '11px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#b2bec3',
@@ -497,9 +498,10 @@ export class TowerInfoOverlay {
         rng = this._sourceTower.stats.range;
       }
       const rangeInTiles = (rng / CELL_SIZE).toFixed(1);
+      const spdRounded = parseFloat(spd.toFixed(2));
       const statsStr = t('tower.statLine')
         .replace('{dmg}', dmg)
-        .replace('{spd}', spd)
+        .replace('{spd}', spdRounded)
         .replace('{rng}', rangeInTiles);
       const statsText = this.scene.add.text(panelX, nextY, statsStr, {
         fontSize: '11px', fontFamily: 'Galmuri11, Arial, sans-serif', color: '#b2bec3',
