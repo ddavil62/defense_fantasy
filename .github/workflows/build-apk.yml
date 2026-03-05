@@ -1,4 +1,4 @@
-name: Build APK
+name: Build APK & AAB
 
 on:
   push:
@@ -37,15 +37,15 @@ jobs:
       - name: Decode release keystore
         run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/release.keystore
 
-      - name: Build release APK
+      - name: Build release APK & AAB
         working-directory: android
-        run: chmod +x gradlew && ./gradlew assembleRelease
+        run: chmod +x gradlew && ./gradlew assembleRelease bundleRelease
         env:
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
-      - name: Upload APK to Release
+      - name: Upload APK & AAB to Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: dev-${{ github.run_number }}
@@ -55,7 +55,9 @@ jobs:
             ```
             ${{ github.event.head_commit.message }}
             ```
-          files: android/app/build/outputs/apk/release/app-release.apk
+          files: |
+            android/app/build/outputs/apk/release/app-release.apk
+            android/app/build/outputs/bundle/release/app-release.aab
           prerelease: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
