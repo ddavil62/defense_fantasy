@@ -14,7 +14,10 @@ Phaser.js 3 기반 판타지 타워 디펜스 게임. 도형 기반 프로토타
 | 모바일 패키징 | Capacitor (Android + iOS) |
 | 모듈 구조 | ES6 모듈 기반 멀티 파일 (34개) |
 | 폰트 | Galmuri11 픽셀 폰트 (Regular + Bold), SIL OFL 라이선스, woff2 로컬 번들링 |
-| 렌더링 | HTML5 Canvas (Phaser 기본, pixelArt: true, antialias: false) |
+| 렌더링 | HTML5 Canvas (Phaser 기본, pixelArt: false, antialias: true) |
+| 아트 스타일 | 글로우 벡터 (SVG 코드 생성 -> sharp PNG 변환). T1 타워 10종 적용. 네온 발광 + 벡터 실루엣 |
+| 아트 에셋 파이프라인 | `scripts/generate-vector-towers.cjs` (Node.js + sharp): SVG 필터 기반 128x128 RGBA PNG 생성 |
+| 아트 콘셉트 문서 | `docs/ART_CONCEPT.md` (글로우 벡터 스타일 정의, 색상 팔레트, SVG 필터 표준, 확장 지침) |
 | 데이터 저장 | localStorage (최고 기록, Diamond, 글로벌 메타 업그레이드 10종, 타워 해금, 머지 발견, 신규 발견, 통계, 게임 히스토리, 월드 진행 상태, 엔드리스 해금, 광고제거 구매 상태, 합성 튜토리얼 완료 플래그) -- 세이브 v9. 광고 일일 제한 카운터는 별도 키(`ftd_ad_daily_limit`), 언어 설정은 별도 키(`fantasy-td-lang`)에 저장 |
 | 광고 SDK | `@capacitor-community/admob` v7.2.0 (Capacitor 7 호환, 네이티브 전용, 웹 Mock 모드) |
 | IAP 플러그인 | `@capgo/native-purchases` ^7.16.2 (Google Play Billing 직접 연동, 네이티브 전용, 웹 Mock 모드) |
@@ -30,7 +33,7 @@ Phaser.js 3 기반 판타지 타워 디펜스 게임. 도형 기반 프로토타
 | `capacitor.config.json` | Capacitor 앱 설정 (Android + iOS) |
 | `index.html` | 진입점 (Vite용 간소화, CDN 제거) |
 | `style.css` | 바디 배경, 터치 방지(`touch-action: none`), safe-area 패딩, Galmuri @font-face 선언 |
-| `js/main.js` | Phaser.Game 인스턴스 생성 (npm import, 360x640, FIT + CENTER_BOTH, pixelArt: true), Android 뒤로가기 키(ESC) 내비게이션 핸들러 (오버레이 우선 처리: TowerInfoOverlay/pauseOverlay 열림 시 씬 전환 대신 오버레이 닫기) |
+| `js/main.js` | Phaser.Game 인스턴스 생성 (npm import, 360x640, FIT + CENTER_BOTH, pixelArt: false, antialias: true), Android 뒤로가기 키(ESC) 내비게이션 핸들러 (오버레이 우선 처리: TowerInfoOverlay/pauseOverlay 열림 시 씬 전환 대신 오버레이 닫기) |
 | `js/config.js` | 모든 게임 상수/밸런스 수치 집중 관리 (타워 10종, 적 8종, 웨이브 R1~R20, 글로벌 메타 업그레이드 10종(GLOBAL_META), 저항 캡 0.55, 골드 싱크 상수, 머지 레시피 102종/스탯 102종 (T2 55종 + T3 30종 + T4 12종 + T5 5종), 별점 계산(calcStarRating), 캠페인 다이아몬드 보상(CAMPAIGN_DIAMOND_REWARDS), TOWER_UNLOCK_MAP(월드→타워 해금 매핑), 세이브 마이그레이션 v9, AdMob 광고 ID 6개/일일 제한 3개/보상 수치 4개/localStorage 키 1개, IAP_PRODUCT_REMOVE_ADS 상수, 밸런스 함수(calcHpScale/getBossHpMultiplier/calcWaveClearBonus), MAX_TOWER_COUNT=30, MERGE_COST 티어별 합성 비용, INITIAL_GOLD=160, 뽑기 비용 상수(DRAW_BASE_COST=80, DRAW_COST_INCREMENT=20) 및 calcDrawCost() 함수, calcGlobalUpgradeCost() 및 글로벌 메타 헬퍼 함수 10종) |
 | `js/scenes/BootScene.js` | 초기 설정, localStorage 로드, 세이브 마이그레이션 (stats 필드 포함), UI 에셋 56장 preload (아이콘 16장 포함), `async create()` + AdManager 초기화/registry 등록 + IAPManager 초기화/registry 등록 + adFree 상태 AdManager 동기화 + `await document.fonts.ready`로 Galmuri 폰트 로딩 대기 후 메뉴 전환 |
 | `js/scenes/MenuScene.js` | 메뉴 화면, Diamond 표시, "Diamond 받기" 보상형 광고 버튼(일일 5회, Diamond +3, adFree시 무제한 ∞ 표시), CAMPAIGN/ENDLESS(endlessUnlocked 조건부 활성)/COLLECTION/STATISTICS 버튼(광고 진행 중 isBusy 가드), 광고제거 구매 버튼(Y=590+offsetY, 동적 가격 표시(getLocalizedPrice()), 확인 다이얼로그, 결제 미지원 시 버튼 비활성화, 구매완료 비활성화), 음소거 토글(centerX-48)/언어 토글(centerX+48) 버튼(Y=630+offsetY), 종료 확인 다이얼로그(_openExitDialog) |
@@ -64,9 +67,11 @@ Phaser.js 3 기반 판타지 타워 디펜스 게임. 도형 기반 프로토타
 | `js/ui/HUD.js` | 상단 HUD (Wave/Gold/HP, HP 위험 깜빡임, 웨이브 카운트다운, 적 프리뷰, 캠페인 Wave X/Y 표시, 타워 카운트 N/30 표시) |
 | `js/ui/TowerPanel.js` | 하단 2행 패널. 1행: 뽑기 버튼(X=95, 150x44, 랜덤 T1 타워 선택, 글로벌 뽑기 할인 적용)+무료뽑기 버튼(X=265, 150x44, 광고 시청 후 T1 90%/T2 10% 타워 3개 모달 선택, 무료 배치). 2행: 배속(X=40)+소모품3종+HP회복. 강화/드래그&드롭 머지+이동 UI/머지 프리뷰(드래그 하이라이트+호버 말풍선+합성 비용 표시, 글로벌 합성 할인 적용)/3단 속도(아이콘, 1x/2x/3x). 뽑기 비용 표시/골드 부족 비활성화/롱프레스 풀 팝업. 드래그 시 빈 셀 하이라이트+이동/합성/취소 통합 분기. 타워 상세 모달은 TowerInfoOverlay로 위임 |
 | `js/ui/TowerInfoOverlay.js` | 공용 타워 정보 오버레이 (game/codex 모드). NineSlice 동적 패널, T1 스탯 패널, T2+ Y자 합성 트리, 상위 조합 드래그 스크롤, 드릴다운, game 모드 강화/판매 버튼, enhanceLevel 기반 baseH 동적 계산, handleBack() 공개 래퍼(ESC 키 외부 호출용), 미발견 타워 ??? 표시 + 드릴다운 차단 (상위 조합/재료 노드) |
+| `scripts/generate-vector-towers.cjs` | T1 타워 10종 글로우 벡터 SVG 생성 후 sharp로 PNG 128x128 RGBA 변환 스크립트 (CommonJS). 외부 글로우 필터(stdDeviation=4, feMerge x3) + 내부 코어 필터(stdDeviation=2, feMerge x2) 이중 구조. 10종 타워별 draw 함수 매핑(DRAW_MAP) |
+| `docs/ART_CONCEPT.md` | 글로우 벡터 아트 콘셉트 문서 (스타일 정의, T1 10종 색상 팔레트, SVG 필터 표준, Archer SVG 예시, T2/T3 확장 지침) |
 | `tools/balance-simulator.mjs` | Node.js 밸런스 시뮬레이터 (Phaser 의존성 없음). 5개 AI 전략 시나리오, CLI 지원 (`--scenarios`, `--rounds`, `--compare`, `--override`) |
 
-**총 34개 JS 파일** (+ 맵 데이터 5개 파일 + 도구 1개)
+**총 34개 JS 파일** (+ 맵 데이터 5개 파일 + 도구 1개 + 에셋 생성 스크립트 1개)
 
 ## Phaser 씬 구조
 
@@ -359,6 +364,7 @@ npx cap open android  # 또는 npx cap open ios
 - 하단 패널 UI 리디자인: Playwright 테스트 29건 (정상 18 + 예외/엣지케이스 4 + 시각적 4 + 안정성 3) + 시각적 검증 8건, QA PASS
 - 메타 업그레이드 시스템 재설계 (글로벌 10종 통합): Playwright 테스트 39건 (정상 25 + 예외 8 + 시각적 3 + 안정성 3) + 시각적 검증 9건, QA PASS (조건부)
 - IAP 실결제 Google Play Billing 연동: Playwright 테스트 42건 (정상 32 + 예외 10) + 시각적 검증 10건, QA PASS
+- T1 타워 글로우 벡터 아트 Phase 1: Playwright 테스트 9건 (정상 6 + 예외 3) + 정적 분석 12건 + 시각적 검증 13건, QA PASS
 
 ## 시스템별 상세 문서
 
@@ -389,3 +395,6 @@ npx cap open android  # 또는 npx cap open ios
 | ~~AdMob Phase 2~~ | ~~보상형 광고: Diamond + 부활~~ | ~~완료 (MenuScene Diamond 받기 버튼(일일 5회, +3D), GameOverScene 부활 버튼(판당 1회, HP 절반, 웨이브 재개))~~ |
 | ~~AdMob Phase 3~~ | ~~보상형 광고: Gold 2배 + 클리어 보상 2배~~ | ~~완료 (LevelSelectScene "2배 골드"/"보상 2배" 버튼(일일 3회씩), GameScene 골드 2배 부스트, MapClearScene 사후 "보상 2배" 광고 버튼, 세이브 지연 패턴)~~ |
 | ~~AdMob Phase 4~~ | ~~통합 QA~~ | ~~완료 (일일 제한 시스템 전수 검증, Playwright 48건 통합 테스트 PASS, 코드 변경 없음)~~ |
+| ~~아트 Phase 1~~ | ~~T1 타워 글로우 벡터 아트~~ | ~~완료 (T1 타워 10종 SVG->PNG 교체, Phaser pixelArt: false/antialias: true, ART_CONCEPT.md)~~ |
+| 아트 Phase 2 | T2 타워 글로우 벡터 아트 | T2 합성 타워 55종 SVG 에셋 생성 (T1 스타일 확장) |
+| 아트 Phase 3 | T3+ 타워 글로우 벡터 아트 | T3~T5 타워 에셋 생성, 적/배경 에셋 교체 |

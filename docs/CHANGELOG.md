@@ -4,6 +4,29 @@
 
 ---
 
+## 2026-03-10 -- T1 타워 글로우 벡터 아트 Phase 1
+
+### 추가
+
+- **`scripts/generate-vector-towers.cjs`** -- T1 타워 10종 SVG 코드 생성 후 sharp로 128x128 RGBA PNG 변환 스크립트 (CommonJS). 타워별 draw 함수 분리(DRAW_MAP 매핑), 외부 글로우 필터(feGaussianBlur stdDeviation=4, feMerge x3, opacity 0.6) + 내부 코어 필터(stdDeviation=2, feMerge x2, opacity 1.0) 이중 구조. try-catch로 개별 타워 실패 시에도 나머지 계속 생성
+- **`docs/ART_CONCEPT.md`** -- 글로우 벡터 아트 콘셉트 문서. 5개 섹션: (1) 스타일 정의 (네온 발광+벡터 실루엣, 배경색 #1a1a2e), (2) T1 타워 10종 색상 팔레트 (coreColor/glowColor/accentColor), (3) SVG 필터 표준 (glow/core 필터 XML 예시), (4) Archer SVG 전체 코드 예시, (5) T2/T3 확장 지침 (글로우 강도/형태 복잡도/액센트 레이어 증가 규칙)
+- **`public/assets/tower/*.png`** -- T1 타워 10종 PNG 교체 (Archer/Mage/Ice/Lightning/Flame/Rock/Poison/Wind/Light/Dragon). 기존 DALL-E 3 픽셀아트에서 글로우 벡터 스타일로 덮어쓰기
+
+### 변경
+
+- **`js/main.js`** -- Phaser render 설정 변경: `pixelArt: false`, `antialias: true` (기존: pixelArt: true, antialias: false). 벡터 에셋의 글로우 품질을 위해 bilinear 보간 적용
+
+### 참고
+
+- BootScene.js, Tower.js 코드 변경 없음. 텍스처 키/파일 경로/setDisplaySize(64,64)/폴백 _draw* 메서드 모두 유지
+- pixelArt: false 변경으로 기존 다른 에셋(배경, 적 스프라이트 등)의 렌더링 보간 방식도 변경됨. 벡터 스타일과의 일관성을 위해 의도된 변경
+- 스크립트 실행: `node scripts/generate-vector-towers.cjs` (재실행 시 약 0.16초)
+- 스펙: `.claude/specs/2026-03-10-art-phase1.md`
+- 리포트: `.claude/specs/2026-03-10-art-phase1-report.md`
+- QA: `.claude/specs/2026-03-10-art-phase1-qa.md`
+
+---
+
 ## 2026-03-05 -- 맵 클리어 팡파레 사운드 추가
 
 ### 추가
