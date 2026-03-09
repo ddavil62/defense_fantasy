@@ -34,16 +34,12 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android
 
-      - name: Decode release keystore
-        run: echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/release.keystore
+      - name: Verify keystore
+        run: keytool -list -keystore android/release.keystore -storepass fantasytd123 -alias fantasytd 2>&1 | head -3
 
       - name: Build release APK & AAB
         working-directory: android
         run: chmod +x gradlew && ./gradlew assembleRelease bundleRelease
-        env:
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
 
       - name: Upload APK & AAB to Release
         uses: softprops/action-gh-release@v2
